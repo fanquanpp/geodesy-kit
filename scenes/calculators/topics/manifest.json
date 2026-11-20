@@ -1,0 +1,180 @@
+{
+  "domain": "topics",
+  "title": "专题计算（GNSS/摄影/GIS/地质）",
+  "entries": [
+    {
+      "id": "i_gnss_ephemeris",
+      "name": "GNSS 广播星历（开普勒→ECEF）（I）",
+      "keywords": "GNSS 广播星历 开普勒 卫星 ECEF 位置 星历参数 I-GNSS ephemeris",
+      "scene": "res://scenes/calculators/topics/i_gnss_ephemeris.tscn",
+      "formula_ref": "gnss_ephemeris_kepler",
+      "example": {
+        "sqrt_a": "5153.793876",
+        "e": "0.005",
+        "i0": "0.9599310859",
+        "omega": "1.2",
+        "omega0": "-0.5",
+        "omega_dot": "-5.2e-9",
+        "m0": "1.5",
+        "delta_n": "4.5e-9",
+        "cuc": "-8.7e-7",
+        "cus": "1.1e-6",
+        "crc": "180",
+        "crs": "-45",
+        "cic": "5.8e-8",
+        "cis": "1.2e-7",
+        "idot": "3.2e-11",
+        "toe": "400000",
+        "t_gps": "400000"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "i_gnss_dop",
+      "name": "GNSS DOP 精度衰减因子（I）",
+      "keywords": "GNSS DOP PDOP HDOP VDOP GDOP 视线 卫星几何 精度衰减 I-GNSS",
+      "scene": "res://scenes/calculators/topics/i_gnss_dop.tscn",
+      "formula_ref": "gnss_dop",
+      "example": {
+        "los": "0.5,0.3,0.8124;0.5,-0.3,0.8124;-0.5,0.3,0.8124;-0.5,-0.3,0.8124",
+        "with_clock": "否"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "i_photo_flight",
+      "name": "航摄设计（比例尺/GSD/重叠度）（I）",
+      "keywords": "摄影测量 航摄设计 比例尺 GSD 地面采样 航高 重叠度 基线 航线 无人机 I-摄影",
+      "scene": "res://scenes/calculators/topics/i_photo_flight.tscn",
+      "formula_ref": "photo_flight_design",
+      "example": {
+        "f_m": "0.035",
+        "pixel_um": "3.9",
+        "img_w_px": "8192",
+        "img_h_px": "5460",
+        "H_m": "200",
+        "forward_overlap": "0.65",
+        "side_overlap": "0.35",
+        "area_w_m": "1000",
+        "area_h_m": "1500"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "i_photo_collinearity",
+      "name": "共线方程/后方/前方交会（I）",
+      "keywords": "摄影测量 共线方程 空间后方交会 前方交会 外方位元素 控制点 I-摄影 collinearity resection",
+      "scene": "res://scenes/calculators/topics/i_photo_collinearity.tscn",
+      "formula_ref": "photo_collinearity",
+      "example": {
+        "mode": "共线方程",
+        "f": "100",
+        "controls": "-20,-20,0,20,15;20,-20,0,-20,15;20,20,0,-20,-15;-20,20,0,20,-15",
+        "Xs": "0",
+        "Ys": "0",
+        "Zs": "100",
+        "phi_deg": "0",
+        "omega_deg": "0",
+        "kappa_deg": "180",
+        "points": "-20,-15,0;20,-15,0;20,15,0;-20,15,0",
+        "pt_left": "",
+        "ext_right": ""
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "i_photo_remote_index",
+      "name": "遥感指数（NDVI 等 10 种）（I）",
+      "keywords": "遥感指数 NDVI EVI SAVI NDWI MNDWI NDBI NBR BAI VARI NDSI 波段 表达式 I-遥感",
+      "scene": "res://scenes/calculators/topics/i_photo_remote_index.tscn",
+      "formula_ref": "remote_sensing_index",
+      "example": {
+        "red": "0.20",
+        "nir": "0.80",
+        "green": "0.30",
+        "blue": "0.15",
+        "swir1": "0.25",
+        "swir2": "0.18",
+        "custom_expression": ""
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "i_gis_haversine",
+      "name": "GIS 大圆距离（Haversine）（I）",
+      "keywords": "GIS Haversine 大圆距离 球面距离 两点 经纬度 I-GIS",
+      "scene": "res://scenes/calculators/topics/i_gis_haversine.tscn",
+      "formula_ref": "gis_haversine",
+      "example": {
+        "lat1": "39.9075276",
+        "lon1": "116.3912757",
+        "lat2": "31.1666667",
+        "lon2": "121.4666667"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "i_gis_buffer_idw_area",
+      "name": "GIS 缓冲范围/IDW/球面面积（I）",
+      "keywords": "GIS 缓冲区 IDW 插值 反距离加权 球面面积 多边形 经纬范围 I-GIS buffer interpolate",
+      "scene": "res://scenes/calculators/topics/i_gis_buffer_idw_area.tscn",
+      "formula_ref": "gis_buffer_idw_area",
+      "example": {
+        "mode": "球面面积",
+        "lat": "39.9",
+        "lon": "116.4",
+        "radius_m": "5000",
+        "samples": "39.9,116.4,50;40.0,116.5,60;39.8,116.6,55",
+        "target_lat": "39.95",
+        "target_lon": "116.45",
+        "ring": "39.90,116.39;39.95,116.50;31.20,121.50;30.00,120.00"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "i_geo_attitude",
+      "name": "地质产状换算/真厚度（I）",
+      "keywords": "地质 产状 走向 倾向 倾角 视倾角 真厚度 剖面 I-地质 attitude thickness",
+      "scene": "res://scenes/calculators/topics/i_geo_attitude.tscn",
+      "formula_ref": "geology_attitude_thickness",
+      "example": {
+        "mode": "真厚度",
+        "strike_deg": "45",
+        "dip_deg": "30",
+        "width_m": "100",
+        "profile_az_deg": "135"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "i_geo_borehole",
+      "name": "钻孔测斜三维坐标（I）",
+      "keywords": "钻孔 测斜 三维坐标 天顶角 方位角 平均角法 孔底偏距 勘探 I-地质 borehole",
+      "scene": "res://scenes/calculators/topics/i_geo_borehole.tscn",
+      "formula_ref": "geology_borehole",
+      "example": {
+        "collar_x": "1000",
+        "collar_y": "2000",
+        "collar_z": "500",
+        "stations": "50,2,45;100,4,50;150,6,55"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "i_geo_reserve",
+      "name": "线储量/块段储量（I）",
+      "keywords": "储量 线储量 块段储量 矿体 断面 体重 品位 金属量 矿山 I-地质 reserve",
+      "scene": "res://scenes/calculators/topics/i_geo_reserve.tscn",
+      "formula_ref": "geology_reserve",
+      "example": {
+        "S1_m2": "500",
+        "S2_m2": "400",
+        "L_m": "100",
+        "density_t_m3": "2.8",
+        "grade_percent": "1.5"
+      },
+      "favorite_default": false
+    }
+  ],
+  "icon": "res://assets/icons/gk-m1-math-core.png"
+}

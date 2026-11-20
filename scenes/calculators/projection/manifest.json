@@ -1,0 +1,240 @@
+{
+  "domain": "projection",
+  "title": "坐标与投影",
+  "icon": "res://assets/icons/gk-m3-projection-zones.png",
+  "_note": "M3-1..M3-8：A3 高斯正反算、A4 换带、A5 带号查询、A7 UTM、UPS、A14 Web墨卡托/兰勃特、A13 MGRS、A15 KML、GB/T 13989 分幅。EPSG 带号表见 data/crs_presets.json（pyproj 核读）。",
+  "entries": [
+    {
+      "id": "a3_gauss_fwd",
+      "name": "高斯投影正算（A3）",
+      "keywords": "高斯 克吕格 正算 GK CGCS2000 北京54 西安80 WGS84 3度带 6度带 中央子午线 高斯平面坐标",
+      "scene": "res://scenes/calculators/projection/gauss_forward.tscn",
+      "formula_ref": "a3_gauss_fwd",
+      "example": {
+        "lat_deg": "32.5",
+        "lon_deg": "118.25",
+        "l0_deg": "117",
+        "datum": "CGCS2000"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "a3_gauss_inv",
+      "name": "高斯投影计算器（反算）",
+      "keywords": "高斯 克吕格 反算 CGCS2000 北京54 西安80 坐标反算 经纬度",
+      "scene": "res://scenes/calculators/projection/gauss_inverse.tscn",
+      "formula_ref": "a3_gauss_inv",
+      "example": {
+        "x_m": "3597986.6234",
+        "y_m": "617474.9201",
+        "l0_deg": "117",
+        "datum": "CGCS2000"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "a4_zone_switch",
+      "name": "换带计算（A4 3°/6°）",
+      "keywords": "换带 3度带 6度带 带号 中央子午线 高斯 投影",
+      "scene": "res://scenes/calculators/projection/zone_switch.tscn",
+      "formula_ref": "a4_zone_switch",
+      "example": {
+        "x_m": "3597986.6234",
+        "y_m": "617474.9201",
+        "l0_from_deg": "117",
+        "to_band": "6",
+        "datum": "CGCS2000"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a5_zone_query",
+      "name": "带号/中央子午线查询（A5）",
+      "keywords": "带号 中央子午线 查询 3度带 6度带 EPSG L0 y前缀",
+      "scene": "res://scenes/calculators/projection/zone_query.tscn",
+      "formula_ref": "a5_zone_query",
+      "example": {
+        "lon_deg": "116.3913"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a7_utm_fwd",
+      "name": "UTM 正算（A7）",
+      "keywords": "UTM 正算 通用横轴墨卡托 0.9996 南半球 带号 挪威 斯瓦尔巴",
+      "scene": "res://scenes/calculators/projection/utm_forward.tscn",
+      "formula_ref": "a7_utm_fwd",
+      "example": {
+        "lat_deg": "43.642556",
+        "lon_deg": "-70.252228",
+        "datum": "WGS84"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a7_utm_inv",
+      "name": "UTM 反算（A7）",
+      "keywords": "UTM 反算 通用横轴墨卡托 带号 半球 经纬度",
+      "scene": "res://scenes/calculators/projection/utm_inverse.tscn",
+      "formula_ref": "a7_utm_inv",
+      "example": {
+        "zone": "19",
+        "hemisphere": "N",
+        "e_m": "399002.5708",
+        "n_m": "4832935.3412",
+        "datum": "WGS84"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "ups_fwd",
+      "name": "UPS 正算",
+      "keywords": "UPS 正算 极方位 等角 北极 南极 通用极方位立体",
+      "scene": "res://scenes/calculators/projection/ups_forward.tscn",
+      "formula_ref": "ups_fwd",
+      "example": {
+        "lat_deg": "85",
+        "lon_deg": "30",
+        "datum": "WGS84"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "ups_inv",
+      "name": "UPS 反算",
+      "keywords": "UPS 反算 极方位 等角 北极 南极",
+      "scene": "res://scenes/calculators/projection/ups_inverse.tscn",
+      "formula_ref": "ups_inv",
+      "example": {
+        "e_m": "2277728.6957",
+        "n_m": "1518959.7883",
+        "datum": "WGS84"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a14_web_mercator_fwd",
+      "name": "Web墨卡托正算（A14）",
+      "keywords": "Web墨卡托 3857 球面墨卡托 正算 伪墨卡托 web地图",
+      "scene": "res://scenes/calculators/projection/web_mercator_forward.tscn",
+      "formula_ref": "a14_web_mercator_fwd",
+      "example": {
+        "lat_deg": "39.9075276",
+        "lon_deg": "116.3912757"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a14_web_mercator_inv",
+      "name": "Web墨卡托反算（A14）",
+      "keywords": "Web墨卡托 3857 反算 伪墨卡托 web地图",
+      "scene": "res://scenes/calculators/projection/web_mercator_inverse.tscn",
+      "formula_ref": "a14_web_mercator_inv",
+      "example": {
+        "x_m": "12956617.544",
+        "y_m": "4852513.528"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a14_lambert_fwd",
+      "name": "兰勃特等角圆锥正算（A14）",
+      "keywords": "兰勃特 等角圆锥 正算 1SP 2SP 双标准纬线 Lambert-93 lcc",
+      "scene": "res://scenes/calculators/projection/lambert_forward.tscn",
+      "formula_ref": "a14_lambert_fwd",
+      "example": {
+        "lat_deg": "48.85",
+        "lon_deg": "2.35",
+        "phi1_deg": "49",
+        "phi2_deg": "44",
+        "phi0_deg": "46.5",
+        "lon0_deg": "3",
+        "fe_m": "700000",
+        "fn_m": "6600000",
+        "datum": "GRS80"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a14_lambert_inv",
+      "name": "兰勃特等角圆锥反算（A14）",
+      "keywords": "兰勃特 等角圆锥 反算 1SP 2SP 双标准纬线",
+      "scene": "res://scenes/calculators/projection/lambert_inverse.tscn",
+      "formula_ref": "a14_lambert_inv",
+      "example": {
+        "x_m": "652301.565",
+        "y_m": "6861302.726",
+        "phi1_deg": "49",
+        "phi2_deg": "44",
+        "phi0_deg": "46.5",
+        "lon0_deg": "3",
+        "fe_m": "700000",
+        "fn_m": "6600000",
+        "datum": "GRS80"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a13_mgrs_fwd",
+      "name": "MGRS 编码（A13）",
+      "keywords": "MGRS 军用网格 编码 UTM UPS 网格参考 100km方格",
+      "scene": "res://scenes/calculators/projection/mgrs_forward.tscn",
+      "formula_ref": "a13_mgrs_fwd",
+      "example": {
+        "lat_deg": "39.9075278",
+        "lon_deg": "116.3912778",
+        "precision": "5"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "a13_mgrs_inv",
+      "name": "MGRS 解码（A13）",
+      "keywords": "MGRS 军用网格 解码 网格参考 经纬度",
+      "scene": "res://scenes/calculators/projection/mgrs_inverse.tscn",
+      "formula_ref": "a13_mgrs_inv",
+      "example": {
+        "mgrs": "50SMK4796917671"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a15_kml_point",
+      "name": "KML 点导出（A15）",
+      "keywords": "KML 导出 KMZ Google Earth 地标 placemark",
+      "scene": "res://scenes/calculators/projection/kml_point.tscn",
+      "formula_ref": "a15_kml_point",
+      "example": {
+        "name": "天安门",
+        "description": "WGS84 示例点",
+        "lat_deg": "39.9075",
+        "lon_deg": "116.3913"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "sheet_gbt13989",
+      "name": "地形图分幅编号（GB/T 13989）",
+      "keywords": "分幅 编号 地形图 图幅 GB/T 13989 1比5万 1比1万 图号 行列",
+      "scene": "res://scenes/calculators/projection/sheet_number.tscn",
+      "formula_ref": "sheet_gbt13989",
+      "example": {
+        "lat_deg": "39°54′27.1″",
+        "lon_deg": "116°23′28.6″",
+        "scale_denom": "50000"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "sheet_gbt13989_lookup",
+      "name": "图幅范围反查（GB/T 13989）",
+      "keywords": "分幅 反查 图幅范围 图号 经纬范围 GB/T 13989",
+      "scene": "res://scenes/calculators/projection/sheet_lookup.tscn",
+      "formula_ref": "sheet_gbt13989_lookup",
+      "example": {
+        "sheet_code": "J50E001010"
+      },
+      "favorite_default": false
+    }
+  ]
+}

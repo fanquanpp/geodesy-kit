@@ -1,0 +1,85 @@
+{
+  "domain": "ellipsoid",
+  "title": "椭球与大地线",
+  "entries": [
+    {
+      "id": "m2_1_ellipsoid_params",
+      "name": "椭球参数与派生量（M2-1）",
+      "keywords": "椭球 常数 参数 派生 子午线弧长 曲率半径 卯酉圈 子午圈 CGCS2000 北京54 西安80 WGS84 GRS80 克拉索夫斯基 IUGG75 海福特 a b e2 e'2扁率 R1 R2",
+      "scene": "res://scenes/calculators/ellipsoid/m2_1_ellipsoid_params.tscn",
+      "formula_ref": "ellipsoid_derived",
+      "example": {
+        "datum": "CGCS2000",
+        "a_m": "",
+        "inv_f": "",
+        "lat_deg": "30"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "a6_blh_xyz",
+      "name": "大地坐标 BLH ↔ 空间直角坐标 XYZ（A6）",
+      "keywords": "BLH XYZ 大地坐标 空间直角坐标 地心坐标 正算 反算 EPSG9602 Bowring 布林 坐标转换 经纬度 度分秒 ECEF GNSS CGCS2000 WGS84",
+      "scene": "res://scenes/calculators/ellipsoid/a6_blh_xyz.tscn",
+      "formula_ref": "blh_xyz",
+      "example": {
+        "datum": "WGS84",
+        "lat_deg": "53°48′33.820″",
+        "lon_deg": "2°07′46.380″",
+        "h_m": "73",
+        "x_m": "",
+        "y_m": "",
+        "z_m": ""
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "a11_geodesic",
+      "name": "大地线正反解（A11）",
+      "keywords": "大地线 测地线 正算 反算 方位角 距离 Karney geographiclib 反方位 大地主题解 短边 近对跖 CGCS2000 WGS84",
+      "scene": "res://scenes/calculators/ellipsoid/a11_geodesic.tscn",
+      "formula_ref": "geodesic_karney",
+      "example": {
+        "datum": "WGS84",
+        "lat1_deg": "3.881801761024",
+        "lon1_deg": "0",
+        "lat2_deg": "54.681996010439",
+        "lon2_deg": "10.214487662352",
+        "azi1_deg": "",
+        "s12_m": ""
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a12_rhumb",
+      "name": "恒向线计算（等角航线）（A12）",
+      "keywords": "恒向线 等角航线 航线 loxodrome rhumb 航海 Mercator 等量纬度 方位 距离 航程",
+      "scene": "res://scenes/calculators/ellipsoid/a12_rhumb.tscn",
+      "formula_ref": "rhumb_line",
+      "example": {
+        "radius_m": "",
+        "datum": "WGS84",
+        "lat1_deg": "39.9075276",
+        "lon1_deg": "116.3912757",
+        "lat2_deg": "31.1666667",
+        "lon2_deg": "121.4666667",
+        "az_deg": "",
+        "distance_m": ""
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "f2_geoid_egm2008",
+      "name": "高程异常查询（EGM2008）（F2）",
+      "keywords": "高程异常 大地水准面差距 水准面 EGM2008 geoid 高程系统 正高 大地高 ζ N 正常高 似大地水准面",
+      "scene": "res://scenes/calculators/ellipsoid/f2_geoid_egm2008.tscn",
+      "formula_ref": "egm2008_geoid",
+      "example": {
+        "lat_deg": "39.9075",
+        "lon_deg": "116.3913"
+      },
+      "favorite_default": true
+    }
+  ],
+  "icon": "res://assets/icons/gk-m2-ellipsoid-geodesic.png"
+}

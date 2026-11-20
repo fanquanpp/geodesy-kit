@@ -1,0 +1,69 @@
+{
+  "domain": "transform",
+  "title": "坐标转换与高程拟合",
+  "entries": [
+    {
+      "id": "a9_bursa",
+      "name": "七参数布尔莎转换（A9）",
+      "keywords": "七参数 布尔莎 bursa 三参数 平移 旋转 尺度 PV CF 位置向量 坐标框架 EPSG1033 EPSG1032 空间直角 XYZ 坐标转换 WGS84 CGCS2000 求参 公共点 残差 粗差",
+      "scene": "res://scenes/calculators/transform/bursa.tscn",
+      "formula_ref": "a9_bursa",
+      "example": {
+        "mode": "fwd",
+        "convention": "PV",
+        "tx_m": "0",
+        "ty_m": "0",
+        "tz_m": "4.5",
+        "rx_as": "0",
+        "ry_as": "0",
+        "rz_as": "0.554",
+        "scale_ppm": "0.219",
+        "three_param": "0",
+        "src_xyz": "3657660.66, 255768.55, 5201382.11"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "a8_four_param",
+      "name": "平面四参数转换（A8）",
+      "keywords": "四参数 平面 相似变换 求参 正算 反算 平移 尺度 旋转 缩放 公共点 最小二乘 残差 粗差 换带坐标转换",
+      "scene": "res://scenes/calculators/transform/four_param.tscn",
+      "formula_ref": "a8_four_param",
+      "example": {
+        "mode": "solve",
+        "src_xy": "1000, 1000\n3000, 2000",
+        "dst_xy": "1964.684228582658, 3034.4971817863407\n3928.959162349816, 4103.900840174523"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a10_height_fit",
+      "name": "GNSS 高程拟合（A10）",
+      "keywords": "高程拟合 GNSS 水准 拟合 平面 曲面 二次 多项式 带状 分段 高程异常 待定点 预测 残差 粗差 移动拟合",
+      "scene": "res://scenes/calculators/transform/height_fit.tscn",
+      "formula_ref": "a10_height_fit",
+      "example": {
+        "mode": "fit",
+        "model": "plane",
+        "points": "0, 0, 10.0\n1000, 0, 12.0\n2000, 0, 14.0\n3000, 0, 16.0\n0, 1000, 9.0\n1000, 1000, 11.0\n2000, 1000, 13.0\n3000, 1000, 15.0"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "f7_itrf",
+      "name": "ITRF 历元传播与 14 参数转换（F7）",
+      "keywords": "ITRF ITRF2020 ITRF2014 历元 传播 速度 14参数 七参数 框架 转换 速率 位置向量 高程框架 基准",
+      "scene": "res://scenes/calculators/transform/itrf.tscn",
+      "formula_ref": "f7_itrf",
+      "example": {
+        "mode": "transform",
+        "frame_from": "ITRF2020",
+        "frame_to": "ITRF2014",
+        "epoch": "2015.0",
+        "points": "4000000, 500000, 4933000"
+      },
+      "favorite_default": false
+    }
+  ],
+  "icon": "res://assets/icons/gk-m4-coordinate-transform.png"
+}

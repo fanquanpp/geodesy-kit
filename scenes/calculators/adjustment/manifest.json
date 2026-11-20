@@ -1,0 +1,205 @@
+{
+  "domain": "adjustment",
+  "title": "控制测量与平差",
+  "entries": [
+    {
+      "id": "c1_open_traverse",
+      "name": "支导线展点（C1）",
+      "keywords": "支导线 展点 导线 坐标正算 C1 traverse",
+      "scene": "res://scenes/calculators/adjustment/c1_open_traverse.tscn",
+      "formula_ref": "adjust_open_traverse",
+      "example": {
+        "start_x": "5000.000",
+        "start_y": "5000.000",
+        "az_start": "95.5",
+        "angles": "178.250556\n236.249583",
+        "sides": "950.004\n1100.003\n200.002",
+        "point_names": "P1,P2"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "c2_closed_traverse",
+      "name": "闭合导线平差（C2）",
+      "keywords": "闭合导线 平差 导线 角度闭合差 坐标闭合差 Bowditch C2",
+      "scene": "res://scenes/calculators/adjustment/c2_closed_traverse.tscn",
+      "formula_ref": "adjust_bowditch",
+      "example": {
+        "start_x": "1000.000",
+        "start_y": "1000.000",
+        "az_start": "80.537678",
+        "angles": "108.924644\n71.075356\n108.924644\n71.075356",
+        "sides": "304.138127\n304.138127\n304.138127\n304.138127",
+        "limit_fb_s": "60",
+        "limit_rel_k": "2000"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "c3_connect_traverse",
+      "name": "附合导线平差（C3）",
+      "keywords": "附合导线 平差 Bowditch 角度闭合差 相对闭合差 C3 traverse",
+      "scene": "res://scenes/calculators/adjustment/c3_connect_traverse.tscn",
+      "formula_ref": "adjust_bowditch",
+      "example": {
+        "start_x": "5000.000",
+        "start_y": "5000.000",
+        "end_x": "7143.2712",
+        "end_y": "4663.7980",
+        "az_start": "95.5",
+        "az_end": "150",
+        "angles": "178.250556\n236.249583",
+        "sides": "950.004\n1100.003\n200.002",
+        "limit_fb_s": "60",
+        "limit_rel_k": "4000"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "c4_no_orient_traverse",
+      "name": "无定向导线（C4）",
+      "keywords": "无定向 导线 旋转 定向 假定方向 C4",
+      "scene": "res://scenes/calculators/adjustment/c4_no_orient_traverse.tscn",
+      "formula_ref": "adjust_no_orient",
+      "example": {
+        "start_x": "2000.000",
+        "start_y": "3000.000",
+        "end_x": "3600.000",
+        "end_y": "2800.000",
+        "angles": "237.094757\n200.224859",
+        "sides": "640.312424\n632.455532\n640.312424",
+        "point_names": "P1,P2"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "c5_network",
+      "name": "平面控制网严密平差（C5）",
+      "keywords": "导线网 测边网 边角网 间接平差 严密平差 法方程 误差方程 C5 network",
+      "scene": "res://scenes/calculators/adjustment/c5_network.tscn",
+      "formula_ref": "adjust_indirect_2d",
+      "example": {
+        "data": "K A 0 0\nK B 1000 0\nK C 500 866.025403784439\nU P 499.97 400.03\nD A P 640.320423743 0.01\nD B P 640.306423743 0.01\nD C P 466.029403784 0.01"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "c6_level_route",
+      "name": "单一水准路线（C6）",
+      "keywords": "水准 闭合差 高差改正 附合 闭合环 单一路线 C6 leveling",
+      "scene": "res://scenes/calculators/adjustment/c6_level_route.tscn",
+      "formula_ref": "adjust_level_route",
+      "example": {
+        "h_start": "100.000",
+        "h_end": "110.000",
+        "loop": "",
+        "segs": "4.251 2.0\n3.008 1.0\n2.745 3.0",
+        "point_names": "B1,B2",
+        "limit_mm": "8"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "c7_level_net",
+      "name": "水准网平差（双法互检）（C7）",
+      "keywords": "水准网 平差 间接 条件 双法互检 高差 C7 leveling network",
+      "scene": "res://scenes/calculators/adjustment/c7_level_net.tscn",
+      "formula_ref": "adjust_level_net",
+      "example": {
+        "data": "K A 100.000\nU P1 112.513\nU P2 120.947\nO A P1 12.513 3.0\nO A P2 20.947 4.0\nO P1 P2 8.402 2.0"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "c8_tolerance",
+      "name": "限差检核（C8）",
+      "keywords": "限差 检核 超限 角度闭合差 相对闭合差 C8 tolerance",
+      "scene": "res://scenes/calculators/adjustment/c8_tolerance.tscn",
+      "formula_ref": "adjust_tolerance",
+      "example": {
+        "name": "角度闭合差",
+        "actual": "2.4",
+        "limit": "8",
+        "unit": "″",
+        "basis": "用户输入限差（图根级自定）",
+        "actual_k": "163506",
+        "limit_k": "4000"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "c9_accuracy",
+      "name": "点位中误差与误差椭圆（C9）",
+      "keywords": "误差椭圆 点位中误差 协因数 Qxx 主轴方位 C9 accuracy",
+      "scene": "res://scenes/calculators/adjustment/c9_accuracy.tscn",
+      "formula_ref": "adjust_error_ellipse",
+      "example": {
+        "qxx": "0.0000820048",
+        "qyy": "0.0000561621",
+        "qxy": "-0.0000000035566",
+        "sigma0": "0.371017784"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "c10_reliability",
+      "name": "粗差探测与可靠性（C10）",
+      "keywords": "粗差探测 数据探测 学生化残差 多余观测分量 可靠性 C10 reliability",
+      "scene": "res://scenes/calculators/adjustment/c10_reliability.tscn",
+      "formula_ref": "adjust_data_snooping",
+      "example": {
+        "data": "K A 0 0\nK B 1000 0\nK C 500 866.025403784439\nU P 499.97 400.03\nD A P 640.320423743 0.01\nD B P 640.306423743 0.01\nD C P 466.029403784 0.01",
+        "k_warn": "2.0",
+        "k_gross": "3.0"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "c11_gnss_net",
+      "name": "GNSS 向量网平差（C11）",
+      "keywords": "GNSS 基线 向量网 三维平差 XYZ 固定基准 自由网 C11",
+      "scene": "res://scenes/calculators/adjustment/c11_gnss_net.tscn",
+      "formula_ref": "adjust_gnss_vector",
+      "example": {
+        "data": "K G1 0 0 0\nU G2 999.95 0.02 0.01\nU G3 1000.02 1499.97 50.03\nB G1 G2 1000.004 -0.003 0.002 0.01\nB G1 G3 1000.002 1500.004 49.997 0.01\nB G2 G3 -0.003 1500.002 50.004 0.01",
+        "datum": "fixed"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "c12_variance",
+      "name": "方差分量估计与秩亏自由网（C12）",
+      "keywords": "Helmert 方差分量 秩亏 自由网 最小范数 最小二乘 C12 variance",
+      "scene": "res://scenes/calculators/adjustment/c12_variance.tscn",
+      "formula_ref": "adjust_helmert_free",
+      "example": {
+        "mode": "free",
+        "known": "K A 0 0\nK B 1000 0\nK C 500 866.0254",
+        "approx": "U A 0 0\nU B 1000 0\nU C 500 866.0254",
+        "group1": "D A B 1000.004 0.005\nD B C 999.997 0.005\nD C A 1000.002 0.005",
+        "group2": "L A B C -60 2\nL B C A -60 2\nL C A B -60 2"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "c13_trig_height",
+      "name": "三角高程（单向/对向）（C13）",
+      "keywords": "三角高程 竖直角 球气差 折光 对向观测 C13",
+      "scene": "res://scenes/calculators/adjustment/c13_trig_height.tscn",
+      "formula_ref": "adjust_trig_height",
+      "example": {
+        "d_m": "2000",
+        "v_angle": "2",
+        "i_m": "1.5",
+        "v_m": "1.5",
+        "v_angle_back": "-2",
+        "i_back": "1.5",
+        "v_back": "1.5",
+        "k": "0.13",
+        "r_m": "6371008.7714"
+      },
+      "favorite_default": false
+    }
+  ],
+  "icon": "res://assets/icons/gk-m6-control-adjustment.png"
+}

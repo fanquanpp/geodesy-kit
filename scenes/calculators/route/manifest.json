@@ -1,0 +1,229 @@
+{
+  "domain": "route",
+  "title": "路线、曲线与土方",
+  "icon": "res://assets/icons/gk-m7-route-curve-earthwork.png",
+  "entries": [
+    {
+      "id": "b3_curve_elements",
+      "name": "圆曲线要素（B3）",
+      "keywords": "圆曲线 缓和曲线 要素 切线长 曲线长 外距 切曲差 主点里程 ZH HY QZ YZ HZ ZY YZ 对称基本型 B3",
+      "scene": "res://scenes/calculators/route/b3_curve_elements.tscn",
+      "formula_ref": "b3_curve_elements",
+      "example": {
+        "r_m": "500",
+        "l0_m": "60",
+        "alpha_deg": "30",
+        "jd_chain_m": "1234.5"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "b4_spiral",
+      "name": "缓和曲线坐标（B4）",
+      "keywords": "缓和曲线 回旋线 辐射螺旋线 布告式级数 切线坐标 任意弧长 Fresnel 双路径 B4",
+      "scene": "res://scenes/calculators/route/b4_spiral.tscn",
+      "formula_ref": "b4_spiral",
+      "example": {
+        "r_m": "500",
+        "l0_m": "60",
+        "l_m": "60",
+        "dir": "+1"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "d1_alignment_jd",
+      "name": "交点法中线正反算（D1）",
+      "keywords": "交点法 JD 中线 正算 反算 里程 坐标 偏距 主点 路线 D1",
+      "scene": "res://scenes/calculators/route/d1_alignment_jd.tscn",
+      "formula_ref": "d1_alignment_jd",
+      "example": {
+        "x_m": "1000",
+        "y_m": "2000",
+        "chain_m": "0",
+        "bearing_deg": "30",
+        "jds": "1200,2346.4101615138,300,60; 1691.4912265734,2690.5560233244,300,60",
+        "end_bearing_deg": "80",
+        "mode": "2"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "d2_alignment_el",
+      "name": "线元法（D2）",
+      "keywords": "线元法 线元 直线 圆曲线 缓和曲线 装配 正算 反算 采样 曲率 D2",
+      "scene": "res://scenes/calculators/route/d2_alignment_el.tscn",
+      "formula_ref": "d2_alignment_el",
+      "example": {
+        "x_m": "1000",
+        "y_m": "2000",
+        "bearing_deg": "30",
+        "chain_m": "0",
+        "elements": "line,100; spiral,60,0,0.002; arc,130.8997,0.002,0.002; spiral,60,0.002,0",
+        "mode": "0",
+        "chain_m_q": "200"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "d3_vertical_curve",
+      "name": "竖曲线高程（D3）",
+      "keywords": "竖曲线 变坡点 纵断面 抛物线 外距 坡度 BVC EVC PVI K值 D3",
+      "scene": "res://scenes/calculators/route/d3_vertical_curve.tscn",
+      "formula_ref": "d3_vertical_curve",
+      "example": {
+        "g1_pct": "3",
+        "g2_pct": "-2",
+        "l_m": "400",
+        "pvi_chain_m": "1000",
+        "pvi_elev_m": "100",
+        "stakes_m": "900 1000"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "d4_stakeout",
+      "name": "中边桩与极坐标放样（D4）",
+      "keywords": "放样 中桩 边桩 极坐标 平距 放样角 后视 测站 偏距 D4",
+      "scene": "res://scenes/calculators/route/d4_stakeout.tscn",
+      "formula_ref": "d4_stakeout",
+      "example": {
+        "x_m": "1000",
+        "y_m": "2000",
+        "bearing_deg": "0",
+        "elements": "line,100; arc,418.879,0.0025,0.0025",
+        "chains": "50 150 200",
+        "offsets": "0 8 -5",
+        "st_x": "1100",
+        "st_y": "2100",
+        "bs_bearing": "270"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "d5_segment_link",
+      "name": "超高/加宽/断链（D5）",
+      "keywords": "断链 长链 短链 里程换算 超高 加宽 线性过渡 D5",
+      "scene": "res://scenes/calculators/route/d5_segment_link.tscn",
+      "formula_ref": "d5_segment_link",
+      "example": {
+        "breaks": "5000=5200",
+        "chains": "1000 4000 6000 8000",
+        "mode": "0",
+        "dir": "0"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "d6_interchange",
+      "name": "匝道复杂线型（D6）",
+      "keywords": "匝道 互通 线型 S型 卵型 C型 回头曲线 基本型 线元组合 D6",
+      "scene": "res://scenes/calculators/route/d6_interchange.tscn",
+      "formula_ref": "d6_interchange",
+      "example": {
+        "x_m": "1000",
+        "y_m": "2000",
+        "bearing_deg": "10",
+        "type": "2",
+        "r_m": "500",
+        "r2_m": "200",
+        "l0_m": "100",
+        "arc1_turn_deg": "30",
+        "arc2_turn_deg": "40"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "d7_roadbed",
+      "name": "路基开挖口/坡脚放样（D7）",
+      "keywords": "路基 横断面 开挖口 坡脚 路堤 路堑 边坡 坡率 路拱 D7",
+      "scene": "res://scenes/calculators/route/d7_roadbed.tscn",
+      "formula_ref": "d7_roadbed",
+      "example": {
+        "design_elev_m": "55",
+        "half_width_m": "10",
+        "cross_slope_pct": "0",
+        "fill_slope_ratio": "1.5",
+        "cut_slope_ratio": "0.75",
+        "ground": "-40,47; 0,49; 40,51; 80,53"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "e1_grid_volume",
+      "name": "方格网法土方（E1）",
+      "keywords": "土方 方格网 填方 挖方 施工高度 体积 E1",
+      "scene": "res://scenes/calculators/route/e1_grid_volume.tscn",
+      "formula_ref": "e1_grid_volume",
+      "example": {
+        "design_elev_m": "0",
+        "cell_size_m": "20",
+        "grid": "1 2; 1.5 0.5"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "e2_section_volume",
+      "name": "断面法土方（E2）",
+      "keywords": "土方 断面法 平均断面 填方 挖方 面积 E2",
+      "scene": "res://scenes/calculators/route/e2_section_volume.tscn",
+      "formula_ref": "e2_section_volume",
+      "example": {
+        "chains_m": "0 50 100",
+        "fill_areas_m2": "10 20 30"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "e3_dtm_volume",
+      "name": "DTM 法土方（E3）",
+      "keywords": "土方 DTM TIN 三棱柱 三角网 填挖 零线 E3",
+      "scene": "res://scenes/calculators/route/e3_dtm_volume.tscn",
+      "formula_ref": "e3_dtm_volume",
+      "example": {
+        "design_elev_m": "0",
+        "triangles": "0,0,1; 100,0,2; 0,100,3"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "e4_dist_slope",
+      "name": "平距/空间距离/坡度（E4）",
+      "keywords": "平距 斜距 空间距离 高差 坡度 坡度角 E4",
+      "scene": "res://scenes/calculators/route/e4_dist_slope.tscn",
+      "formula_ref": "e4_dist_slope",
+      "example": {
+        "dh_m": "30",
+        "d_horiz_m": "500"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "e5_plumb",
+      "name": "垂直度（E5）",
+      "keywords": "垂直度 倾斜率 偏移 塔柱 烟囱 1/N 限差 E5",
+      "scene": "res://scenes/calculators/route/e5_plumb.tscn",
+      "formula_ref": "e5_plumb",
+      "example": {
+        "h_m": "50",
+        "dx_m": "0.04",
+        "dy_m": "0.03",
+        "limit_den": "1000"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "e6_profile",
+      "name": "纵断面内插/横断面（E6）",
+      "keywords": "纵断面 横断面 内插 挖填高 断面面积 路拱 E6",
+      "scene": "res://scenes/calculators/route/e6_profile.tscn",
+      "formula_ref": "e6_profile",
+      "example": {
+        "mode": "0",
+        "points": "0,100; 100,102; 200,101",
+        "query": "150"
+      },
+      "favorite_default": false
+    }
+  ]
+}

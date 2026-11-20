@@ -1,0 +1,307 @@
+{
+  "domain": "cogo",
+  "title": "坐标几何与交会",
+  "entries": [
+    {
+      "id": "a1_polar_fwd",
+      "name": "坐标正算（极坐标法）（A1）",
+      "keywords": "坐标正算 极坐标法 正算 方位角 距离 放样 A1 cogo forward",
+      "scene": "res://scenes/calculators/cogo/a1_polar_fwd.tscn",
+      "formula_ref": "cogo_polar_forward",
+      "example": {
+        "x0_m": "1000",
+        "y0_m": "1000",
+        "az_deg": "45",
+        "dist_m": "500"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "a2_polar_inv",
+      "name": "坐标反算（A2）",
+      "keywords": "坐标反算 反算 边长 方位角 反方位角 A2 cogo inverse",
+      "scene": "res://scenes/calculators/cogo/a2_polar_inv.tscn",
+      "formula_ref": "cogo_polar_inverse",
+      "example": {
+        "x0_m": "1000",
+        "y0_m": "1000",
+        "x_m": "1353.553390593",
+        "y_m": "1353.553390593"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "a1_fwd_3d",
+      "name": "三维坐标正算（全站仪）（A1）",
+      "keywords": "三维 正算 斜距 竖直角 仪高 棱镜高 全站仪 高程 三维坐标",
+      "scene": "res://scenes/calculators/cogo/a1_fwd_3d.tscn",
+      "formula_ref": "cogo_forward_3d",
+      "example": {
+        "x0_m": "1000",
+        "y0_m": "1000",
+        "h0_m": "100",
+        "az_deg": "30",
+        "dist_m": "500",
+        "v_deg": "10",
+        "hi_m": "1.5",
+        "ht_m": "1.8",
+        "dist_mode": "斜距"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "a2_inv_3d",
+      "name": "三维坐标反算（A2）",
+      "keywords": "三维 反算 平距 斜距 竖直角 高差 仪高 棱镜高",
+      "scene": "res://scenes/calculators/cogo/a2_inv_3d.tscn",
+      "formula_ref": "cogo_inverse_3d",
+      "example": {
+        "x0_m": "1000",
+        "y0_m": "1000",
+        "h0_m": "100",
+        "x_m": "1246.2019",
+        "y_m": "1426.4058",
+        "h_m": "186.5241",
+        "hi_m": "1.5",
+        "ht_m": "1.8"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b1_fwd_az",
+      "name": "前方交会（方位式）（B1）",
+      "keywords": "前方交会 方位 交会 定点 两已知点 B1",
+      "scene": "res://scenes/calculators/cogo/b1_fwd_az.tscn",
+      "formula_ref": "intersection_az_az",
+      "example": {
+        "x_a_m": "1000",
+        "y_a_m": "1000",
+        "az1_deg": "30",
+        "x_b_m": "2000",
+        "y_b_m": "1200",
+        "az2_deg": "309.3986"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "b1_fwd_ang",
+      "name": "前方交会（角度式）（B1）",
+      "keywords": "前方交会 角度 水平角 交会 定点 B1 三角形",
+      "scene": "res://scenes/calculators/cogo/b1_fwd_ang.tscn",
+      "formula_ref": "intersection_angles",
+      "example": {
+        "x_a_m": "1000",
+        "y_a_m": "1000",
+        "x_b_m": "2000",
+        "y_b_m": "1200",
+        "beta1_deg": "48.690068",
+        "beta2_deg": "50.708494",
+        "side": "左"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b1_side",
+      "name": "侧方交会（B1）",
+      "keywords": "侧方交会 交会 观测角 正弦定理 B1",
+      "scene": "res://scenes/calculators/cogo/b1_side.tscn",
+      "formula_ref": "intersection_side",
+      "example": {
+        "x_a_m": "1000",
+        "y_a_m": "1000",
+        "x_b_m": "2000",
+        "y_b_m": "1200",
+        "beta_a_deg": "48.690068",
+        "gamma_deg": "80.601439",
+        "side": "左"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b1_resection",
+      "name": "后方交会（危险圆检核）（B1）",
+      "keywords": "后方交会 危险圆 交会 三已知点 观测角 定位圆 B1 resection",
+      "scene": "res://scenes/calculators/cogo/b1_resection.tscn",
+      "formula_ref": "intersection_resection",
+      "example": {
+        "x_a_m": "2000",
+        "y_a_m": "1200",
+        "x_b_m": "1000",
+        "y_b_m": "1000",
+        "x_c_m": "1500",
+        "y_c_m": "2000",
+        "alpha_deg": "103.324531",
+        "beta_deg": "118.495639"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b2_az_az",
+      "name": "方位-方位交会（B2）",
+      "keywords": "方位交会 方位-方位 两线求交 交会角 B2",
+      "scene": "res://scenes/calculators/cogo/b2_az_az.tscn",
+      "formula_ref": "intersection_az_az",
+      "example": {
+        "x_a_m": "1000",
+        "y_a_m": "1000",
+        "az1_deg": "30",
+        "x_b_m": "2000",
+        "y_b_m": "1200",
+        "az2_deg": "309.3986"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b2_az_dist",
+      "name": "方位-距离交会（B2）",
+      "keywords": "方位-距离 射线 圆 求交 双解 近端 远端 B2",
+      "scene": "res://scenes/calculators/cogo/b2_az_dist.tscn",
+      "formula_ref": "intersection_az_dist",
+      "example": {
+        "x_a_m": "0",
+        "y_a_m": "0",
+        "az1_deg": "90",
+        "x_b_m": "500",
+        "y_b_m": "400",
+        "d_b_m": "500",
+        "branch": "近端"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b2_dist_dist",
+      "name": "距离-距离交会（B2）",
+      "keywords": "距离交会 两圆求交 双解 侧别 距离-距离 B2",
+      "scene": "res://scenes/calculators/cogo/b2_dist_dist.tscn",
+      "formula_ref": "intersection_dist_dist",
+      "example": {
+        "x_a_m": "1000",
+        "y_a_m": "1000",
+        "d_a_m": "700",
+        "x_b_m": "1800",
+        "y_b_m": "1050",
+        "d_b_m": "600",
+        "side": "右"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "b5_convert",
+      "name": "角度格式换算（B5）",
+      "keywords": "角度 度分秒 gon 百分度 弧度 象限角 换算 B5 dms",
+      "scene": "res://scenes/calculators/cogo/b5_convert.tscn",
+      "formula_ref": "angle_convert",
+      "example": {
+        "angle_text": "30.5"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b5_propagate",
+      "name": "方位角推算（B5）",
+      "keywords": "方位角推算 左角 右角 转折角 导线 推算 B5",
+      "scene": "res://scenes/calculators/cogo/b5_propagate.tscn",
+      "formula_ref": "angle_propagate",
+      "example": {
+        "az_prev_deg": "95.5",
+        "angle_deg": "178.250556",
+        "turn": "左"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b6_area",
+      "name": "多边形面积（鞋带公式）（B6）",
+      "keywords": "面积 鞋带公式 多边形 亩 公顷 英亩 换算 B6 面积量算",
+      "scene": "res://scenes/calculators/cogo/b6_area.tscn",
+      "formula_ref": "area_shoelace",
+      "example": {
+        "points_text": "100,100;500,120;520,480;120,500"
+      },
+      "favorite_default": true
+    },
+    {
+      "id": "b7_affine",
+      "name": "点位平移/旋转/缩放（B7）",
+      "keywords": "仿射 平移 旋转 缩放 枢轴 变换 B7 坐标变换",
+      "scene": "res://scenes/calculators/cogo/b7_affine.tscn",
+      "formula_ref": "affine_pivot",
+      "example": {
+        "x_m": "300",
+        "y_m": "150",
+        "x_pivot_m": "100",
+        "y_pivot_m": "100",
+        "rot_deg": "30",
+        "scale": "2",
+        "dx_m": "0",
+        "dy_m": "0"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b8_point_line",
+      "name": "桩号与偏距（点线关系）（B8）",
+      "keywords": "桩号 偏距 垂足 点线距 投影 线路 B8 中边桩",
+      "scene": "res://scenes/calculators/cogo/b8_point_line.tscn",
+      "formula_ref": "line_point_relation",
+      "example": {
+        "x0_m": "1000",
+        "y0_m": "1000",
+        "az_deg": "30",
+        "x_m": "2150",
+        "y_m": "1950",
+        "len_m": "2000"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b9_circle_3p",
+      "name": "三点定圆（B9）",
+      "keywords": "三点定圆 外接圆 圆心 半径 垂直平分线 B9",
+      "scene": "res://scenes/calculators/cogo/b9_circle_3p.tscn",
+      "formula_ref": "circle_three_point",
+      "example": {
+        "x1_m": "100",
+        "y1_m": "100",
+        "x2_m": "500",
+        "y2_m": "150",
+        "x3_m": "300",
+        "y3_m": "400"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b9_arc",
+      "name": "圆弧要素反算（方位式）（B9）",
+      "keywords": "圆弧 弧长 弦长 弓高 圆心角 扇形 弓形 面积 B9",
+      "scene": "res://scenes/calculators/cogo/b9_arc.tscn",
+      "formula_ref": "circle_arc_elements",
+      "example": {
+        "cx_m": "0",
+        "cy_m": "0",
+        "r_m": "100",
+        "az1_deg": "0",
+        "az2_deg": "90",
+        "dir": "顺时针"
+      },
+      "favorite_default": false
+    },
+    {
+      "id": "b9_arc_3p",
+      "name": "圆弧要素反算（三点式）（B9）",
+      "keywords": "圆弧 三点 弧长 弦长 弓高 圆心角 方向 B9",
+      "scene": "res://scenes/calculators/cogo/b9_arc_3p.tscn",
+      "formula_ref": "circle_arc_elements",
+      "example": {
+        "x1_m": "500",
+        "y1_m": "700",
+        "x2_m": "641.421356",
+        "y2_m": "641.421356",
+        "x3_m": "700",
+        "y3_m": "500"
+      },
+      "favorite_default": false
+    }
+  ],
+  "icon": "res://assets/icons/gk-m5-geometry-intersection.png"
+}
