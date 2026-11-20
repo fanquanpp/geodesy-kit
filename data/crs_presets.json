@@ -1,0 +1,1544 @@
+{
+ "_schema": "data/crs_presets.json v2 —— 投影带预设表（A5 带号/中央子午线查询、A3/A4 下拉）。l0_deg=中央子午线；y_prefix_zone=true 表示该 EPSG 码横坐标含带号前缀（带号*1e6+500km+自然 y），false 表示自然 y（FE=500000）。EPSG 约定：zone N 系列带前缀，CM xx°E 系列自然 y。",
+ "_source": "全部 66 行经 pyproj 3.8.0 内置官方 EPSG 数据库逐条核读（pyproj.CRS.from_epsg + to_proj4 的 lon_0/x_0），2026-11-20 由 GK-M3 施工核读；北京54 的 EPSG 21424-21452 在 EPSG 数据库中不存在，故 6 度 CM 系列为 21453-21463。",
+ "_todo": "",
+ "version": 2,
+ "rows": [
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 13,
+   "l0_deg": 75.0,
+   "epsg": 4491,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 14,
+   "l0_deg": 81.0,
+   "epsg": 4492,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 15,
+   "l0_deg": 87.0,
+   "epsg": 4493,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 16,
+   "l0_deg": 93.0,
+   "epsg": 4494,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 17,
+   "l0_deg": 99.0,
+   "epsg": 4495,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 18,
+   "l0_deg": 105.0,
+   "epsg": 4496,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 19,
+   "l0_deg": 111.0,
+   "epsg": 4497,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 20,
+   "l0_deg": 117.0,
+   "epsg": 4498,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 21,
+   "l0_deg": 123.0,
+   "epsg": 4499,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 22,
+   "l0_deg": 129.0,
+   "epsg": 4500,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 23,
+   "l0_deg": 135.0,
+   "epsg": 4501,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 13,
+   "l0_deg": 75.0,
+   "epsg": 4502,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 14,
+   "l0_deg": 81.0,
+   "epsg": 4503,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 15,
+   "l0_deg": 87.0,
+   "epsg": 4504,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 16,
+   "l0_deg": 93.0,
+   "epsg": 4505,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 17,
+   "l0_deg": 99.0,
+   "epsg": 4506,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 18,
+   "l0_deg": 105.0,
+   "epsg": 4507,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 19,
+   "l0_deg": 111.0,
+   "epsg": 4508,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 20,
+   "l0_deg": 117.0,
+   "epsg": 4509,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 21,
+   "l0_deg": 123.0,
+   "epsg": 4510,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 22,
+   "l0_deg": 129.0,
+   "epsg": 4511,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK6",
+   "zone": 23,
+   "l0_deg": 135.0,
+   "epsg": 4512,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 25,
+   "l0_deg": 75.0,
+   "epsg": 4513,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 26,
+   "l0_deg": 78.0,
+   "epsg": 4514,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 27,
+   "l0_deg": 81.0,
+   "epsg": 4515,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 28,
+   "l0_deg": 84.0,
+   "epsg": 4516,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 29,
+   "l0_deg": 87.0,
+   "epsg": 4517,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 30,
+   "l0_deg": 90.0,
+   "epsg": 4518,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 31,
+   "l0_deg": 93.0,
+   "epsg": 4519,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 32,
+   "l0_deg": 96.0,
+   "epsg": 4520,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 33,
+   "l0_deg": 99.0,
+   "epsg": 4521,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 34,
+   "l0_deg": 102.0,
+   "epsg": 4522,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 35,
+   "l0_deg": 105.0,
+   "epsg": 4523,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 36,
+   "l0_deg": 108.0,
+   "epsg": 4524,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 37,
+   "l0_deg": 111.0,
+   "epsg": 4525,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 38,
+   "l0_deg": 114.0,
+   "epsg": 4526,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 39,
+   "l0_deg": 117.0,
+   "epsg": 4527,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 40,
+   "l0_deg": 120.0,
+   "epsg": 4528,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 41,
+   "l0_deg": 123.0,
+   "epsg": 4529,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 42,
+   "l0_deg": 126.0,
+   "epsg": 4530,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 43,
+   "l0_deg": 129.0,
+   "epsg": 4531,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 44,
+   "l0_deg": 132.0,
+   "epsg": 4532,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 45,
+   "l0_deg": 135.0,
+   "epsg": 4533,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 25,
+   "l0_deg": 75.0,
+   "epsg": 4534,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 26,
+   "l0_deg": 78.0,
+   "epsg": 4535,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 27,
+   "l0_deg": 81.0,
+   "epsg": 4536,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 28,
+   "l0_deg": 84.0,
+   "epsg": 4537,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 29,
+   "l0_deg": 87.0,
+   "epsg": 4538,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 30,
+   "l0_deg": 90.0,
+   "epsg": 4539,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 31,
+   "l0_deg": 93.0,
+   "epsg": 4540,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 32,
+   "l0_deg": 96.0,
+   "epsg": 4541,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 33,
+   "l0_deg": 99.0,
+   "epsg": 4542,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 34,
+   "l0_deg": 102.0,
+   "epsg": 4543,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 35,
+   "l0_deg": 105.0,
+   "epsg": 4544,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 36,
+   "l0_deg": 108.0,
+   "epsg": 4545,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 37,
+   "l0_deg": 111.0,
+   "epsg": 4546,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 38,
+   "l0_deg": 114.0,
+   "epsg": 4547,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 39,
+   "l0_deg": 117.0,
+   "epsg": 4548,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 40,
+   "l0_deg": 120.0,
+   "epsg": 4549,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 41,
+   "l0_deg": 123.0,
+   "epsg": 4550,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 42,
+   "l0_deg": 126.0,
+   "epsg": 4551,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 43,
+   "l0_deg": 129.0,
+   "epsg": 4552,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 44,
+   "l0_deg": 132.0,
+   "epsg": 4553,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "CGCS2000",
+   "kind": "GK3",
+   "zone": 45,
+   "l0_deg": 135.0,
+   "epsg": 4554,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 13,
+   "l0_deg": 75.0,
+   "epsg": 21413,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 14,
+   "l0_deg": 81.0,
+   "epsg": 21414,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 15,
+   "l0_deg": 87.0,
+   "epsg": 21415,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 16,
+   "l0_deg": 93.0,
+   "epsg": 21416,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 17,
+   "l0_deg": 99.0,
+   "epsg": 21417,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 18,
+   "l0_deg": 105.0,
+   "epsg": 21418,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 19,
+   "l0_deg": 111.0,
+   "epsg": 21419,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 20,
+   "l0_deg": 117.0,
+   "epsg": 21420,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 21,
+   "l0_deg": 123.0,
+   "epsg": 21421,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 22,
+   "l0_deg": 129.0,
+   "epsg": 21422,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 23,
+   "l0_deg": 135.0,
+   "epsg": 21423,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 13,
+   "l0_deg": 75.0,
+   "epsg": 21453,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 14,
+   "l0_deg": 81.0,
+   "epsg": 21454,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 15,
+   "l0_deg": 87.0,
+   "epsg": 21455,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 16,
+   "l0_deg": 93.0,
+   "epsg": 21456,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 17,
+   "l0_deg": 99.0,
+   "epsg": 21457,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 18,
+   "l0_deg": 105.0,
+   "epsg": 21458,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 19,
+   "l0_deg": 111.0,
+   "epsg": 21459,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 20,
+   "l0_deg": 117.0,
+   "epsg": 21460,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 21,
+   "l0_deg": 123.0,
+   "epsg": 21461,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 22,
+   "l0_deg": 129.0,
+   "epsg": 21462,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK6",
+   "zone": 23,
+   "l0_deg": 135.0,
+   "epsg": 21463,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 25,
+   "l0_deg": 75.0,
+   "epsg": 2401,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 26,
+   "l0_deg": 78.0,
+   "epsg": 2402,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 27,
+   "l0_deg": 81.0,
+   "epsg": 2403,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 28,
+   "l0_deg": 84.0,
+   "epsg": 2404,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 29,
+   "l0_deg": 87.0,
+   "epsg": 2405,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 30,
+   "l0_deg": 90.0,
+   "epsg": 2406,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 31,
+   "l0_deg": 93.0,
+   "epsg": 2407,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 32,
+   "l0_deg": 96.0,
+   "epsg": 2408,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 33,
+   "l0_deg": 99.0,
+   "epsg": 2409,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 34,
+   "l0_deg": 102.0,
+   "epsg": 2410,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 35,
+   "l0_deg": 105.0,
+   "epsg": 2411,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 36,
+   "l0_deg": 108.0,
+   "epsg": 2412,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 37,
+   "l0_deg": 111.0,
+   "epsg": 2413,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 38,
+   "l0_deg": 114.0,
+   "epsg": 2414,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 39,
+   "l0_deg": 117.0,
+   "epsg": 2415,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 40,
+   "l0_deg": 120.0,
+   "epsg": 2416,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 41,
+   "l0_deg": 123.0,
+   "epsg": 2417,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 42,
+   "l0_deg": 126.0,
+   "epsg": 2418,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 43,
+   "l0_deg": 129.0,
+   "epsg": 2419,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 44,
+   "l0_deg": 132.0,
+   "epsg": 2420,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 45,
+   "l0_deg": 135.0,
+   "epsg": 2421,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 25,
+   "l0_deg": 75.0,
+   "epsg": 2422,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 26,
+   "l0_deg": 78.0,
+   "epsg": 2423,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 27,
+   "l0_deg": 81.0,
+   "epsg": 2424,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 28,
+   "l0_deg": 84.0,
+   "epsg": 2425,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 29,
+   "l0_deg": 87.0,
+   "epsg": 2426,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 30,
+   "l0_deg": 90.0,
+   "epsg": 2427,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 31,
+   "l0_deg": 93.0,
+   "epsg": 2428,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 32,
+   "l0_deg": 96.0,
+   "epsg": 2429,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 33,
+   "l0_deg": 99.0,
+   "epsg": 2430,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 34,
+   "l0_deg": 102.0,
+   "epsg": 2431,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 35,
+   "l0_deg": 105.0,
+   "epsg": 2432,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 36,
+   "l0_deg": 108.0,
+   "epsg": 2433,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 37,
+   "l0_deg": 111.0,
+   "epsg": 2434,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 38,
+   "l0_deg": 114.0,
+   "epsg": 2435,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 39,
+   "l0_deg": 117.0,
+   "epsg": 2436,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 40,
+   "l0_deg": 120.0,
+   "epsg": 2437,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 41,
+   "l0_deg": 123.0,
+   "epsg": 2438,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 42,
+   "l0_deg": 126.0,
+   "epsg": 2439,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 43,
+   "l0_deg": 129.0,
+   "epsg": 2440,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 44,
+   "l0_deg": 132.0,
+   "epsg": 2441,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "北京54",
+   "kind": "GK3",
+   "zone": 45,
+   "l0_deg": 135.0,
+   "epsg": 2442,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 13,
+   "l0_deg": 75.0,
+   "epsg": 2327,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 14,
+   "l0_deg": 81.0,
+   "epsg": 2328,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 15,
+   "l0_deg": 87.0,
+   "epsg": 2329,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 16,
+   "l0_deg": 93.0,
+   "epsg": 2330,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 17,
+   "l0_deg": 99.0,
+   "epsg": 2331,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 18,
+   "l0_deg": 105.0,
+   "epsg": 2332,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 19,
+   "l0_deg": 111.0,
+   "epsg": 2333,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 20,
+   "l0_deg": 117.0,
+   "epsg": 2334,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 21,
+   "l0_deg": 123.0,
+   "epsg": 2335,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 22,
+   "l0_deg": 129.0,
+   "epsg": 2336,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 23,
+   "l0_deg": 135.0,
+   "epsg": 2337,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 13,
+   "l0_deg": 75.0,
+   "epsg": 2338,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 14,
+   "l0_deg": 81.0,
+   "epsg": 2339,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 15,
+   "l0_deg": 87.0,
+   "epsg": 2340,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 16,
+   "l0_deg": 93.0,
+   "epsg": 2341,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 17,
+   "l0_deg": 99.0,
+   "epsg": 2342,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 18,
+   "l0_deg": 105.0,
+   "epsg": 2343,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 19,
+   "l0_deg": 111.0,
+   "epsg": 2344,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 20,
+   "l0_deg": 117.0,
+   "epsg": 2345,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 21,
+   "l0_deg": 123.0,
+   "epsg": 2346,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 22,
+   "l0_deg": 129.0,
+   "epsg": 2347,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK6",
+   "zone": 23,
+   "l0_deg": 135.0,
+   "epsg": 2348,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 25,
+   "l0_deg": 75.0,
+   "epsg": 2349,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 26,
+   "l0_deg": 78.0,
+   "epsg": 2350,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 27,
+   "l0_deg": 81.0,
+   "epsg": 2351,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 28,
+   "l0_deg": 84.0,
+   "epsg": 2352,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 29,
+   "l0_deg": 87.0,
+   "epsg": 2353,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 30,
+   "l0_deg": 90.0,
+   "epsg": 2354,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 31,
+   "l0_deg": 93.0,
+   "epsg": 2355,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 32,
+   "l0_deg": 96.0,
+   "epsg": 2356,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 33,
+   "l0_deg": 99.0,
+   "epsg": 2357,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 34,
+   "l0_deg": 102.0,
+   "epsg": 2358,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 35,
+   "l0_deg": 105.0,
+   "epsg": 2359,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 36,
+   "l0_deg": 108.0,
+   "epsg": 2360,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 37,
+   "l0_deg": 111.0,
+   "epsg": 2361,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 38,
+   "l0_deg": 114.0,
+   "epsg": 2362,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 39,
+   "l0_deg": 117.0,
+   "epsg": 2363,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 40,
+   "l0_deg": 120.0,
+   "epsg": 2364,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 41,
+   "l0_deg": 123.0,
+   "epsg": 2365,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 42,
+   "l0_deg": 126.0,
+   "epsg": 2366,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 43,
+   "l0_deg": 129.0,
+   "epsg": 2367,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 44,
+   "l0_deg": 132.0,
+   "epsg": 2368,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 45,
+   "l0_deg": 135.0,
+   "epsg": 2369,
+   "y_prefix_zone": true
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 25,
+   "l0_deg": 75.0,
+   "epsg": 2370,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 26,
+   "l0_deg": 78.0,
+   "epsg": 2371,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 27,
+   "l0_deg": 81.0,
+   "epsg": 2372,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 28,
+   "l0_deg": 84.0,
+   "epsg": 2373,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 29,
+   "l0_deg": 87.0,
+   "epsg": 2374,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 30,
+   "l0_deg": 90.0,
+   "epsg": 2375,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 31,
+   "l0_deg": 93.0,
+   "epsg": 2376,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 32,
+   "l0_deg": 96.0,
+   "epsg": 2377,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 33,
+   "l0_deg": 99.0,
+   "epsg": 2378,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 34,
+   "l0_deg": 102.0,
+   "epsg": 2379,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 35,
+   "l0_deg": 105.0,
+   "epsg": 2380,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 36,
+   "l0_deg": 108.0,
+   "epsg": 2381,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 37,
+   "l0_deg": 111.0,
+   "epsg": 2382,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 38,
+   "l0_deg": 114.0,
+   "epsg": 2383,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 39,
+   "l0_deg": 117.0,
+   "epsg": 2384,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 40,
+   "l0_deg": 120.0,
+   "epsg": 2385,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 41,
+   "l0_deg": 123.0,
+   "epsg": 2386,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 42,
+   "l0_deg": 126.0,
+   "epsg": 2387,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 43,
+   "l0_deg": 129.0,
+   "epsg": 2388,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 44,
+   "l0_deg": 132.0,
+   "epsg": 2389,
+   "y_prefix_zone": false
+  },
+  {
+   "datum": "西安80",
+   "kind": "GK3",
+   "zone": 45,
+   "l0_deg": 135.0,
+   "epsg": 2390,
+   "y_prefix_zone": false
+  }
+ ]
+}

@@ -1,0 +1,6 @@
+{
+  "_schema": "data/formulas.json v1 —— 公式库/百科（出处+适用条件）。契约：key 全局唯一，被各模块 manifest 条目的 formula_ref 引用（ARCHITECTURE.md §3.2）。占位文件：条目由各施工域与 H 组（公式百科页）填充，当前为空数组。",
+  "_todo": "各施工域随 core 实现逐条补入；H 组（Wave 2）负责展示",
+  "version": 1,
+  "formulas": []
+}

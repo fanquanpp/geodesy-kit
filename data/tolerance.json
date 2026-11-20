@@ -1,0 +1,6 @@
+{
+  "_schema": "data/tolerance.json v1 —— 导线/水准各等级限差（驱动 C8 限差检核）。契约：条目含 level（等级）、kind（traverse_angle/traverse_rel/level_per_km 等）、limit_formula（限差表达式文本）、basis（规范依据）。占位文件：数值需对照 GB 50026 等规范文本逐条核读后填入（ARCHITECTURE.md §0 落地补 #2），未核读前 UI 必须显式标注\"限差由用户输入\"。",
+  "_todo": "核读 GB 50026-2020 等规范后填入；在此之前不得伪造数值",
+  "version": 1,
+  "tolerances": []
+}

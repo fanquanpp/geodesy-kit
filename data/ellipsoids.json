@@ -1,0 +1,12 @@
+{
+  "_schema": "data/ellipsoids.json v1。与 core/ellipsoid/ellipsoid.gd (GKEllipsoid.BUILTIN) 同源；core 不读盘，由 app/data_service.gd 装载后传参（ARCHITECTURE.md §1.1）。inv_f=1/f 扁率倒数。派生量 b/e2/ep2 由代码计算，不在此手抄。",
+  "version": 1,
+  "ellipsoids": [
+    { "key": "CGCS2000", "name_cn": "CGCS2000（2000 国家大地坐标系）", "a": 6378137.0, "inv_f": 298.257222101, "source": "GB 22021-2008" },
+    { "key": "GRS80", "name_cn": "GRS80（IUGG 1979）", "a": 6378137.0, "inv_f": 298.257222101, "source": "IUGG 1979；理论 1/f=298.257222100882711 取惯用值" },
+    { "key": "WGS84", "name_cn": "WGS84", "a": 6378137.0, "inv_f": 298.257223563, "source": "NIMA TR8350.2" },
+    { "key": "KRASOVSKY", "name_cn": "克拉索夫斯基椭球（北京 54）", "a": 6378245.0, "inv_f": 298.3, "source": "克拉索夫斯基 1940" },
+    { "key": "IUGG75", "name_cn": "IUGG 1975（西安 80 / IAG-75）", "a": 6378140.0, "inv_f": 298.257, "source": "IUGG 1975 决议" },
+    { "key": "INTERNATIONAL1924", "name_cn": "International 1924（海福特椭球）", "a": 6378388.0, "inv_f": 297.0, "source": "IUGG 1924" }
+  ]
+}

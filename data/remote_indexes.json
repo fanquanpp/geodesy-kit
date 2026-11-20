@@ -1,0 +1,98 @@
+{
+  "_schema": "data/remote_indexes.json v1 —— 遥感指数公式表（M8-7 I-摄影测量与遥感施工填入）。契约：bands 数组命名所需波段槽（b1..bn 依次对应 bands[0..n-1]，即 M1-7 expression_calc 语法）；core 内置表（GKPhoto.DEFAULT_INDEXES）与本文件保持同构（变量名形式），app 装载本文件后可传参覆盖。输入口径：归一化比值类指数可接反射率或线性 DN，EVI/SAVI/BAI 需 0-1 反射率。",
+  "version": 1,
+  "indexes": [
+    {
+      "key": "NDVI",
+      "name_cn": "归一化植被指数",
+      "bands": ["nir", "red"],
+      "expression": "(b1-b2)/(b1+b2)",
+      "b1": "nir",
+      "b2": "red",
+      "note": "植被长势/覆盖度，取值 [-1,1]"
+    },
+    {
+      "key": "EVI",
+      "name_cn": "增强型植被指数",
+      "bands": ["nir", "red", "blue"],
+      "expression": "2.5*(b1-b2)/(b1+6.0*b2-7.5*b3+1.0)",
+      "b1": "nir",
+      "b2": "red",
+      "b3": "blue",
+      "note": "抗大气与土壤背景，需 0-1 反射率"
+    },
+    {
+      "key": "SAVI",
+      "name_cn": "土壤调节植被指数",
+      "bands": ["nir", "red"],
+      "expression": "1.5*(b1-b2)/(b1+b2+0.5)",
+      "b1": "nir",
+      "b2": "red",
+      "note": "L=0.5，需 0-1 反射率，低植被区优于 NDVI"
+    },
+    {
+      "key": "NDWI",
+      "name_cn": "归一化水体指数(McFeeters)",
+      "bands": ["green", "nir"],
+      "expression": "(b1-b2)/(b1+b2)",
+      "b1": "green",
+      "b2": "nir",
+      "note": "水体提取（绿-近红外）"
+    },
+    {
+      "key": "MNDWI",
+      "name_cn": "改进归一化水体指数(Xu)",
+      "bands": ["green", "swir1"],
+      "expression": "(b1-b2)/(b1+b2)",
+      "b1": "green",
+      "b2": "swir1",
+      "note": "水体提取并抑制建筑（绿-短波红外1）"
+    },
+    {
+      "key": "NDBI",
+      "name_cn": "归一化建筑指数",
+      "bands": ["swir1", "nir"],
+      "expression": "(b1-b2)/(b1+b2)",
+      "b1": "swir1",
+      "b2": "nir",
+      "note": "建成区提取（短波红外1-近红外）"
+    },
+    {
+      "key": "NBR",
+      "name_cn": "归一化燃烧指数",
+      "bands": ["nir", "swir2"],
+      "expression": "(b1-b2)/(b1+b2)",
+      "b1": "nir",
+      "b2": "swir2",
+      "note": "火烧迹地；dNBR=灾前NBR−灾后NBR 变化检测"
+    },
+    {
+      "key": "BAI",
+      "name_cn": "燃烧面积指数",
+      "bands": ["red", "nir"],
+      "expression": "1.0/((0.1-b1)*(0.1-b1)+(0.2-b2)*(0.2-b2))",
+      "b1": "red",
+      "b2": "nir",
+      "note": "需 0-1 反射率，0.1/0.2 为燃烧植被参考反射率"
+    },
+    {
+      "key": "VARI",
+      "name_cn": "可见光大气阻抗指数",
+      "bands": ["green", "red", "blue"],
+      "expression": "(b1-b2)/(b1+b2-b3)",
+      "b1": "green",
+      "b2": "red",
+      "b3": "blue",
+      "note": "仅可见光波段，无人机遥感常用"
+    },
+    {
+      "key": "NDSI",
+      "name_cn": "归一化雪指数",
+      "bands": ["green", "swir1"],
+      "expression": "(b1-b2)/(b1+b2)",
+      "b1": "green",
+      "b2": "swir1",
+      "note": "积雪提取（与 MNDWI 同形，波段位按雪敏感配置）"
+    }
+  ]
+}

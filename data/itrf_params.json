@@ -1,0 +1,45 @@
+{
+  "_schema": "data/itrf_params.json v2 —— ITRF 框架间转换参数（GK-M4-4 / F7 历元传播与 14 参数）。",
+  "convention": "position_vector（R·X 按右手叉积展开，与 PROJ/EPSG helmert position_vector 同口径）",
+  "formula": "X_to(t) = X_from(t) + T(t) + D(t)·X_from(t) + R(t)·X_from(t)；T(t)=T+Ṫ(t−t0)，D(t)=D+Ḋ(t−t0)（无量纲），R(t)=R+Ṙ(t−t0)；速度变换 Ẋ_to = Ẋ_from + Ṫ + Ḋ·X_from + Ṙ·X_from（位置取该历元值）。反方向转换按官方口径对全部参数（值与速率）反号。",
+  "units": {
+    "t_mm": "mm", "t_rate_mm_y": "mm/年", "d_ppb": "ppb（1e-9）", "d_rate_ppb_y": "ppb/年",
+    "r_mas": "mas（毫角秒）", "r_rate_mas_y": "mas/年", "t_epoch": "年（如 2015.0）"
+  },
+  "version": 2,
+  "transforms": [
+    {
+      "from": "ITRF2020",
+      "to": "ITRF2014",
+      "t_epoch": 2015.0,
+      "t_mm": [-1.4, -0.9, 1.4],
+      "t_rate_mm_y": [0.0, -0.1, 0.2],
+      "d_ppb": -0.42,
+      "d_rate_ppb_y": 0.0,
+      "r_mas": [0.0, 0.0, 0.0],
+      "r_rate_mas_y": [0.0, 0.0, 0.0],
+      "sigma": {
+        "t_mm": [0.2, 0.2, 0.2],
+        "t_rate_mm_y": [0.2, 0.2, 0.2],
+        "d_ppb": 0.03,
+        "d_rate_ppb_y": 0.03,
+        "r_mas": [0.07, 0.06, 0.07],
+        "r_rate_mas_y": [0.07, 0.06, 0.07]
+      },
+      "source": "Altamimi et al. (2023) ITRF2020, Journal of Geodesy 97, Table 6 / Eq.(6)（开放获取 PDF: insu.hal.science/insu-04155715v1）；旋转与旋转速率按论文口径恒为零（ITRF2020 对 ITRF2014 的定向与定向速率对齐条件）。经 PROJ 注册表 EPSG:9991（ITRF2014→ITRF2020，反演即本行）以 pyproj 3.8 逐项互证一致。转录日期 2026-11-20。"
+    },
+    {
+      "from": "ITRF2014",
+      "to": "ITRF2020",
+      "t_epoch": 2015.0,
+      "t_mm": [1.4, 0.9, -1.4],
+      "t_rate_mm_y": [0.0, 0.1, -0.2],
+      "d_ppb": 0.42,
+      "d_rate_ppb_y": 0.0,
+      "r_mas": [0.0, 0.0, 0.0],
+      "r_rate_mas_y": [0.0, 0.0, 0.0],
+      "source": "上一行的官方反方向（论文原注：'the inverse transformation from ITRF2014 to ITRF2020 follows by interchanging (i20) with (i14) and changing the sign of the transformation parameters'）；与 EPSG:9991 直接收录值逐项一致。"
+    }
+  ],
+  "_todo": "其余历史 ITRF 对（ITRF2014→ITRF2008/2005/2000/97 等）在 itrf.ign.fr 官方参数文件可再次访问后（转录当日该站处于维护状态）按同口径转录并注明出处；在此之前不伪造数值，未收录方向可用 GKITRF.lookup 的反号规则或 A9 七参数求参自行求取。"
+}
