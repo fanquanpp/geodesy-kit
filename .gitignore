@@ -1,0 +1,49 @@
+# ===== Godot =====
+.godot/
+*.translation
+build/
+export_credentials.cfg
+
+# ===== 临时文件 =====
+*.tmp
+*.bak
+*~
+
+# ===== 密钥类（无凭据硬约束：一律不得入库）=====
+*.keystore
+*.jks
+keystore.properties
+*.p12
+*.pfx
+*.pem
+*.mobileprovision
+*.cer
+*.p8
+
+# ===== Android 导出中间产物 =====
+.gradle/
+.gradle_build/
+
+# ===== godot-sqlite：libgodot-cpp 静态库（仅编译期用，运行时不需要；
+#        6 个 .a 合计约 263 MB，且单个文件最大 93.6 MB 逼近/超 GitHub 100 MB 限制）=====
+addons/godot-sqlite/bin/libgodot-cpp.*
+
+# ===== iOS/macOS 杂项 =====
+.DS_Store
+
+# ===== 系统杂项 =====
+Thumbs.db
+desktop.ini
+
+# ===== 工具会话目录（非项目源码，不入库）=====
+.mimosa/
+.workbuddy/
+.zcode/
+
+# ===== 调研留档与生成脚本（约 240 MB 原始资料/大文件，不入库）=====
+_research/
+_scripts/
+
+# ===== Godot 编辑器崩溃/缓存杂项 =====
+export_presets.cfg.bak
+*.log
