@@ -29,11 +29,15 @@ func _ready() -> void:
 var _lines: PackedStringArray = PackedStringArray()
 
 ## 结果行渲染：每行一条（行文本 + 行数 ≤ 阈值时的 96px 复制按钮）；空数组显示占位。
+## P9.4 修复渲染死区：行数 > COPY_ROW_MAX 时此前既不渲染行（直接 return）又
+## 隐藏 value_label（有结果时占位语义）——结果卡一片空白，用户看到"计算是假的"。
+## 修复：行多时 value_label 常显承载全部文本（只读结果一览），行级按钮仍受阈值限制。
 func set_result(lines: PackedStringArray) -> void:
 	_lines = lines
 	value_label.text = "\n".join(lines) if not lines.is_empty() else "（尚未计算）"
-	# 占位语义：value_label 只承担"（尚未计算）"提示；有结果时行文本由行区渲染
-	value_label.visible = lines.is_empty()
+	# 占位/多行语义：无结果显示占位；行数 > COPY_ROW_MAX 时 value_label 承担
+	# 全文展示（行区只有按钮不渲染，空白卡 bug 根因）；≤阈值时行文本在行区。
+	value_label.visible = lines.is_empty() or lines.size() > COPY_ROW_MAX
 	_rebuild_rows()
 
 ## 卡头「复制全部」按钮：行多时唯一复制入口；行少时与行级按钮并存
