@@ -58,7 +58,15 @@ func _ready() -> void:
 ## 启动时读取显示安全区，换算为 720×1280 设计基准的像素 inset。
 ## 口径：DisplayServer 返回屏幕像素坐标，与窗口真实尺寸（同坐标系）相除得
 ## 缩放比再乘设计尺寸——不能与视口可见区域（设计像素）混用两套坐标系。
+## 平台约束：安全区只在移动端有意义（窗口铺满屏幕）；桌面窗口自由摆放，
+## get_display_safe_area 返回整屏可用区，窗口居屏一角时 inset 全为正——
+## 直接应用会把根容器 margins 撑成几百上千 px（真 bug：PC 布局塌缩元凶）。
+## 故桌面（非 Android/iOS/Web）一律 inset 归零。
 func _apply_safe_area() -> void:
+	var feature := DisplayServer.get_name()
+	if feature != "android" and feature != "ios" and feature != "web":
+		_safe_inset_design = Vector4(0, 0, 0, 0)
+		return
 	var win := get_window()
 	if win == null:
 		return

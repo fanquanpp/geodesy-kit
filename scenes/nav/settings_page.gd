@@ -26,8 +26,9 @@ func _ready() -> void:
 	v.add_child(title)
 
 	# —— 结果小数位数（既有 decimals 契约：1–12，越界回退默认 4）——
-	var dec_card := _make_card()
-	v.add_child(dec_card)
+	# P9.3 重叠根因修复：_make_card 返回内层 VBox（此前调用方直接向
+	# PanelContainer add_child，多 child 全部叠印在同一矩形）。
+	var dec_card := _make_card(v)
 	var dec_row := HBoxContainer.new()
 	dec_card.add_child(dec_row)
 	var dec_label := Label.new()
@@ -46,11 +47,11 @@ func _ready() -> void:
 	var dec_cap := Label.new()
 	dec_cap.text = "范围 1–12 位，修改后立即保存"
 	dec_cap.theme_type_variation = &"Caption"
+	dec_cap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dec_card.add_child(dec_cap)
 
 	# —— 界面缩放（既有 ui_scale 四档契约：0.8/1.0/1.25/1.5）——
-	var scale_card := _make_card()
-	v.add_child(scale_card)
+	var scale_card := _make_card(v)
 	var scale_title := Label.new()
 	scale_title.text = "界面显示大小"
 	scale_title.theme_type_variation = &"Header"
@@ -66,6 +67,7 @@ func _ready() -> void:
 		b.text = String(_scale_labels.get(_fmt_tier(tier), _fmt_tier(tier)))
 		b.custom_minimum_size = Vector2(0, GKThemeConstants.TOUCH_TARGET)
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.size_flags_stretch_ratio = 1.0
 		var tier_val := tier
 		b.pressed.connect(func() -> void: _on_ui_scale_pressed(tier_val, b))
 		scale_row.add_child(b)
@@ -78,14 +80,19 @@ func _ready() -> void:
 	var scale_cap := Label.new()
 	scale_cap.text = "四档显示大小，立即生效并保存（兼作大字无障碍模式）"
 	scale_cap.theme_type_variation = &"Caption"
+	scale_cap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	scale_card.add_child(scale_cap)
 
-func _make_card() -> PanelContainer:
+## 建一张 Card 面板挂到 parent，返回内层 VBox 供调用方填充内容。
+## P9.3 契约变更：此前返回 PanelContainer 而调用方直接向其 add_child，
+## 多 child 全部叠印同一矩形（PanelContainer 无排布能力）——返回 cv 根治。
+func _make_card(parent: Control) -> VBoxContainer:
 	var card := PanelContainer.new()
 	card.theme_type_variation = &"Card"
+	parent.add_child(card)
 	var cv := VBoxContainer.new()
 	card.add_child(cv)
-	return card
+	return cv
 
 func _fmt_tier(tier: float) -> String:
 	return "%.2f" % tier

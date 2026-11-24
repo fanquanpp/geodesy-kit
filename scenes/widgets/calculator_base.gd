@@ -228,9 +228,16 @@ func _build_ui() -> void:
 	#   操作栏（计算/重置/示例/复制/收藏/导出）固定底部不随滚动（M3 表单惯例：
 	#   主操作常驻可达，不再沉底需要滚到底才能按）。
 	# 页面根 = VBox{ 主体(Expand 分栏) + 操作栏固定底 }；主体各列独立滚动。
+	# P9.3 外层 MarginContainer：四边 12px 呼吸边距（内容不再贴屏幕边）。
+	var page_margin := MarginContainer.new()
+	page_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	page_margin.add_theme_constant_override("margin_left", 12)
+	page_margin.add_theme_constant_override("margin_right", 12)
+	page_margin.add_theme_constant_override("margin_top", 8)
+	page_margin.add_theme_constant_override("margin_bottom", 8)
+	add_child(page_margin)
 	var page_v := VBoxContainer.new()
-	page_v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(page_v)
+	page_margin.add_child(page_v)
 
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -238,7 +245,7 @@ func _build_ui() -> void:
 	body.add_theme_constant_override("separation", GKThemeConstants.MIN_TOUCH_SPACING)
 	page_v.add_child(body)
 
-	# —— 左列：标题/描述/状态/输入区（整列滚动）——
+	# —— 左列：标题/描述/状态/输入区（整列滚动，吃满左份额）——
 	_scroll = GKTouchScroll.attach(false)
 	_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.size_flags_stretch_ratio = 0.42
@@ -246,6 +253,7 @@ func _build_ui() -> void:
 	body.add_child(_scroll)
 	var v := VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(v)
 
 	_title_label = Label.new()
@@ -280,10 +288,18 @@ func _build_ui() -> void:
 	body.add_child(_result_scroll)
 	var rv := VBoxContainer.new()
 	rv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rv.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_result_scroll.add_child(rv)
+	# 右列标题与左列「输入」对位（宽屏左右布局下两列语义一目了然）
+	var result_head := Label.new()
+	result_head.name = "ResultHead"
+	result_head.text = "结果"
+	result_head.theme_type_variation = &"Header"
+	rv.add_child(result_head)
 
 	_result_card = preload("res://scenes/widgets/result_card.tscn").instantiate()
 	_result_card.custom_minimum_size = Vector2(0, 148)  # 结果卡兜底高度：占位时视觉重心与输入区平衡
+	_result_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rv.add_child(_result_card)
 	_result_label = _result_card.get("value_label")  # 兼容别名（tests/app/test_shell.gd 断言文本）
 	var result_widget := _result_card as GKResultCard
@@ -291,53 +307,66 @@ func _build_ui() -> void:
 
 	# 限差面板紧随结果卡（P6：结论一目了然，明细在步骤区之前）
 	_limits_widget = preload("res://scenes/widgets/limits_panel.tscn").instantiate()
+	_limits_widget.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rv.add_child(_limits_widget)
 	_limits_card = _limits_widget  # 兼容别名（tests/app/test_shell.gd 断言 visible）
 
 	_steps_widget = preload("res://scenes/widgets/step_list.tscn").instantiate()
 	_steps_widget.visible = false  # 无步骤时隐藏（P6：自适应高度，不占空卡位）
+	_steps_widget.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rv.add_child(_steps_widget)
 	_steps_root = _steps_widget  # 兼容别名：P6 起步骤卡直接挂在控件自身，get_child_count() 语义不变
 
 	_formula_widget = preload("res://scenes/widgets/formula_card.tscn").instantiate()
+	_formula_widget.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rv.add_child(_formula_widget)
 	_formula_text = _formula_widget.get("formula_label")  # 兼容别名
 	_build_sketch()
 
 	# —— 操作栏：固定底部（不随滚动），主操作常驻可达 ——
+	# P9.3 空间回收：栏高 96→72，主按钮 ratio 3 独大，次按钮等宽 Expand
+	# 均分剩余，全宽一行但压缩高度把空间还给主体两列。
 	var actions := HBoxContainer.new()
 	actions.name = "ActionBar"
+	actions.custom_minimum_size = Vector2(0, 72)
 	actions.add_theme_constant_override("separation", GKThemeConstants.MIN_TOUCH_SPACING / 2)
 	page_v.add_child(actions)
 	var run_btn := Button.new()
 	run_btn.text = "计算"
 	run_btn.theme_type_variation = &"PrimaryButton"
-	run_btn.custom_minimum_size = Vector2(0, 96)
+	run_btn.custom_minimum_size = Vector2(0, 72)
 	run_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	run_btn.size_flags_stretch_ratio = 2.0
+	run_btn.size_flags_stretch_ratio = 3.0
 	run_btn.pressed.connect(_on_run)
 	actions.add_child(run_btn)
 	var reset_btn := Button.new()
 	reset_btn.text = "重置"
-	reset_btn.custom_minimum_size = Vector2(0, 96)
+	reset_btn.custom_minimum_size = Vector2(0, 72)
+	reset_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reset_btn.pressed.connect(_on_reset)
 	actions.add_child(reset_btn)
 	var example_btn := Button.new()
 	example_btn.text = "示例"
-	example_btn.custom_minimum_size = Vector2(0, 96)
+	example_btn.custom_minimum_size = Vector2(0, 72)
+	example_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	example_btn.pressed.connect(_on_example)
 	actions.add_child(example_btn)
 	var copy_btn := Button.new()
 	copy_btn.text = "复制"
-	copy_btn.custom_minimum_size = Vector2(0, 96)
+	copy_btn.custom_minimum_size = Vector2(0, 72)
+	copy_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy_btn.pressed.connect(_on_copy)
 	actions.add_child(copy_btn)
 	_fav_button = Button.new()
 	_fav_button.text = "收藏"
-	_fav_button.custom_minimum_size = Vector2(0, 96)
+	_fav_button.custom_minimum_size = Vector2(0, 72)
+	_fav_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_fav_button.pressed.connect(_on_favorite)
 	actions.add_child(_fav_button)
 	var export_btn := Button.new()
 	export_btn.text = "报告"
-	export_btn.custom_minimum_size = Vector2(0, 96)
+	export_btn.custom_minimum_size = Vector2(0, 72)
+	export_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	export_btn.pressed.connect(_on_export_report)
 	actions.add_child(export_btn)
 

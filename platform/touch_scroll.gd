@@ -14,11 +14,15 @@ var _last_pos := Vector2.ZERO
 var _velocity := Vector2.ZERO
 var _inertia := false
 
-## 工厂：创建并返回触控赋能的 ScrollContainer（等价 ScrollContainer.new() + 挂脚本）
-static func attach(horizontal_enabled := false) -> GKTouchScroll:
+## 工厂：创建并返回触控赋能的 ScrollContainer（等价 ScrollContainer.new() + 挂脚本）。
+## show_bar=false（触屏默认）：滚动条隐藏（SHOW_NEVER）——滚动条不再挤占内容宽，
+## 手指拖滚即导航（用户反馈滚动条占宽 + 桌面观感差）；桌面键鼠可传 true 保留。
+static func attach(horizontal_enabled := false, show_bar := false) -> GKTouchScroll:
 	var s := GKTouchScroll.new()
 	if not horizontal_enabled:
 		s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	s.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER if not show_bar \
+			else ScrollContainer.SCROLL_MODE_AUTO
 	return s
 
 func _ready() -> void:
