@@ -23,7 +23,7 @@ func _build_rows() -> void:
 	add_input_row("B 点 x（东，m）", "x_b_m", "500")
 	add_input_row("B 点 y（北，m）", "y_b_m", "400")
 	add_input_row("B 点距离 D_B（m）", "d_b_m", "500")
-	add_input_row("解的分支", "branch", "近端（默认）/ 远端")
+	add_input_row("解的分支", "branch", "近端（默认）/ 远端", LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var bad: Array = []

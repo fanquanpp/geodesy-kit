@@ -1270,16 +1270,27 @@ static func _geod_of(p: Dictionary) -> GKGeodesic:
 static func _fail(err: String, formula: String) -> Dictionary:
 	return {"ok": false, "value": {}, "steps": [], "formula": formula, "error": err}
 
+## 协议数值键取值：GDScript float("x") 会静默得 0.0，非数值字符串须显式归为 NAN
+static func _numf(v: Variant, default_v: float) -> float:
+	if v is String:
+		var t := String(v).strip_edges().replace("−", "-")
+		if not t.is_valid_float():
+			return NAN
+		return t.to_float()
+	if v == null:
+		return default_v
+	return float(v)
+
 ## §5 协议：大地线反解。p = {lat1_deg, lon1_deg, lat2_deg, lon2_deg, datum|a+inv_f}
 static func inverse(p: Dictionary) -> Dictionary:
 	var formula := "大地线反解（Karney 算法，逐行移植 geographiclib-js v2.2.0，MIT）"
 	var geod := _geod_of(p)
 	if geod == null or not geod.is_valid():
 		return _fail("椭球参数缺失或不合法（需 datum 名或 a>0、1/f>0）", formula)
-	var lat1 := float(p.get("lat1_deg", NAN))
-	var lon1 := float(p.get("lon1_deg", NAN))
-	var lat2 := float(p.get("lat2_deg", NAN))
-	var lon2 := float(p.get("lon2_deg", NAN))
+	var lat1 := _numf(p.get("lat1_deg", NAN), NAN)
+	var lon1 := _numf(p.get("lon1_deg", NAN), NAN)
+	var lat2 := _numf(p.get("lat2_deg", NAN), NAN)
+	var lon2 := _numf(p.get("lon2_deg", NAN), NAN)
 	for v in [lat1, lon1, lat2, lon2]:
 		if not is_finite(v):
 			return _fail("输入不是有效数值（两端经纬度需为数字）", formula)
@@ -1323,10 +1334,10 @@ static func direct(p: Dictionary) -> Dictionary:
 	var geod := _geod_of(p)
 	if geod == null or not geod.is_valid():
 		return _fail("椭球参数缺失或不合法（需 datum 名或 a>0、1/f>0）", formula)
-	var lat1 := float(p.get("lat1_deg", NAN))
-	var lon1 := float(p.get("lon1_deg", NAN))
-	var azi1 := float(p.get("azi1_deg", NAN))
-	var s12 := float(p.get("s12_m", NAN))
+	var lat1 := _numf(p.get("lat1_deg", NAN), NAN)
+	var lon1 := _numf(p.get("lon1_deg", NAN), NAN)
+	var azi1 := _numf(p.get("azi1_deg", NAN), NAN)
+	var s12 := _numf(p.get("s12_m", NAN), NAN)
 	for v in [lat1, lon1, azi1, s12]:
 		if not is_finite(v):
 			return _fail("输入不是有效数值（起点经纬度/方位/距离需为数字）", formula)

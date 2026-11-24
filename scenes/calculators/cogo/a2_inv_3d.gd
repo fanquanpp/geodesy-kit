@@ -1,4 +1,6 @@
 # scenes/calculators/cogo/a2_inv_3d.gd —— 三维坐标反算（平距/斜距/竖直角/方位角）
+# 示例与 tests/cogo/test_cogo.gd A1→A2 权威向量链一致：A1 正算 (1000,1000) az30° S=500
+# v=10° i=1.5 t=1.8 → 目标点 (1246.2019, 1426.4343, 186.5241)，本页反算应回收 az=30°、v=10°。
 extends "res://scenes/calculators/cogo/cogo_calc_base.gd"
 
 const CORE := preload("res://core/cogo/cogo.gd")
@@ -7,7 +9,7 @@ func _init() -> void:
 	_entry_id = "a2_inv_3d"
 	_example_inputs = {
 		"x0_m": "1000", "y0_m": "1000", "h0_m": "100",
-		"x_m": "1246.2019", "y_m": "1426.4058", "h_m": "186.5241",
+		"x_m": "1246.2019", "y_m": "1426.4343", "h_m": "186.5241",
 		"hi_m": "1.5", "ht_m": "1.8",
 	}
 
@@ -22,21 +24,21 @@ func _build_rows() -> void:
 	add_input_row("测站 y（北，m）", "y0_m", "1000")
 	add_input_row("测站高程 H₀（m）", "h0_m", "100")
 	add_input_row("目标点 x（东，m）", "x_m", "1246.2019")
-	add_input_row("目标点 y（北，m）", "y_m", "1426.4058")
+	add_input_row("目标点 y（北，m）", "y_m", "1426.4343")
 	add_input_row("目标点高程 H（m）", "h_m", "186.5241")
 	add_input_row("仪器高 i（m）", "hi_m", "1.5")
 	add_input_row("棱镜高 t（m）", "ht_m", "1.8")
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var x0 := num_field(_fields["x0_m"], "测站 x", bad)
-	var y0 := num_field(_fields["y0_m"], "测站 y", bad)
-	var h0 := num_field(_fields["h0_m"], "测站高程", bad)
-	var x := num_field(_fields["x_m"], "目标点 x", bad)
-	var y := num_field(_fields["y_m"], "目标点 y", bad)
-	var h := num_field(_fields["h_m"], "目标点高程", bad)
-	var hi := num_field(_fields["hi_m"], "仪器高", bad)
-	var ht := num_field(_fields["ht_m"], "棱镜高", bad)
+	var x0 := num_field(_fields["x0_m"], "测站 x", bad, "x0_m")
+	var y0 := num_field(_fields["y0_m"], "测站 y", bad, "y0_m")
+	var h0 := num_field(_fields["h0_m"], "测站高程", bad, "h0_m")
+	var x := num_field(_fields["x_m"], "目标点 x", bad, "x_m")
+	var y := num_field(_fields["y_m"], "目标点 y", bad, "y_m")
+	var h := num_field(_fields["h_m"], "目标点高程", bad, "h_m")
+	var hi := num_field(_fields["hi_m"], "仪器高", bad, "hi_m")
+	var ht := num_field(_fields["ht_m"], "棱镜高", bad, "ht_m")
 	if not bad.is_empty():
 		return fail_input(bad)
 	return CORE.inverse_3d({

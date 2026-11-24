@@ -79,11 +79,11 @@ func run() -> Dictionary:
 	if mode == "transform":
 		var data_v: Variant = GKFileIO.read_json(PARAMS_PATH)
 		if not (data_v is Dictionary) or (data_v as Dictionary).is_empty():
-			return _fail("ITRF 参数库 data/itrf_params.json 读取失败（文件缺失或损坏）")
+			return _fail("ITRF 官方参数表读取失败（参数库文件缺失或损坏，请检查工程数据目录）")
 		var data: Dictionary = data_v
 		var row := I.lookup(data, String(inputs.get("frame_from", "")), String(inputs.get("frame_to", "")))
 		if row.is_empty():
-			return _fail("参数表未收录 %s → %s 的官方转换参数（可改用 A9 七参数求参自行求取，或在 data/itrf_params.json 补充官方参数）" % [String(inputs.get("frame_from", "?")), String(inputs.get("frame_to", "?"))])
+			return _fail("参数表未收录 %s → %s 的官方转换参数（可改用「七参数布尔莎转换」公共点求参自行求取，或联系维护方在参数库中补充官方参数）" % [String(inputs.get("frame_from", "?")), String(inputs.get("frame_to", "?"))])
 		var p := {
 			"src_xyz": pts.rows,
 			"params_row": row,
@@ -109,6 +109,7 @@ func _on_reset() -> void:
 	super._on_reset()
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in inputs:
 		var v: Variant = inputs[key]
 		if _opts.has(key):
@@ -177,11 +178,11 @@ func _parse_points_text(text: String) -> Dictionary:
 			cleaned = cleaned.replace("  ", " ")
 		var parts := cleaned.strip_edges().split(" ", false)
 		if parts.size() != 3 and parts.size() != 6:
-			return {"ok": false, "rows": [], "vels": [], "vel_ok": false, "error": "第 %d 行应有 3 个数字（x, y, z）或 6 个数字（含速度 vx, vy, vz），实际 %d 个：“%s”" % [li + 1, parts.size(), line]}
+			return {"ok": false, "rows": [], "vels": [], "vel_ok": false, "error": "第 %d 行应有 3 个数字（x, y, z）或 6 个数字（含速度 vx, vy, vz），实际 %d 个：「%s」" % [li + 1, parts.size(), line]}
 		var vals := []
 		for p: String in parts:
 			if not p.is_valid_float():
-				return {"ok": false, "rows": [], "vels": [], "vel_ok": false, "error": "第 %d 行含非数字内容：“%s”" % [li + 1, p]}
+				return {"ok": false, "rows": [], "vels": [], "vel_ok": false, "error": "第 %d 行含非数字内容：「%s」" % [li + 1, p]}
 			vals.append(p.to_float())
 		if parts.size() == 6:
 			has_vel = true

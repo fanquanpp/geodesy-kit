@@ -39,6 +39,38 @@ func test_web_mercator_domain_error() -> void:
 	assert_true(String(r.get("error", "")).contains("适用域"), "中文域提示")
 	assert_false(bool(MC.forward({"lat_deg": "abc", "lon_deg": 0.0}).get("ok", true)), "非法输入")
 
+# ---------- P1 追加：正反算边界自洽统一 ----------
+# 口径（验收标准）：正算边界 B_max=±85.05112878°；反算拒绝阈值
+# y_max = y(B_max) = a·ln tan(π/4+B_max/2) ≈ 20037508.343039 m（同一公式自洽计算，
+# 不得用 a·π=20037508.342789 截断——B_max 的浮点表示略高于精确解 85.0511287798066°，
+# y(B_max)≈20037508.343039 略大于 a·π，用 a·π 作阈值会使正算边界点被自家反算拒绝）。
+# 本会话复算：y(85.05112878°) = 20037508.343038812 m。
+
+func test_web_mercator_boundary_self_consistent() -> void:
+	# 边界点正算：B=85.05112878° 结果必须能被本模块反算还原（容差 1e-9°）
+	var b_edge := 85.05112878
+	var r := MC.forward({"lat_deg": b_edge, "lon_deg": 116.0})
+	assert_true(bool(r.get("ok", false)), "边界纬度正算应成功：" + String(r.get("error", "")))
+	var v: Dictionary = _v(r)
+	var y_edge: float = float(v["y_m"])
+	assert_almost_eq(y_edge, 20037508.343039, 0.001, "边界 y_max ≈ 20037508.343039 m")
+	var ri := MC.inverse({"x_m": float(v["x_m"]), "y_m": y_edge})
+	assert_true(bool(ri.get("ok", false)), "边界点正算结果应能被本模块反算还原")
+	var vi: Dictionary = _v(ri)
+	assert_almost_eq(float(vi.get("lat_deg", 0.0)), b_edge, 1e-9, "边界点反算还原 B（1e-9°）")
+	# |B|>85.05112878° 正算拒绝
+	var r2 := MC.forward({"lat_deg": 85.051129, "lon_deg": 116.0})
+	assert_false(bool(r2.get("ok", true)), "B 超 85.05112878° 正算应拒绝")
+	# 反算 |y|>y_max 拒绝
+	var r3 := MC.inverse({"x_m": 1000000.0, "y_m": 20037508.5})
+	assert_false(bool(r3.get("ok", true)), "y 超 y_max 反算应拒绝")
+	# 85.059° 必须被拒绝
+	var r4 := MC.forward({"lat_deg": 85.059, "lon_deg": 116.0})
+	assert_false(bool(r4.get("ok", true)), "B=85.059° 正算应拒绝")
+	# 低层常量口径一致性
+	assert_almost_eq(MC.MAX_Y_M, 20037508.343039, 1e-3, "MAX_Y_M 常量值")
+	assert_almost_eq(MC.MAX_LAT, 85.05112878, 1e-9, "MAX_LAT 边界值（验收口径 85.05112878°）")
+
 func test_lambert_93_vector() -> void:
 	var r := LB.forward({"lat_deg": 48.85, "lon_deg": 2.35, "phi1_deg": 49.0, "phi2_deg": 44.0,
 			"phi0_deg": 46.5, "lon0_deg": 3.0, "fe_m": 700000.0, "fn_m": 6600000.0, "datum": "GRS80"})

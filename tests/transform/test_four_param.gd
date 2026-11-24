@@ -149,3 +149,94 @@ func test_protocol_shape() -> void:
 	var res2 := F.apply({"mode": "fwd", "dx_m": 1.0, "dy_m": 2.0, "scale": 1.0, "alpha_deg": 0.0, "src_xy": [[1.0, 1.0]]})
 	assert_true((res2["steps"] as Array).size() >= 2, "正算步骤 ≥2")
 	assert_eq(res2["value"]["x_m"], 2.0, "单点 value 附 x_m")
+
+# ---------- 本包追加：验收算例与口径升级回归（只追加，不改既有断言） ----------
+
+# 【验收算例】四参数精确恢复：dx=100、dy=200、m=1.0001、α=0.5°，
+# 4 个公共点 src=(1000,1000),(3000,2000),(2000,3500),(4500,1500)；
+# 目标坐标为真值参数显式三角生成的全精度值（截断到 6 位小数会使 1e-9 恢复
+# 断言不可能成立——1e-6 m 的数据舍入会传播成 ~1e-8 的参数偏差）。
+const A_SRC4 := [[1000.0, 1000.0], [3000.0, 2000.0], [2000.0, 3500.0], [4500.0, 1500.0]]
+const A_DST4 := [
+	[1091.3345111045539, 1208.7893274084013],
+	[3082.7309414655856, 2226.3060629687270],
+	[2069.5779099812225, 3717.6715337015198],
+	[4587.1875244262637, 1739.3662155683737],
+]
+
+func test_acceptance_exact_recovery_4pt() -> void:
+	var res := F.solve({"src_xy": A_SRC4, "dst_xy": A_DST4})
+	assert_true(res["ok"], "验收算例求参应成功：" + String(res.get("error", "")))
+	var v: Dictionary = res["value"]
+	assert_almost_eq(v["dx_m"], 100.0, 1e-9, "dx=100 逐位恢复")
+	assert_almost_eq(v["dy_m"], 200.0, 1e-9, "dy=200 逐位恢复")
+	assert_almost_eq(v["scale"], 1.0001, 1e-9, "m=1.0001 逐位恢复")
+	assert_almost_eq(v["alpha_deg"], 0.5, 1e-9, "α=0.5° 逐位恢复")
+	assert_eq(int(v["redundancy"]), 4, "自由度 2×4−4=4")
+	assert_eq((v["warnings"] as Array).size(), 0, "精确数据无粗差提示")
+
+func test_sigma_alpha_includes_covariance() -> void:
+	# σ_α 修正后含协方差项 σ0²·(b²q22 − 2ab·q23 + a²·q33)/m⁴：
+	# 精确数据 σ0→0，σ_α→0；含噪数据应有限且为正（与 numpy 数值传播口径同量级）
+	var res := F.solve({"src_xy": A_SRC4, "dst_xy": A_DST4})
+	var v: Dictionary = res["value"]
+	if v.has("sigma_alpha_s"):
+		assert_almost_eq(float(v["sigma_alpha_s"]), 0.0, 1e-9, "精确数据 σ_α≈0")
+	if v.has("sigma_scale"):
+		assert_almost_eq(float(v["sigma_scale"]), 0.0, 1e-12, "精确数据 σ_m≈0")
+	# 含噪对照：粗差检出场景的 sigma 有限为正
+	var src := [
+		[1000.0, 1000.0], [3000.0, 2000.0], [1500.0, 3500.0], [4000.0, 4000.0],
+		[2500.0, 800.0], [2000.0, 1500.0], [3500.0, 1000.0], [800.0, 2000.0], [1200.0, 3000.0],
+	]
+	var al := 2.0 * PI / 180.0
+	var dst := []
+	for q: Array in src:
+		dst.append([
+			1000.0 + 1.0002 * (q[0] * cos(al) - q[1] * sin(al)),
+			2000.0 + 1.0002 * (q[0] * sin(al) + q[1] * cos(al)),
+		])
+	var res2 := F.solve({"src_xy": src, "dst_xy": dst})
+	var v2: Dictionary = res2["value"]
+	assert_true(v2.has("sigma_alpha_s"), "含噪求参应输出 σ_α")
+	assert_true(float(v2["sigma_alpha_s"]) > 0.0, "σ_α 应为正")
+	assert_true(float(v2["sigma_scale"]) > 0.0, "σ_m 应为正")
+
+func test_refit_iteration_present_on_blunder() -> void:
+	# 粗差场景（同 test_solve_multi_point_with_redundancy 的数据）：除 outliers/warnings 外
+	# 还应执行剔除迭代输出 refit（保留人工确认提示），refit 参数应接近真值
+	var src := [
+		[1000.0, 1000.0], [3000.0, 2000.0], [1500.0, 3500.0], [4000.0, 4000.0],
+		[2500.0, 800.0], [2000.0, 1500.0], [3500.0, 1000.0], [800.0, 2000.0], [1200.0, 3000.0],
+	]
+	var al := 2.0 * PI / 180.0
+	var dst := []
+	for q: Array in src:
+		dst.append([
+			1000.0 + 1.0002 * (q[0] * cos(al) - q[1] * sin(al)),
+			2000.0 + 1.0002 * (q[0] * sin(al) + q[1] * cos(al)),
+		])
+	dst[4][0] += 2.0
+	var res := F.solve({"src_xy": src, "dst_xy": dst})
+	var v: Dictionary = res["value"]
+	assert_true(v.has("refit"), "检出粗差应有剔除迭代 refit：%s" % str(v.keys()))
+	if not v.has("refit"):
+		return
+	var rf: Dictionary = v["refit"]
+	assert_almost_eq(float(rf["dx_m"]), 1000.0, 1e-6, "剔除解 dx 接近真值")
+	assert_almost_eq(float(rf["scale"]), 1.0002, 1e-9, "剔除解 m 接近真值")
+	assert_almost_eq(float(rf["alpha_deg"]), 2.0, 1e-6, "剔除解 α 接近真值")
+	assert_almost_eq(float(rf["sigma0_m"]), 0.0, 1e-9, "剔除解精确数据 σ0≈0")
+	assert_true(String(rf["note"]).contains("人工确认"), "refit 注明人工确认")
+	# 全点解的 warnings 应含人工确认提示
+	var found := false
+	for w: Variant in v["warnings"]:
+		if String(w).contains("人工确认"):
+			found = true
+	assert_true(found, "warnings 应保留人工确认提示")
+	# P4 固化：warnings 快照须在剔除迭代 append 之后，应含「已按剔除迭代…」
+	var has_refit_warn := false
+	for w: Variant in v["warnings"]:
+		if String(w).contains("已按剔除迭代"):
+			has_refit_warn = true
+	assert_true(has_refit_warn, "warnings 应含「已按剔除迭代…」提示")

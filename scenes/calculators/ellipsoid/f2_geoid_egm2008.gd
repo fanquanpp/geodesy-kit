@@ -22,6 +22,7 @@ func get_inputs() -> Dictionary:
 	return _snapshot(["lat_deg", "lon_deg"])
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in ["lat_deg", "lon_deg"]:
 		_fill(key, inputs)
 

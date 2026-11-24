@@ -7,12 +7,12 @@ func _build_fields() -> void:
 	_add_section("往测（A→B）")
 	add_input_row("水平距离 D（m）", "d_m", "2000")
 	add_input_row("竖直角 α（°/′/″ 或度，仰角正）", "v_angle", "2")
-	add_input_row("仪器高 i（m）", "i_m", "1.5")
-	add_input_row("目标高 v（m）", "v_m", "1.5")
+	add_input_row("A 站仪器高 i_A（m）", "i_m", "1.5")
+	add_input_row("B 站目标高 v_B（m）", "v_m", "1.5")
 	_add_section("返测（B→A，对向观测可选）")
 	add_input_row("竖直角 α返（度，仰角正）", "v_angle_back", "-2")
-	add_input_row("仪器高 i返（m）", "i_back", "1.5")
-	add_input_row("目标高 v返（m）", "v_back", "1.5")
+	add_input_row("B 站仪器高 i_B（m）", "i_back", "1.5")
+	add_input_row("A 站目标高 v_A（m）", "v_back", "1.5")
 	_add_section("常数（可自定）")
 	add_input_row("大气折光系数 k（默认 0.13）", "k", "0.13")
 	add_input_row("地球曲率半径 R（m，默认 6371008.7714）", "r_m", "6371008.7714")
@@ -59,7 +59,7 @@ func get_title() -> String:
 	return "三角高程（单向/对向）（C13）"
 
 func get_description() -> String:
-	return "h = D·tanα + i − v + (1−k)·D²/(2R)；对向观测取均值时球气差自动抵消。k/R 可自定。M6-3 组成部分（单向近似平差口径，对向均值含折光改正）。"
+	return "h_AB = D·tanα + i_A − v_B + (1−k)·D²/(2R)；对向均值 h_均 = ½(h_AB − h_BA)（各站仪器高/目标高按本侧严格配对，D·tanα 与球气差自动抵消），并以「单向 − 对向均值 = f」自洽检核。k/R 可自定。"
 
 func get_entry_id() -> String:
 	return "c13_trig_height"

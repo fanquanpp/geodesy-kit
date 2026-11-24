@@ -93,3 +93,64 @@ func test_core_and_errors() -> void:
 	assert_true(String(e1.get("error", "")).contains("退化"), "退化中文提示")
 	var e2: Dictionary = Dv.forward({"design_elev_m": 0.0, "triangles": []})
 	assert_false(bool(e2.get("ok", true)), "空三角形拒绝")
+
+# ---------- P5 追加：三角形平面投影重叠检测（中文告警） ----------
+
+## 两三角形平面投影重叠 → ok=true 但 value.overlap_warning 附中文告警
+func test_triangle_overlap_warning() -> void:
+	# 两个共边三角形共享全部区域之一部分：T1 与 T1 的平移重叠副本
+	var t1: Array = _tri(1.0, 2.0, 3.0)
+	var t2 := [{"v1": {"x_m": 10.0, "y_m": 0.0, "z_m": 1.0},
+		"v2": {"x_m": 110.0, "y_m": 0.0, "z_m": 2.0},
+		"v3": {"x_m": 10.0, "y_m": 100.0, "z_m": 3.0}}]
+	var res: Dictionary = Dv.forward({"design_elev_m": 0.0, "triangles": [t1[0], t2[0]]})
+	assert_true(bool(res.get("ok", false)), "重叠输入仍返回结果")
+	if bool(res.get("ok", false)):
+		var v: Dictionary = res["value"]
+		assert_true((v as Dictionary).has("overlap_warning"), "value 含重叠告警")
+		assert_true(String(v.get("overlap_warning", "")).contains("重叠"), "告警为中文且说明重叠")
+		assert_int_eq(int(v.get("overlap_pairs", 0)), 1, "1 组重叠")
+		# steps 中亦有告警
+		var joined := ""
+		for s: Dictionary in res["steps"]:
+			joined += String(s.get("result", ""))
+		assert_true(joined.contains("重叠"), "steps 告警重叠")
+		# 体积仍按逐三角形累计（重叠区被重复计入，量值可核对：两三角形同构 → 填 2×10000）
+		assert_almost_eq(float(v["fill_m3"]), 20000.0, 1e-6, "重叠时逐三角形累计（总量偏大如实报告）")
+
+## 相邻不重叠三角形（共享顶点）→ 无告警
+func test_adjacent_triangles_no_warning() -> void:
+	var t1: Array = _tri(1.0, 2.0, 3.0)  # (0,0)(100,0)(0,100)
+	var t2 := [{"v1": {"x_m": 100.0, "y_m": 0.0, "z_m": 1.0},
+		"v2": {"x_m": 200.0, "y_m": 0.0, "z_m": 2.0},
+		"v3": {"x_m": 100.0, "y_m": 100.0, "z_m": 3.0}}]
+	var res: Dictionary = Dv.forward({"design_elev_m": 0.0, "triangles": [t1[0], t2[0]]})
+	assert_true(bool(res.get("ok", false)), "相邻三角形成功")
+	if bool(res.get("ok", false)):
+		assert_false((res["value"] as Dictionary).has("overlap_warning"), "相邻不重叠无告警")
+
+## 纯核 triangles_overlap：重叠/分离/仅共边三种情形
+func test_triangles_overlap_core() -> void:
+	var a1 := [0.0, 0.0, 1.0]
+	var a2 := [100.0, 0.0, 2.0]
+	var a3 := [0.0, 100.0, 3.0]
+	# 大幅重叠
+	var b1 := [10.0, 0.0, 1.0]
+	var b2 := [110.0, 0.0, 2.0]
+	var b3 := [10.0, 100.0, 3.0]
+	assert_true(Dv.triangles_overlap(a1, a2, a3, b1, b2, b3), "重叠 true")
+	# 完全分离
+	var c1 := [500.0, 500.0, 1.0]
+	var c2 := [600.0, 500.0, 2.0]
+	var c3 := [500.0, 600.0, 3.0]
+	assert_false(Dv.triangles_overlap(a1, a2, a3, c1, c2, c3), "分离 false")
+	# 仅共享一条边（(0,0)-(100,0)）不算重叠
+	var d1 := [0.0, 0.0, 1.0]
+	var d2 := [100.0, 0.0, 2.0]
+	var d3 := [0.0, -100.0, 3.0]
+	assert_false(Dv.triangles_overlap(a1, a2, a3, d1, d2, d3), "仅共边 false")
+	# 顶点在对方内部
+	var e1 := [10.0, 10.0, 1.0]
+	var e2 := [200.0, 10.0, 2.0]
+	var e3 := [10.0, 200.0, 3.0]
+	assert_true(Dv.triangles_overlap(a1, a2, a3, e1, e2, e3), "顶点落入内部 true")

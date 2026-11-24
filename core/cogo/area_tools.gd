@@ -67,10 +67,14 @@ static func normalize_points(points: Variant) -> Array:
 	return pts
 
 ## 鞋带公式原语。pts 至少 3 个不重复顶点；返回 {signed, area, perimeter, n}；不合法 → {}。
+## 数值稳定：逐点先减首点再做交叉积求和（高斯投影坐标可达 10⁷ 量级，
+## 直接对原始坐标求交叉积会因大数相消损失有效数字）。
 static func shoelace(pts: Array) -> Dictionary:
 	if pts.size() < 3:
 		return {}
 	var n := pts.size()
+	var x0: float = pts[0]["x"]
+	var y0: float = pts[0]["y"]
 	var s := 0.0
 	var perimeter := 0.0
 	for i in n:
@@ -82,14 +86,65 @@ static func shoelace(pts: Array) -> Dictionary:
 		var by: float = b["y"]
 		if not (is_finite(ax) and is_finite(ay) and is_finite(bx) and is_finite(by)):
 			return {}
-		s += ax * by - bx * ay
+		s += (ax - x0) * (by - y0) - (bx - x0) * (ay - y0)
 		var dx := bx - ax
 		var dy := by - ay
 		perimeter += sqrt(dx * dx + dy * dy)
 	var signed := s / 2.0
 	return {"signed": signed, "area": absf(signed), "perimeter": perimeter, "n": n}
 
+## 线段 (p1→p2) 与 (p3→p4) 严格相交检测（不含共享端点的邻接情况）。
+## 返回 0=不相交（含共线不重叠），1=相交（含共线重叠）。
+static func _segments_intersect(p1: Dictionary, p2: Dictionary, p3: Dictionary, p4: Dictionary) -> int:
+	var x1: float = p1["x"]; var y1: float = p1["y"]
+	var x2: float = p2["x"]; var y2: float = p2["y"]
+	var x3: float = p3["x"]; var y3: float = p3["y"]
+	var x4: float = p4["x"]; var y4: float = p4["y"]
+	var d1 := _cross(x3, y3, x4, y4, x1, y1)
+	var d2 := _cross(x3, y3, x4, y4, x2, y2)
+	var d3 := _cross(x1, y1, x2, y2, x3, y3)
+	var d4 := _cross(x1, y1, x2, y2, x4, y4)
+	if ((d1 > 0.0 and d2 < 0.0) or (d1 < 0.0 and d2 > 0.0)) \
+			and ((d3 > 0.0 and d4 < 0.0) or (d3 < 0.0 and d4 > 0.0)):
+		return 1
+	if d1 == 0.0 and _on_segment(x3, y3, x4, y4, x1, y1):
+		return 1
+	if d2 == 0.0 and _on_segment(x3, y3, x4, y4, x2, y2):
+		return 1
+	if d3 == 0.0 and _on_segment(x1, y1, x2, y2, x3, y3):
+		return 1
+	if d4 == 0.0 and _on_segment(x1, y1, x2, y2, x4, y4):
+		return 1
+	return 0
+
+static func _cross(ax: float, ay: float, bx: float, by: float, cx: float, cy: float) -> float:
+	return (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+
+static func _on_segment(ax: float, ay: float, bx: float, by: float, px: float, py: float) -> bool:
+	return minf(ax, bx) <= px and px <= maxf(ax, bx) and minf(ay, by) <= py and py <= maxf(ay, by)
+
+## 自交检测（蝴蝶结形）：非邻接边两两相交即判自交。返回 true = 存在自交。
+static func has_self_intersection(pts: Array) -> bool:
+	var n := pts.size()
+	if n < 4:
+		return false
+	for i in n:
+		var a1: Dictionary = pts[i]
+		var a2: Dictionary = pts[(i + 1) % n]
+		for j in range(i + 1, n):
+			# 邻接边（共享端点）跳过：j==i+1 的后继边、首末边
+			if j == i + 1 or (i == 0 and j == n - 1):
+				continue
+			if (i + 1) % n == j or (j + 1) % n == i:
+				continue
+			var b1: Dictionary = pts[j]
+			var b2: Dictionary = pts[(j + 1) % n]
+			if _segments_intersect(a1, a2, b1, b2) == 1:
+				return true
+	return false
+
 ## B6 多边形面积与单位换算。输入：{points: String 或 Array}。
+## 自交（蝴蝶结形）返回 ok=false 中文错误；共线退化返回 ok=true 附提示。
 static func polygon_area(p: Dictionary) -> Dictionary:
 	if not p.has("points"):
 		return _fail("缺少输入项「顶点坐标」（格式：100,100;500,120;520,480;120,500）")
@@ -99,6 +154,10 @@ static func polygon_area(p: Dictionary) -> Dictionary:
 	var r := shoelace(pts)
 	if r.is_empty():
 		return _fail("顶点坐标不合法（至少 3 个顶点且坐标为有限数值）")
+	# 自交检测：蝴蝶结形等自交多边形"鞋带面积"无几何意义（等于两瓣之差），明确报错
+	if has_self_intersection(pts):
+		return _fail("多边形自交（顶点连线相互交叉，如蝴蝶结形）：边界线段在非邻接处相交，"
+			+ "解析面积无几何意义。请检查顶点顺序，自交多边形须拆分为多个简单多边形分别求面积")
 	# 顶点重合/退化检查：面积为 0 提示（不判失败，可能确为共线点列）
 	var area: float = r["area"]
 	var signed: float = r["signed"]

@@ -1,23 +1,25 @@
 # core/projection/mercator.gd —— GK-M3-5a Web 墨卡托（EPSG:3857，球面公式作用于 WGS84 经纬度）
 #
-# 定义（EPSG:3857 / "Web Mercator"）：a=6378137（取 WGS84 长半轴），
-#   x = a·rad(L)，y = a·ln[tan(π/4 + rad(B)/2)]；FE=FN=0。
-# 官方适用域 |B| ≤ 85.06°（数学上 B→±90° 时 y→∞，实现按域限制拒绝）。
-# 本会话 pyproj EPSG:3857 复核：天安门 (39.90752760,116.39127570)→(12956617.544,4852513.528)。
-# 注：Web 墨卡托为球面近似（非等角严格椭球墨卡托 EPSG:9804），纬度越高变形越大，
-#     高斯投影半字长精度口径不可沿用——此处按 EPSG:3857 定义实现，供 Web 地图坐标互转。
+# 定义：a=6378137，x=a·rad(L)，y=a·ln[tan(π/4+rad(B)/2)]，FE=FN=0。
+# 边界自洽：B_max=±85.05112878°；反算阈值 y_max=y(B_max)（≠a·π，直接用 a·π 会拒绝正算边界点）；
+# |B|>B_max 与 |y|>y_max 一律拒绝，B=B_max 可被反算还原。
+# pyproj EPSG:3857 复核：天安门 (39.9075276,116.3912757)→(12956617.544,4852513.528)。
+# 球面近似非等角严格椭球墨卡托（EPSG:9804），半字长精度口径不适用。
 class_name GKMercator
 extends RefCounted
 const _AN := preload("res://core/math/angles.gd")
 
 const A := 6378137.0
-const MAX_LAT := 85.06  # EPSG:3857 官方适用纬度界（≈±85.0511°，取常用圆整值）
+## 正算纬度边界（度）：|B| ≤ B_max 可算，|B| > B_max 拒绝
+const MAX_LAT := 85.05112878
+## 反算 y 拒绝阈值（米）：y_max = y(MAX_LAT)（同一正算公式自洽计算），约 20037508.343039
+const MAX_Y_M := 20037508.343039
 
 ## 球面墨卡托低层正算（任意半径/基准经纬度）。返回 {x_m, y_m}；非法返回 {}。
 static func fwd(lat_deg: float, lon_deg: float, radius: float = A) -> Dictionary:
 	if not is_finite(lat_deg) or not is_finite(lon_deg) or radius <= 0.0:
 		return {}
-	if absf(lat_deg) >= MAX_LAT:
+	if absf(lat_deg) > MAX_LAT:
 		return {}
 	var phi := lat_deg * PI / 180.0
 	var lam := lon_deg * PI / 180.0
@@ -30,9 +32,13 @@ static func inv(x_m: float, y_m: float, radius: float = A) -> Dictionary:
 	var lam := x_m / radius
 	if absf(lam) > PI:
 		return {}
+	# 反算拒绝阈值与正算边界同一公式自洽：|y| > y(MAX_LAT) = MAX_Y_M 拒绝
+	var y_max := radius * log(tan(PI / 4.0 + MAX_LAT * PI / 360.0))
+	if absf(y_m) > y_max:
+		return {}
 	var phi := 2.0 * atan(exp(y_m / radius)) - PI / 2.0
 	var lat := rad_to_deg(phi)
-	if absf(lat) >= MAX_LAT + 0.5:
+	if absf(lat) > MAX_LAT:
 		return {}
 	return {"lat_deg": lat, "lon_deg": rad_to_deg(lam)}
 
@@ -44,7 +50,7 @@ static func forward(p: Dictionary) -> Dictionary:
 		return _err("纬度/经度不是有效数字（可接受十进制度或度分秒文本）")
 	var r := fwd(lat, lon, A)
 	if r.is_empty():
-		return _err("纬度 %s 超出 Web 墨卡托适用域（|B| < %.2f°）" % [String.num(lat, 4), MAX_LAT])
+		return _err("纬度 %s 超出 Web 墨卡托适用域（|B| ≤ %.8f°）" % [String.num(lat, 4), MAX_LAT])
 	var value := {
 		"x_m": r["x_m"], "y_m": r["y_m"],
 		"lat_deg": lat, "lon_deg": lon,
@@ -55,9 +61,9 @@ static func forward(p: Dictionary) -> Dictionary:
 		{"title": "1. Web 墨卡托正算（EPSG:3857）", "formula": "x = a·rad(L)，y = a·ln[tan(π/4 + rad(B)/2)]，a = 6378137 m",
 			"substitution": "B=%s°，L=%s°" % [String.num(lat, 8), String.num(lon, 8)],
 			"result": "x=%.4f m，y=%.4f m" % [r["x_m"], r["y_m"]]},
-		{"title": "2. 适用域说明", "formula": "球面近似（等角半径 a）；|B| ≤ %.2f°（EPSG 官方域）" % MAX_LAT,
+		{"title": "2. 适用域说明", "formula": "球面近似；|B| ≤ %.8f°，对应 |y| ≤ %.6f m（正反算同一公式自洽）",
 			"substitution": "tan(π/4+B/2)=%.12f" % tan(PI / 4.0 + phi / 2.0),
-			"result": "y/a = ln(...) = %.12f" % (r["y_m"] / A)},
+			"result": "y/a = ln(...) = %.12f；边界 y_max = y(B_max)=%.6f m" % [r["y_m"] / A, MAX_Y_M]},
 	]
 	return {"ok": true, "value": value, "steps": steps,
 			"formula": "Web 墨卡托 EPSG:3857（球面公式；高纬变形大，非严格椭球等角投影）",
@@ -71,7 +77,7 @@ static func inverse(p: Dictionary) -> Dictionary:
 		return _err("x_m/y_m 不是有效数字")
 	var r := inv(x, y, A)
 	if r.is_empty():
-		return _err("反算失败：坐标超出 Web 墨卡托域（|x| ≤ %d m，|y| 上限对应 |B|≈85°）" % int(A * PI))
+		return _err("反算失败：坐标超出 Web 墨卡托域（|x| ≤ %d m，|y| < %.6f m，对应 |B| < %.9f°）" % [int(A * PI), MAX_Y_M, MAX_LAT])
 	var value := {
 		"lat_deg": r["lat_deg"], "lon_deg": r["lon_deg"],
 		"lat_dms": _AN.deg_to_dms_str(r["lat_deg"], 3),
@@ -84,7 +90,7 @@ static func inverse(p: Dictionary) -> Dictionary:
 			"result": "B=%.8f°，L=%.8f°" % [r["lat_deg"], r["lon_deg"]]},
 	]
 	return {"ok": true, "value": value, "steps": steps,
-			"formula": "Web 墨卡托 EPSG:3857 反算（与 pyproj 复核一致）",
+			"formula": "Web 墨卡托 EPSG:3857 反算（边界口径与正算同一公式自洽：|y| < %.6f m）" % MAX_Y_M,
 			"error": ""}
 
 # ---------- 内部 ----------

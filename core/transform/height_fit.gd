@@ -1,17 +1,10 @@
 # core/transform/height_fit.gd —— GK-M4-3（A10）：GNSS 高程拟合（平面 3 参 / 曲面 6 参 / 带状分段）
 #
-# 模型（坐标系约定：先以坐标重心 (x0,y0) 为拟合原点做中心化，改善法方程条件，系数同时
-# 给出"中心化形式"与"绝对坐标形式"两套，便于直接移植到其它软件）：
-#   平面（3 参数）：H = c0 + c1·ξ + c2·η，          ξ = x − x0，η = y − y0
-#   曲面（6 参数）：H = c0 + c1·ξ + c2·η + c3·ξ² + c4·η² + c5·ξη
-#   带状分段：沿线轴向坐标 u（axis=x 取 x，axis=y 取 y）等宽分段，每段独立拟合
-#             H = c0 + c1·(u−mid)（order=1）或 H = c0 + c1·(u−mid) + c2·(u−mid)²（order=2）；
-#             分段边界不强制连续（各段独立 LS，头注如实声明）。
-# 求解：正规方程 N = BᵀB 直接用 GKMatrix.cholesky_solve（core/math，Wave 0 冻结 API）。
-#   注：ARCHITECTURE.md §4 GK-M4 原计划"经 M1 least_squares"，而 least_squares.gd 尚未建
-#   （M1 施工者负责），本文件按地基"可直接用 GKMatrix.cholesky_solve 组装"的口径内联组成
-#   正规方程，待 M1 least_squares.gd 就位后可无缝替换调用。此为如实记录的依赖降级，见交付说明。
-# 求参输出公共点残差表、单位权中误差 σ0 与 >3σ 粗差中文提示；纯 GDScript、零引擎依赖。
+# 以重心 (x0,y0) 中心化拟合：平面 H=c0+c1ξ+c2η；曲面 H=c0+c1ξ+c2η+c3ξ²+c4η²+c5ξη；
+# 带状沿轴 u 等宽分段逐段独立 LS（边界不强制连续），order=1/2。正规方程经 GKMatrix.cholesky_solve。
+# 求参输出残差表、σ0、系数中误差、预测中误差；粗差用标准化残差 w=v/(σ0√q_v)，|w|>3 判定并
+# 自动「剔除→重拟合→再检核」迭代（入 value.refit，保留人工确认提示）；带状逐段输出 σ0 与边界跳变量。
+# 纯 GDScript、零引擎依赖；权威向量见 tests/transform/。
 class_name GKHeightFit
 extends RefCounted
 
@@ -26,7 +19,7 @@ static func fit(p: Dictionary) -> Dictionary:
 	var xy := _parse_points(p.get("xy", []), 2)
 	if not xy.ok:
 		return _err(formula, xy.error)
-	var hres := _parse_floats(p.get("h", []), "高程 h")
+	var hres := _parse_floats(p.get("h", []), "高程")
 	if not hres.ok:
 		return _err(formula, hres.error)
 	var h: PackedFloat64Array = hres.vals
@@ -96,7 +89,7 @@ static func fit(p: Dictionary) -> Dictionary:
 			return _err(formula, r.error)
 		total_unknown = r.coeffs.size()
 		seg_solutions.append(r)
-	# —— 残差、σ0、3σ 检核 ——
+	# —— 残差、σ0、标准化残差粗差检核 ——
 	var v := PackedFloat64Array()
 	v.resize(n)
 	var ss := 0.0
@@ -106,16 +99,31 @@ static func fit(p: Dictionary) -> Dictionary:
 		ss += v[i] * v[i]
 	var redundancy := n - total_unknown
 	var sigma0 := sqrt(ss / redundancy) if redundancy > 0 else 0.0
+	var k_gross := 3.0
+	if p.has("k_gross") and is_finite(float(p["k_gross"])) and float(p["k_gross"]) > 0.0:
+		k_gross = float(p["k_gross"])
 	var warnings := PackedStringArray()
 	var outliers := []
-	var limit := 3.0 * sigma0
 	var residuals := []
-	for i in n:
-		var q: PackedFloat64Array = xy.points[i]
-		residuals.append([i + 1, q[0], q[1], h[i], h[i] + v[i], v[i]])
-		if redundancy > 0 and sigma0 > 0.0 and absf(v[i]) > limit:
-			outliers.append(i + 1)
-			warnings.append("第 %d 点（x=%.3f，y=%.3f）拟合残差 %.4f m 超过 3σ（σ0=%.4f m，3σ=%.4f m），疑似粗差，建议剔除该点后重新拟合" % [i + 1, q[0], q[1], v[i], sigma0, limit])
+	# 标准化残差：w_i = v_i / (σ0·√q_vi)。strip 各段独立法方程；plane/surface 用总体法方程。
+	var w := PackedFloat64Array()
+	w.resize(n)
+	if redundancy > 0 and sigma0 > 0.0:
+		for i in n:
+			var q_vi := _q_vi_at(model_key, segs, seg_solutions, xy.points[i], x0, y0)
+			if q_vi <= 1e-12:
+				q_vi = 1e-12
+			w[i] = absf(v[i]) / (sigma0 * sqrt(q_vi))
+		for i in n:
+			var q: PackedFloat64Array = xy.points[i]
+			residuals.append([i + 1, q[0], q[1], h[i], h[i] + v[i], v[i]])
+			if w[i] > k_gross:
+				outliers.append(i + 1)
+				warnings.append("第 %d 点（x=%.3f，y=%.3f）拟合残差 %.4f m，标准化残差 |w|=%.2f 超过 3σ 限值（k=%.1f，σ0=%.4f m），疑似粗差，建议人工确认后剔除该点重新拟合" % [i + 1, q[0], q[1], v[i], w[i], k_gross, sigma0])
+	else:
+		for i in n:
+			var q: PackedFloat64Array = xy.points[i]
+			residuals.append([i + 1, q[0], q[1], h[i], h[i] + v[i], v[i]])
 	var rms := sqrt(ss / n)
 	# —— 系数输出（中心化形式 + 绝对坐标形式） ——
 	var value := {
@@ -129,7 +137,6 @@ static func fit(p: Dictionary) -> Dictionary:
 		"rms_m": rms,
 		"residuals_m": residuals,
 		"outliers": outliers,
-		"warnings": Array(warnings),
 	}
 	var model_dict := {}
 	var coeffs_center := []
@@ -140,6 +147,7 @@ static func fit(p: Dictionary) -> Dictionary:
 		var du: float = segs[0]["u_hi"] - segs[0]["u_lo"]
 		var seg_list := []
 		var seg_text := PackedStringArray()
+		var seg_sigmas := []
 		for s_i in segs.size():
 			var c: PackedFloat64Array = seg_solutions[s_i]["coeffs"]
 			var mid: float = segs[s_i]["mid"]
@@ -148,6 +156,21 @@ static func fit(p: Dictionary) -> Dictionary:
 			coeffs_abs.append(abs_c)
 			seg_list.append({"mid": mid, "coeffs_center": Array(c), "coeffs_abs": abs_c})
 			seg_text.append("第%d段 [%.3f, %.3f]：%s" % [s_i + 1, segs[s_i]["u_lo"], segs[s_i]["u_hi"], _coeff_text(c, "ξ=u−%.3f" % mid)])
+			# 逐段 σ0（每段独立单位权中误差；自由度不足的段给 0 并在文本注明）
+			var s_ss := 0.0
+			for k: int in segs[s_i]["pt_idx"]:
+				s_ss += v[k] * v[k]
+			var s_dof: int = (segs[s_i]["pt_idx"] as Array).size() - (int(segs[s_i]["order"]) + 1)
+			var s_s0 := sqrt(s_ss / s_dof) if s_dof > 0 else 0.0
+			seg_sigmas.append({"segment": s_i + 1, "sigma0_m": s_s0, "dof": s_dof})
+		# 相邻段边界跳变量（各段独立拟合，边界不强制连续——跳变量是分段质量的检核量）
+		var jumps := []
+		if segs.size() > 1:
+			for s_i in range(1, segs.size()):
+				var u_b: float = segs[s_i]["u_lo"]
+				var h_prev := _strip_eval_seg(seg_solutions[s_i - 1]["coeffs"], float(segs[s_i - 1]["mid"]), u_b)
+				var h_curr := _strip_eval_seg(seg_solutions[s_i]["coeffs"], float(segs[s_i]["mid"]), u_b)
+				jumps.append({"boundary_u_m": u_b, "jump_m": h_curr - h_prev, "segment": s_i + 1})
 		model_dict = {
 			"kind": "strip",
 			"axis": axis,
@@ -157,21 +180,54 @@ static func fit(p: Dictionary) -> Dictionary:
 			"segments": seg_list,
 		}
 		value["segments"] = seg_text
+		value["segment_sigma0"] = seg_sigmas
+		if not jumps.is_empty():
+			value["boundary_jumps"] = jumps
 		steps.append({
 			"title": "2. 各段拟合系数",
 			"formula": "每段独立最小二乘（N=BᵀB，Cholesky）",
 			"substitution": "\n".join(seg_text),
 			"result": "共 %d 段、%d 个未知参数" % [segs.size(), total_unknown],
 		})
+		var seg_sig_text := PackedStringArray()
+		for sg: Dictionary in seg_sigmas:
+			seg_sig_text.append("第%d段 σ0 = %.6f m（自由度 %d）" % [int(sg["segment"]), float(sg["sigma0_m"]), int(sg["dof"])])
+		var jump_text := "（单段无边界）"
+		if not jumps.is_empty():
+			var jt := PackedStringArray()
+			for jm: Dictionary in jumps:
+				jt.append("u=%.3f 处第%d段 − 第%d段跳变量 = %.6f m" % [float(jm["boundary_u_m"]), int(jm["segment"]) - 1, int(jm["segment"]), float(jm["jump_m"])])
+			jump_text = "；".join(jt)
+		steps.append({
+			"title": "3. 分段精度与边界跳变量",
+			"formula": "每段独立 σ0 = √(VᵀV_seg / (n_seg − 段参数))；边界跳变量 = 相邻段在边界 u 处的拟合值之差",
+			"substitution": "\n".join(seg_sig_text),
+			"result": jump_text,
+		})
 	else:
 		var c: PackedFloat64Array = seg_solutions[0]["coeffs"]
 		coeffs_center = Array(c)
+		# 拟合点中心化坐标包络矩形（预测外插判定用；矩形为凸包的外包络，不误报）
+		var xi_min := INF
+		var xi_max := -INF
+		var eta_min := INF
+		var eta_max := -INF
+		for q: PackedFloat64Array in xy.points:
+			var dxi: float = q[0] - x0
+			var deta: float = q[1] - y0
+			xi_min = minf(xi_min, dxi)
+			xi_max = maxf(xi_max, dxi)
+			eta_min = minf(eta_min, deta)
+			eta_max = maxf(eta_max, deta)
 		if model_key == "plane":
 			coeffs_abs = _plane_abs_coeffs(c, x0, y0)
-			model_dict = {"kind": "plane", "origin": [x0, y0], "coeffs_center": coeffs_center}
+			model_dict = {"kind": "plane", "origin": [x0, y0], "coeffs_center": coeffs_center,
+				"envelope": [xi_min, xi_max, eta_min, eta_max],
+				"qxx": seg_solutions[0]["Ninv"], "sigma0_m": sigma0}
 		else:
 			coeffs_abs = _surface_abs_coeffs(c, x0, y0)
-			model_dict = {"kind": "surface", "origin": [x0, y0], "coeffs_center": coeffs_center}
+			model_dict = {"kind": "surface", "origin": [x0, y0], "coeffs_center": coeffs_center,
+				"envelope": [xi_min, xi_max, eta_min, eta_max]}
 		value["coeffs_center"] = coeffs_center
 		value["coeffs_abs"] = coeffs_abs
 		steps.append({
@@ -186,7 +242,34 @@ static func fit(p: Dictionary) -> Dictionary:
 			"substitution": "由中心化系数平移展开（x0=%.4f，y0=%.4f）" % [x0, y0],
 			"result": _coeff_text(PackedFloat64Array(coeffs_abs), "绝对形式"),
 		})
+	# —— 系数中误差（σ_ci = σ0·√Qxx 对角元；strip 逐段给） ——
+	if redundancy > 0 and sigma0 > 0.0:
+		var coeff_sigmas := []
+		if model_key == "strip":
+			for s_i in segs.size():
+				var Ni_s: Array = seg_solutions[s_i]["Ninv"]
+				var seg_sig := []
+				if not Ni_s.is_empty():
+					for j in (Ni_s as Array).size():
+						seg_sig.append(sigma0 * sqrt(absf((Ni_s[j] as PackedFloat64Array)[j])))
+				coeff_sigmas.append(seg_sig)
+			value["sigma_coeffs"] = coeff_sigmas
+		else:
+			var Ni: Array = seg_solutions[0]["Ninv"]
+			if not Ni.is_empty():
+				for j in Ni.size():
+					coeff_sigmas.append(sigma0 * sqrt(absf((Ni[j] as PackedFloat64Array)[j])))
+				value["sigma_coeffs"] = coeff_sigmas
 	value["model"] = model_dict
+	# —— 剔除 → 重新拟合 → 再检核迭代（检出粗差且仍有多余观测时执行；保留人工确认） ——
+	# no_refit：内层（剔除迭代）拟合不再递归执行剔除
+	if not outliers.is_empty() and redundancy > 0 and sigma0 > 0.0 and not bool(p.get("no_refit", false)):
+		var refit_res := _refit_fit(model_key, p, xy.points, h, outliers, k_gross)
+		if not refit_res.is_empty():
+			value["refit"] = refit_res
+			warnings.append("已按剔除迭代求得一组不含粗差点的拟合（见 refit），请人工确认比对后决定是否采纳；采纳前本页保留全点解")
+	# warnings 在剔除迭代 append 之后回写，避免快照缺项
+	value["warnings"] = Array(warnings)
 	# —— 精度评定与粗差检核步骤 ——
 	var step_idx := steps.size() + 1
 	steps.append({
@@ -196,22 +279,122 @@ static func fit(p: Dictionary) -> Dictionary:
 		"result": "σ0 = %.6f m，RMS = %.6f m" % [sigma0, rms],
 	})
 	if redundancy > 0 and sigma0 > 0.0:
+		var w_max := 0.0
+		for val in w:
+			w_max = maxf(w_max, val)
 		steps.append({
-			"title": "%d. 粗差检核（3σ 准则）" % (step_idx + 1),
-			"formula": "|v| > 3σ0 判为疑似粗差",
-			"substitution": "3σ0 = %.6f m" % limit,
-			"result": "无粗差" if warnings.is_empty() else "\n".join(warnings),
+			"title": "%d. 粗差检核（标准化残差准则）" % (step_idx + 1),
+			"formula": "w = v / (σ0·√q_v)（q_v 为改正数协因数对角元）；|w| > k 判为疑似粗差",
+			"substitution": "k = %.1f，σ0 = %.6f m" % [k_gross, sigma0],
+			"result": ("无粗差（max|w|=%.2f ≤ k=%.1f）" % [w_max, k_gross]) if warnings.is_empty() else "\n".join(warnings),
 		})
+		if value.has("refit"):
+			var rf: Dictionary = value["refit"]
+			steps.append({
+				"title": "%d. 剔除迭代（剔除 → 重新拟合 → 再检核）" % (step_idx + 2),
+				"formula": "剔除 |w| > k 的公共点后重新拟合，用剔除解回代全部点检核",
+				"substitution": "剔除点号：%s" % str(outliers),
+				"result": "剔除解 σ0 = %.6f m；回代全部点最大残差 = %.6f m；是否采纳由人工确认" % [float(rf["sigma0_m"]), float(rf["max_res_m"])],
+			})
 	else:
 		steps.append({
-			"title": "%d. 粗差检核（3σ 准则）" % (step_idx + 1),
-			"formula": "|v| > 3σ0",
+			"title": "%d. 粗差检核（标准化残差准则）" % (step_idx + 1),
+			"formula": "w = v / (σ0·√q_v)",
 			"substitution": "",
 			"result": "无多余观测，不具备残差检核能力（结果无精度信息）",
 		})
 	return {"ok": true, "value": value, "steps": steps, "formula": formula, "error": ""}
 
-## 预测点高程（§5 协议入口）。p：{model: fit() 输出的模型字典, x, y}
+## 某公共点处的改正数协因数对角元 q_vi（等权）：q_vi = 1 − b_i·N⁻¹·b_iᵀ（该点所属方程组）。
+static func _q_vi_at(model_key: String, segs: Array, seg_solutions: Array, q: PackedFloat64Array, x0: float, y0: float) -> float:
+	var xi := q[0] - x0
+	var yi := q[1] - y0
+	var b := PackedFloat64Array()
+	var Ni: Array = []
+	if model_key == "strip":
+		var axis := String(segs[0]["axis"])
+		var u_min: float = segs[0]["u_lo"]
+		var du: float = segs[0]["u_hi"] - segs[0]["u_lo"]
+		var u := q[0] if axis == "x" else q[1]
+		var s_idx := int(floor((u - u_min) / du))
+		s_idx = clampi(s_idx, 0, segs.size() - 1)
+		var order := int(segs[s_idx]["order"])
+		var u_m := u - float(segs[s_idx]["mid"])
+		if order == 2:
+			b = PackedFloat64Array([1.0, u_m, u_m * u_m])
+		else:
+			b = PackedFloat64Array([1.0, u_m])
+		Ni = seg_solutions[s_idx]["Ninv"]
+	else:
+		if model_key == "plane":
+			b = PackedFloat64Array([1.0, xi, yi])
+		else:
+			b = PackedFloat64Array([1.0, xi, yi, xi * xi, yi * yi, xi * yi])
+		Ni = seg_solutions[0]["Ninv"]
+	if Ni.is_empty():
+		return 1.0
+	var bnbt := 0.0
+	for j in b.size():
+		var qrow: PackedFloat64Array = Ni[j]
+		var sj := 0.0
+		for k in b.size():
+			sj += qrow[k] * b[k]
+		bnbt += b[j] * sj
+	return 1.0 - bnbt
+
+## 单段带状拟合求值（u−mid 形式）
+static func _strip_eval_seg(c: PackedFloat64Array, mid: float, u: float) -> float:
+	var xi := u - mid
+	var h := c[0] + c[1] * xi
+	if c.size() > 2:
+		h += c[2] * xi * xi
+	return h
+
+## 剔除粗差点后重新拟合（原参数重跑）→ 回代全部点检核。
+static func _refit_fit(model_key: String, p: Dictionary, points: Array, h: PackedFloat64Array, outliers: Array, k_gross: float) -> Dictionary:
+	var keep_idx := []
+	for i in points.size():
+		if not outliers.has(i + 1):
+			keep_idx.append(i)
+	var per := 3 if model_key == "plane" else (6 if model_key == "surface" else int(p.get("order", 1)) + 1)
+	var nseg := 1 if model_key != "strip" else int(p.get("segments", 2))
+	if keep_idx.size() < nseg * per + 1:  # 剔除后仍需至少 1 个多余观测
+		return {}
+	var px := []
+	var ph := []
+	for i in keep_idx:
+		px.append(points[i])
+		ph.append(h[i])
+	var res := fit({"xy": px, "h": ph, "model": model_key,
+		"segments": p.get("segments", 2), "order": p.get("order", 1), "axis": p.get("axis", "x"),
+		"no_refit": true})  # 剔除迭代内层拟合不再递归剔除
+	if not bool(res.get("ok", false)):
+		return {}
+	var rf_value: Dictionary = res["value"]
+	# 剔除解回代全部原始点
+	var max_res := 0.0
+	var md: Dictionary = rf_value["model"]
+	for i in points.size():
+		var pr := predict({"model": md, "x": points[i][0], "y": points[i][1]})
+		if not bool(pr.get("ok", false)):
+			return {}
+		var rn: float = absf(float(pr["value"]["h_m"]) - h[i])
+		if rn > max_res:
+			max_res = rn
+	var new_outliers: Array = rf_value.get("outliers", [])
+	return {
+		"sigma0_m": float(rf_value["sigma0_m"]),
+		"max_res_m": max_res,
+		"outliers": outliers,
+		"new_outliers": new_outliers,
+		"n_used": keep_idx.size(),
+		"coeffs_abs": rf_value.get("coeffs_abs", []),
+		"model": md,
+		"note": "剔除解仅为一组对照拟合，是否采纳请人工确认" if (new_outliers as Array).is_empty() else "剔除解下仍有新疑似粗差（点号 %s），请人工复核点据" % str(new_outliers),
+	}
+
+## 预测点高程（§5 协议入口）。p：{model: fit() 输出的模型字典, x, y, sigma_coeffs?（系数中误差）}
+## value：{h_m, extrapolated, sigma_h_m?（平面模型解析预测中误差，提供 sigma_coeffs 时输出）}
 static func predict(p: Dictionary) -> Dictionary:
 	var md: Variant = p.get("model", {})
 	if not (md is Dictionary) or (md as Dictionary).is_empty():
@@ -230,6 +413,7 @@ static func predict(p: Dictionary) -> Dictionary:
 	var h := NAN
 	var extrapolated := false
 	var substitution := ""
+	var sigma_h := NAN
 	if kind == "plane" or kind == "surface":
 		var origin: Array = model.get("origin", [])
 		if origin.size() != 2:
@@ -245,6 +429,34 @@ static func predict(p: Dictionary) -> Dictionary:
 			h += float(cc[3]) * xi * xi + float(cc[4]) * yi * yi + float(cc[5]) * xi * yi
 		formula = "H = c0 + c1·ξ + c2·η" + (" + c3·ξ² + c4·η² + c5·ξη" if kind == "surface" else "") + "，ξ=x−x0，η=y−y0"
 		substitution = "ξ = %.4f − %.4f = %.4f，η = %.4f − %.4f = %.4f，c=(%s)" % [x, float(origin[0]), xi, y, float(origin[1]), yi, _num_list_text(cc)]
+		# 拟合范围判定：预测点到重心的投影范围须落在参与点在（ξ,η）平面的凸包内。
+		# 平面/曲面凸包计算较重，采用工程口径：中心化坐标须落在参与点 ξ∈[ξmin,ξmax]、η∈[ηmin,ηmax]
+		# 的包络矩形内（矩形严格大于凸包，落在矩形内但凸包外仍按范围内处理——不误报为外插）。
+		var envelope: Array = model.get("envelope", [])
+		if envelope.size() == 4:
+			var xi_min: float = envelope[0]
+			var xi_max: float = envelope[1]
+			var eta_min: float = envelope[2]
+			var eta_max: float = envelope[3]
+			if xi < xi_min - 1e-9 or xi > xi_max + 1e-9 or yi < eta_min - 1e-9 or yi > eta_max + 1e-9:
+				extrapolated = true
+		# 平面模型预测中误差（解析）：H = c0 + c1ξ + c2η 是系数的线性组合，
+		# σ_H² = σ0²·(1, ξ, η)·Qxx·(1, ξ, η)ᵀ（需要 Qxx：由 fit 传入 model["qxx"] 或 sigma_coeffs 退化口径）
+		if kind == "plane":
+			var qxx_m: Variant = model.get("qxx", null)
+			if qxx_m is Array and not (qxx_m as Array).is_empty():
+				var Q: Array = qxx_m
+				var g := [1.0, xi, yi]
+				var var_h := 0.0
+				for j in 3:
+					var qrow: PackedFloat64Array = Q[j]
+					var sj := 0.0
+					for k in 3:
+						sj += qrow[k] * g[k]
+					var_h += g[j] * sj
+				var s0_m: float = float(model.get("sigma0_m", 0.0))
+				if var_h >= 0.0 and s0_m > 0.0:
+					sigma_h = s0_m * sqrt(var_h)
 	elif kind == "strip":
 		var axis := String(model.get("axis", "x"))
 		var u := x if axis == "x" else y
@@ -270,10 +482,14 @@ static func predict(p: Dictionary) -> Dictionary:
 	else:
 		return _err("", "模型字典 kind 无法识别（应为 plane/surface/strip）：%s" % kind)
 	var value := {"h_m": h, "extrapolated": extrapolated}
+	if not is_nan(sigma_h):
+		value["sigma_h_m"] = sigma_h
 	var extra := ""
 	if extrapolated:
 		value["warnings"] = ["预测点超出拟合数据覆盖范围，属外插，可靠性降低"]
 		extra = "（外插，可靠性降低）"
+	if not is_nan(sigma_h):
+		extra += "；预测中误差 σ_H = %.6f m" % sigma_h
 	var steps := [{
 		"title": "1. 模型代入",
 		"formula": formula,
@@ -287,13 +503,13 @@ static func predict(p: Dictionary) -> Dictionary:
 static func _strip_prepare(p: Dictionary, points: Array, x0: float, y0: float) -> Dictionary:
 	var axis := String(p.get("axis", "x")).strip_edges().to_lower()
 	if axis != "x" and axis != "y":
-		return {"ok": false, "error": "带状拟合轴向 axis 仅支持 x 或 y，收到：%s" % axis}
+		return {"ok": false, "error": "带状拟合轴向仅支持 x 或 y，收到：%s" % axis}
 	var n_segments := int(p.get("segments", 2))
 	if n_segments < 1:
-		return {"ok": false, "error": "分段数 segments 至少为 1，收到：%s" % str(p.get("segments", 2))}
+		return {"ok": false, "error": "分段数至少为 1，收到：%s" % str(p.get("segments", 2))}
 	var order := int(p.get("order", 1))
 	if order != 1 and order != 2:
-		return {"ok": false, "error": "带状分段每段多项式阶数 order 仅支持 1 或 2，收到：%d" % order}
+		return {"ok": false, "error": "带状分段每段多项式阶数仅支持 1 或 2，收到：%d" % order}
 	var n := points.size()
 	var per := order + 1
 	if n < n_segments * per:
@@ -368,7 +584,7 @@ static func _solve_normal(B: Array, l: PackedFloat64Array) -> Dictionary:
 	for k in x.size():
 		if absf(x[k] - xg[k]) > 1e-4 * max_x:
 			return {"ok": false, "error": "法方程严重病态（双解路径不一致），请检查点位几何配置"}
-	return {"ok": true, "coeffs": x, "error": ""}
+	return {"ok": true, "coeffs": x, "Ninv": GKMatrix.inverse(N), "error": ""}
 
 static func _solve_segment(rows: Array, l: PackedFloat64Array, order: int) -> Dictionary:
 	var need := order + 1
@@ -468,7 +684,7 @@ static func _parse_points(v: Variant, dim: int) -> Dictionary:
 				if s.is_empty():
 					return {"ok": false, "points": [], "error": "第 %d 个点第 %d 分量为空" % [i + 1, j + 1]}
 				if not s.is_valid_float():
-					return {"ok": false, "points": [], "error": "第 %d 个点第 %d 分量不是有效数字：“%s”" % [i + 1, j + 1, s]}
+					return {"ok": false, "points": [], "error": "第 %d 个点第 %d 分量不是有效数字：「%s」" % [i + 1, j + 1, s]}
 				f = s.to_float()
 			else:
 				f = float(rv)
@@ -491,7 +707,7 @@ static func _parse_floats(v: Variant, what: String) -> Dictionary:
 		if rv is String:
 			var s := String(rv).strip_edges()
 			if s.is_empty() or not s.is_valid_float():
-				return {"ok": false, "vals": PackedFloat64Array(), "error": "%s 第 %d 个值不是有效数字：“%s”" % [what, i + 1, s]}
+				return {"ok": false, "vals": PackedFloat64Array(), "error": "%s 第 %d 个值不是有效数字：「%s」" % [what, i + 1, s]}
 			f = s.to_float()
 		else:
 			f = float(rv)

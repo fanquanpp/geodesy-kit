@@ -10,7 +10,7 @@ func _build_fields() -> void:
 	_add_text_area("转折角（左角，每行一个，十进制度）", "angles",
 			"178.250556\n236.249583")
 	_add_text_area("边长（每行一个，m，边数=角数+1）", "sides", "950.004\n1100.003\n200.002")
-	add_input_row("点名（可选，逗号分隔）", "point_names", "P1,P2")
+	add_input_row("点名（可选，逗号分隔）", "point_names", "P1,P2", LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func _parse_dms(text: String) -> float:
 	var v := GKAngles.parse_dms(text)

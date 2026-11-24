@@ -27,11 +27,10 @@
 
 **落地时需补（本会话无法/未验证，相关模块施工者与集成者负责）：**
 
-1. `F5 磁偏角（WMM）`：无本会话验证向量。`data/wmm.json` 系数取自 NGA 官方发布（美国政府作品，公共领域），实现后用 NOAA/NCEI WMM 计算器抽样比对，测试标注 `SKIP-WMM-DATA` 直到数据就位。
-2. `C8 限差表`：`data/tolerance.json` 各等级限差公式需对照《工程测量标准》GB 50026 等规范文本逐条核读后填入（沿用调研结论：本会话未逐条核读规范限差表）。
-3. `F7 ITRF 历元传播`：官方 ITRF 转换参数表（ITRF 发布，公共领域）落地时写入 `data/itrf_params.json`，本会话未验证具体数值。
-4. iOS 出包：必须在 macOS + Xcode 完成（Windows 只能准备工程与预设）——沿用 `DEVELOPMENT_PLAN.md` 风险项声明。
-5. GNSS 广播星历算例：无本会话验证向量，用构造自洽（开普勒方程迭代收敛性 + 退化圆轨道解析解对照）。
+1. `C8 限差表`：`data/tolerance.json` 各等级限差公式需对照《工程测量标准》GB 50026 等规范文本逐条核读后填入（沿用调研结论：本会话未逐条核读规范限差表）。
+2. `F7 ITRF 历元传播`：官方 ITRF 转换参数表（ITRF 发布，公共领域）落地时写入 `data/itrf_params.json`，本会话未验证具体数值。
+3. iOS 出包：必须在 macOS + Xcode 完成（Windows 只能准备工程与预设）——沿用 `DEVELOPMENT_PLAN.md` 风险项声明。
+【移除】GNSS 广播星历算例：随专题（GNSS/摄影/GIS/地质）域整体移除，不再保留。
 
 ---
 
@@ -111,18 +110,14 @@ res://
 │   ├── cogo/                     # GK-M5
 │   ├── adjustment/               # GK-M6
 │   ├── route/                    # GK-M7（路线曲线）
-│   ├── earthwork/                # GK-M7（土方）
-│   ├── astro/                    # GK-M8（天文时间）
-│   └── topics/                   # GK-M8（GNSS/摄影/GIS/地质）
+│   └── earthwork/                # GK-M7（土方）
 │
 ├── data/                         # 参数库 JSON（core 不读盘，由 app 装载后传参）
 │   ├── ellipsoids.json           # CGCS2000/北京54/西安80/WGS84/GRS80/IAG75/International1924/自定义
 │   ├── crs_presets.json          # EPSG 带号/CM 预设表（CGCS2000 4491-4554；北京54 21413-21463+2401-2442；西安80 2327-2390）
 │   ├── tolerance.json            # 导线/水准各等级限差（落地时按 GB 50026 等核读填写）
 │   ├── formulas.json             # 公式库/百科（出处+适用条件），H 组与报告导出共用
-│   ├── remote_indexes.json       # 遥感指数公式表
 │   ├── itrf_params.json          # F7 ITRF 转换/速率参数（落地时填）
-│   ├── wmm.json                  # F5 WMM 系数（落地时填，SKIP-WMM-DATA）
 │   └── geoids/egm2008-5.pgm      # EGM2008 5′ 格网（解包后 18,671,444 B；对应官方 zip 16,773,259 B；本会话已解析验证：Offset=-108.0, Scale=0.003）
 │
 ├── app/                          # 应用服务（集成者所有；施工模块只读）
@@ -150,8 +145,7 @@ res://
 │       ├── cogo/                 # │ 均为该域施工者自有文件
 │       ├── adjustment/           # │
 │       ├── route/                # │
-│       ├── astro/                # │
-│       └── topics/               # ┘
+│       └── tools/                # ┘
 │
 ├── themes/
 │   ├── main.tres                 # 主题 + type variations（Label/Header 等）
@@ -169,7 +163,6 @@ res://
 │   ├── cogo/                     # │
 │   ├── adjustment/               # │
 │   ├── route/  earthwork/        # │
-│   ├── astro/  topics/           # ┘
 │   └── _selfcheck/               # 框架自检用例（不进正式计数流程外的规范：常规保留为空或冒烟）
 │
 ├── docs/ARCHITECTURE.md          # 本文档
@@ -225,7 +218,7 @@ res://
 ```gdscript
 # app/module_index.gd —— M0 预填，此后只读
 const DOMAINS := ["ellipsoid", "projection", "transform", "cogo",
-                  "adjustment", "route", "astro", "topics"]
+                  "adjustment", "route", "tools"]
 
 # app/module_catalog.gd —— 唯一注册入口
 func load_all() -> Array[Dictionary]   # 逐域 load manifest → 拼接 entries → 去重 id 校验（重复则 push_warning 并丢弃后者）
@@ -308,14 +301,9 @@ func by_domain() -> Dictionary          # 导航树数据源
 | **向量** | 【权威·教材通用公式，本会话两公式路径复算一致】B3/B4 曲线要素三组：(R=500,l0=60,α=30°)→β0=3.4377468°,m=29.9964,p=0.3000,T=164.0514,L=321.7994,E=17.9486,q=6.3034,x0=59.9784,y0=1.1997；(R=1000,l0=100,α=45°)→β0=2.8647890°,m=49.9958,p=0.4166,T=464.3820,L=885.3982,E=82.8432,q=43.3658,x0=99.9750,y0=1.6664；(R=600,l0=120,α=25°30′)→β0=5.7295780°,m=59.9800,p=0.9996,T=195.9723,L=387.0354,E=16.1935,q=4.9093,x0=119.8800,y0=3.9971。【构造·本会话】D3 竖曲线：g1=+3%、g2=−2%、L=400、PVI(1000,100)→BVC(800,94.000)、EVC 高程 96.000、中点 97.5000、E=−2.500、桩 900 高程 96.3750。【构造·本会话】E1：20×20 方格四角 (1.0,2.0,1.5,0.5)→V=500.0 m³。【构造·本会话】E4：Δh=30、平距 500→空间 500.8992、坡度 6.00%。【构造·判据明确】D1/D2/D4/D5/D6/D7/E2/E3/E5/E6：线元法用回旋线积分双路径互检（完整公式链 vs Fresnel 数值积分）；断链构造已知断链值往返换算闭合；DTM 用已知三棱柱精确体积；坡脚用解析断面（已知边坡线与地面线交点） |
 | **要点** | 本模块体量最大；route/earthwork 两目录可由两人合署（文件互不重叠）；线元法是 D 组地基，先做并冻结 |
 
-### GK-M8 天文时间与专题计算（F1/F3/F4/F5/F6 + I-GNSS/摄影/GIS/地质）
+### GK-M8 天文时间与专题计算（已移除）
 
-| | |
-|---|---|
-| **功能** | M8-1 `solar.gd` **F3 太阳方位角/高度角**（NOAA 算法移植，真北定向）；M8-2 `sun_events.gd` **F4 日出日落/时角/赤纬**（ha0=arccos[cos90.833°/(cosφcosδ)−tanφtanδ]，含折光 0.833° 综合）；M8-3 `magdecl.gd` **F5 磁偏角 WMM**（球谐系数模型，data/wmm.json，落地补）；M8-4 `time_sys.gd` **F6 时间系统**（UTC↔GPS 时（含周/周内秒/闰秒说明）↔儒略日↔年积日）；M8-5 `curvature_refraction.gd` **F1 地球曲率与大气折光**（c1·D²/R，c1=1−k，k≈0.13/0.14 可配）；M8-6 `gnss.gd` I-GNSS（广播星历开普勒方程→卫星 ECEF、时间、DOP）；M8-7 `photogrammetry.gd` I-摄影测量（共线方程、单像空间后方交会迭代 LS、前方交会、航高/GSD/重叠度、遥感指数 NDVI/EVI/SAVI/NDWI/MNDWI/NDBI/NBR/BAI/VARI/NDSI + 自定义表达式经 M1 expression）；M8-8 `gis_measure.gd` I-GIS（Haversine/缓冲区经纬范围估算/IDW 插值/球面面积）；M8-9 `geology.gd` I-地质矿山（产状换算/真视厚度/钻孔测斜三维/线储量估算） |
-| **文件** | `core/astro/*.gd`（M8-1~M8-5）、`core/topics/*.gd`（M8-6~M8-9）；测试 `tests/astro/`、`tests/topics/` |
-| **向量** | 【权威·NOAA 算法，本会话 pvlib 互差≤0.007°】F3 三例：(2024-03-20 12:00Z, 40.0°,−105.25°)→az=78.719°、zen=102.900°、δ=+0.14703°、EoT=−7.291min；(2024-06-21 06:00Z, 39.9075°,116.3913°)→az=240.788°、zen=27.358°、δ=+23.43811°、EoT=−1.871min；(2024-01-01 03:00Z, −33.8678°,151.2073°)→az=304.675°、zen=17.307°、δ=−23.04888°、EoT=−3.152min。【构造·本会话】F4 北京 2024-06-21：ha0=112.5345°、日出 UTC 20.7695h（前一日，即北京 04:46）、日落 UTC 11.7741h、昼长 15.0046h（判据：日出时刻太阳高度≈−0.833°）。【权威·常数】F6：JD(2000-01-01 12:00UT)=2451545.0；GPS 周起点 1980-01-06 00:00 UTC；2024-06-21 年积日 173。【构造·本会话】I-GIS：Haversine 北京→上海 1074470.9m（R1=6371008.7714m）。【构造·本会话】I-地质：走向 045°/倾角 30°→倾向 135°；剖面宽 100m ⊥ 走向→真厚度 50.0m。【构造·本会话】I-摄影：天顶像 f=100,H=100、物点 (±20,±15,0)→像点 (±20,∓15)、比例尺 1:100（构造成像自洽）。【构造·本会话】I-GNSS DOP：4 星对称单位视线 (±0.5,±0.3,0.8124)→PDOP=2.0388。【落地补】F5 WMM 系数与抽样比对（NOAA 计算器）；GNSS 星历算例（实测 RINEX 广播星历一条） |
-| **要点** | 太阳算法源码已留档 `_scripts/azel.html`、`_scripts/solcalc.js`；NOAA 算法适用 1901-2099（电子表格版口径），页脚标注；遥感指数表达式引擎直接复用 M1-7 |
+> 整域移除（M8 的 core 两目录、计算器两目录、测试两目录、天文域专属数据 JSON 两个与域图标均已删除）。理由：本应用定位为高斯/UTM 平面工程测量计算器——GNSS 向量网平差实际走 `core/adjustment/gnss_net.gd`（C11），原 GNSS 专题的 DOP/广播星历无 core 内部消费方；平面面积已有 COGO 面积计算器（B6），球面大圆距离/球面面积属 GIS 场景而非工程测量主业；单迁 GIS 量测文件须为孤例保留半个域（core 文件+面板+manifest+测试），违背删域主线。
 
 ### 集成阶段（Wave 2，非并行施工模块——G 组 / H 组 / 导航接线 / 导出）
 

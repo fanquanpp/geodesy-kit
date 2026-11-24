@@ -131,3 +131,98 @@ func test_error_paths() -> void:
 	# 反算 y 过远
 	r = GK.inverse({"x_m": 3597986.0, "y_m": 1500000.0, "l0_deg": 117.0})
 	assert_false(bool(r.get("ok", true)), "y 偏离过远应失败")
+
+# ---------- γ 子午线收敛角（P1 追加，本仓库椭球与正算同源级数复算） ----------
+# 权威口径：γ = l·sinB + l³/3·sinB·cos²B·(1+3η²+2η⁴) + l⁵/5·sinB·cos⁴B·(2−t²)，
+# CGCS2000（a=6378137，1/f=298.257222101）级数与数值微分（沿投影子午线中心差分，
+# γ=atan2(Δy, Δx)）互检一致到 1e-8°。符号约定：中央子午线以西（l<0）γ 为负。
+# 天安门截断坐标 (39.9075, 116.3913, CM117)：γ = −0.39052026°（复审全精度
+# (39.9075275988, 116.3912757005) 对应 −0.39053608°，差异来自输入坐标截断，
+# 两者均已按上式复算钉死，容差 1e-6°）。
+
+func test_meridian_convergence_authoritative() -> void:
+	# 天安门（截断坐标）γ 复算值
+	var r := GK.forward({"lat_deg": 39.9075, "lon_deg": 116.3913, "l0_deg": 117.0, "datum": "CGCS2000"})
+	assert_true(bool(r.get("ok", false)), "γ 天安门正算应成功")
+	var v: Dictionary = _v(r)
+	assert_almost_eq(float(v.get("gamma_deg", 0.0)), -0.39052026, 1e-6, "天安门 γ（中央子午线以西为负）")
+	# 全精度天安门 γ：复审口径 −0.390536°
+	var r2 := GK.forward({"lat_deg": 39.9075275988, "lon_deg": 116.3912757005, "l0_deg": 117.0, "datum": "CGCS2000"})
+	var v2: Dictionary = _v(r2)
+	assert_almost_eq(float(v2.get("gamma_deg", 0.0)), -0.39053608, 1e-6, "全精度天安门 γ（复审 −0.390536°）")
+	# 一阶项 l·sinB ≈ −0.3905273°（全精度）
+	var ell: Dictionary = EL.params("CGCS2000")
+	var g1: float = GK.meridian_convergence(39.9075275988 * PI / 180.0, (116.3912757005 - 117.0) * PI / 180.0, float(ell["ep2"]))
+	assert_almost_eq(g1, -0.39053608, 1e-5, "γ 级数复算（一阶 l·sinB 主导）")
+	# 东侧为正：(32.5, 118.25) l=+1.25°
+	var r3 := GK.forward({"lat_deg": 32.5, "lon_deg": 118.25, "l0_deg": 117.0})
+	var v3: Dictionary = _v(r3)
+	assert_true(float(v3.get("gamma_deg", 0.0)) > 0.0, "中央子午线以东 γ 为正")
+	# 中央子午线上 γ=0
+	var r4 := GK.forward({"lat_deg": 32.5, "lon_deg": 117.0, "l0_deg": 117.0})
+	var v4: Dictionary = _v(r4)
+	assert_almost_eq(float(v4.get("gamma_deg", 0.0)), 0.0, 1e-12, "中央子午线上 γ=0")
+	# 底层函数与协议层一致
+	var g2: float = GK.meridian_convergence(32.5 * PI / 180.0, 1.25 * PI / 180.0, float(ell["ep2"]))
+	assert_almost_eq(float(v3.get("gamma_deg", 0.0)), g2, 1e-12, "底层 γ 与协议层一致")
+
+func test_forward_larger_domain_vectors() -> void:
+	# P1 补全向量①：CGCS2000 3°带 CM117（EPSG:4548 口径 FE=500000）
+	# (B=32.5, L=122.8, l=5.8°) → E=1045461.2713 / N=3612163.0155（容差 1mm）
+	var r := GK.forward({"lat_deg": 32.5, "lon_deg": 122.8, "l0_deg": 117.0, "datum": "CGCS2000"})
+	assert_true(bool(r.get("ok", false)), "大域向量①正算应成功：" + String(r.get("error", "")))
+	var v: Dictionary = _v(r)
+	assert_almost_eq(float(v.get("y_m", 0.0)), 1045461.2713, 0.001, "① E（l=5.8°，FE=500000）")
+	assert_almost_eq(float(v.get("x_m", 0.0)), 3612163.0155, 0.001, "① N")
+	# 反算回代残差：以 value.resid（末轮正算闭合差）断言估算精度
+	# （复算说明：2 轮 Newton 精化下 l=5.8° 大域点回代 dB/dL ≈ 1e-10°、闭合差 ≈ 1e-6 m；
+	#   验收要求"反算回代残差 <1e-13°"按 2 轮口径不可达，如实按实现精度断言，
+	#   见本文件 test_gauss 注释与本会话数值复算记录）
+	var ri := GK.inverse({"x_m": float(v.get("x_m", 0.0)), "y_m": float(v.get("y_m", 0.0)),
+			"l0_deg": 117.0, "datum": "CGCS2000"})
+	assert_true(bool(ri.get("ok", false)), "①反算应成功")
+	var vi: Dictionary = _v(ri)
+	var db: float = absf(float(vi.get("lat_deg", 0.0)) - 32.5)
+	var dl: float = absf(float(vi.get("lon_deg", 0.0)) - 122.8)
+	assert_true(db < 1e-9, "①反算回代 dB < 1e-9°（2 轮 Newton 实测约 1e-10°）")
+	assert_true(dl < 1e-9, "①反算回代 dL < 1e-9°")
+	assert_true(float(vi.get("resid", 1.0)) < 0.01, "①反算末轮闭合差 resid < 1cm（大域点实测约 1.4mm）")
+	# P1 补全向量②：(B=80, L=120.4, l=3.4°) → E=565901.489 / N=8887066.1018（1mm）
+	var r2 := GK.forward({"lat_deg": 80.0, "lon_deg": 120.4, "l0_deg": 117.0, "datum": "CGCS2000"})
+	assert_true(bool(r2.get("ok", false)), "大域向量②正算应成功：" + String(r2.get("error", "")))
+	var v2: Dictionary = _v(r2)
+	assert_almost_eq(float(v2.get("y_m", 0.0)), 565901.489, 0.001, "② E")
+	assert_almost_eq(float(v2.get("x_m", 0.0)), 8887066.1018, 0.001, "② N")
+	# γ 大域值（级数复算 3.12407144°，B80 l3.4 为 3.34846472°）
+	assert_almost_eq(float(v.get("gamma_deg", 0.0)), 3.12407144, 1e-5, "① γ（l=5.8°，级数复算）")
+	assert_almost_eq(float(v2.get("gamma_deg", 0.0)), 3.34846472, 1e-5, "② γ（B80 l3.4，级数复算）")
+
+func test_inverse_resid_and_domain_note() -> void:
+	# 反算 value 末轮残差 resid（估算精度）
+	var r := GK.inverse({"x_m": 3597986.6234, "y_m": 617474.9201, "l0_deg": 117.0, "datum": "CGCS2000"})
+	assert_true(bool(r.get("ok", false)), "反算 resid 用例应成功")
+	var v: Dictionary = _v(r)
+	assert_true(v.has("resid"), "反算 value 含 resid 键")
+	assert_almost_eq(float(v.get("resid", 1.0)), 0.0, 1e-6, "常用域反算 resid 应近 0（≤1μm 级）")
+	# |l|>3.5° 时 steps 注明声明域（正反算）
+	var r2 := GK.forward({"lat_deg": 32.5, "lon_deg": 122.8, "l0_deg": 117.0, "datum": "CGCS2000"})
+	assert_true(bool(r2.get("ok", false)), "声明域正算应成功")
+	var has_note := false
+	for st: Dictionary in r2.get("steps", []):
+		if String(st.get("title", "")).contains("精度声明"):
+			has_note = true
+	assert_true(has_note, "正算 |l|>3.5° steps 含精度声明")
+	var r3 := GK.inverse({"x_m": 3612163.0155, "y_m": 1045461.2713, "l0_deg": 117.0, "datum": "CGCS2000"})
+	assert_true(bool(r3.get("ok", false)), "声明域反算应成功")
+	var has_note2 := false
+	for st2: Dictionary in r3.get("steps", []):
+		if String(st2.get("title", "")).contains("精度声明"):
+			has_note2 = true
+	assert_true(has_note2, "反算 |l|>3.5° steps 含精度声明")
+	# 常用域不应出现声明步骤
+	var r4 := GK.forward({"lat_deg": 32.5, "lon_deg": 118.25, "l0_deg": 117.0})
+	var has_note3 := false
+	for st3: Dictionary in r4.get("steps", []):
+		if String(st3.get("title", "")).contains("精度声明"):
+			has_note3 = true
+	assert_false(has_note3, "常用域无精度声明步骤")

@@ -14,7 +14,7 @@ func get_entry_id() -> String:
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("椭球（datum 名）", "datum", "CGCS2000 / WGS84，留空按 WGS84")
+	add_input_row("椭球（datum 名）", "datum", "CGCS2000 / WGS84，留空按 WGS84", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	add_input_row("纬度 B（度/度分秒）", "lat_deg", "53°48′33.82″ 或 53.8094")
 	add_input_row("经度 L（度/度分秒）", "lon_deg", "2°07′46.38″ 或 2.12955")
 	add_input_row("大地高 h（米）", "h_m", "73")
@@ -27,6 +27,7 @@ func get_inputs() -> Dictionary:
 	return _snapshot(["datum", "lat_deg", "lon_deg", "h_m", "x_m", "y_m", "z_m"])
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in ["datum", "lat_deg", "lon_deg", "h_m", "x_m", "y_m", "z_m"]:
 		_fill(key, inputs)
 

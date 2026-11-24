@@ -11,7 +11,7 @@ func get_description() -> String:
 	return "MGRS 串 → B/L（结果为方格中心；1m 精度时偏差 ≤0.5m）。"
 
 func _setup() -> void:
-	_add_row("MGRS 串", "mgrs", "如 50SMK4796917671", true)
+	_add_row("MGRS 串", "mgrs", "如 50SMK4796917671", true, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var p := _fail_or(_params())

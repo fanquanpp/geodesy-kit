@@ -6,17 +6,17 @@ const Ui := preload("res://scenes/calculators/route/ui_common.gd")
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("起点 X 东 (m)", "x_m", "如 1000")
-	add_input_row("起点 Y 北 (m)", "y_m", "如 2000")
-	add_input_row("起点切线方位 (°)", "bearing_deg", "如 0")
-	add_input_row("线元表 类型,长,k0,k1（分号分行）", "elements", "如 line,100; arc,235.6,0.0025,0.0025")
-	add_input_row("桩号列表 (m)", "chains", "空格/逗号分隔，如 50 150 200")
-	add_input_row("偏距列表 (m)", "offsets", "右正左负，与桩号对应；留空全为 0")
-	add_input_row("测站 X 东 (m)", "st_x", "极坐标放样可选")
-	add_input_row("测站 Y 北 (m)", "st_y", "可选")
-	add_input_row("后视方位 (°)", "bs_bearing", "与后视点二选一")
-	add_input_row("后视点 X 东 (m)", "bs_x", "可选")
-	add_input_row("后视点 Y 北 (m)", "bs_y", "可选")
+	add_input_row("起点 X 东（m）", "x_m", "如 1000")
+	add_input_row("起点 Y 北（m）", "y_m", "如 2000")
+	add_input_row("起点切线方位（°）", "bearing_deg", "如 0")
+	add_input_row("线元表 类型,长,k0,k1（分号分行）", "elements", "如 line,100; arc,235.6,0.0025,0.0025", LineEdit.KEYBOARD_TYPE_DEFAULT)
+	add_input_row("桩号列表（m）", "chains", "空格/逗号分隔，如 50 150 200", LineEdit.KEYBOARD_TYPE_DEFAULT)
+	add_input_row("偏距列表（m）", "offsets", "右正左负，与桩号对应；留空全为 0", LineEdit.KEYBOARD_TYPE_DEFAULT)
+	add_input_row("测站 X 东（m）", "st_x", "极坐标放样可选")
+	add_input_row("测站 Y 北（m）", "st_y", "可选")
+	add_input_row("后视方位（°）", "bs_bearing", "与后视点二选一")
+	add_input_row("后视点 X 东（m）", "bs_x", "可选")
+	add_input_row("后视点 Y 北（m）", "bs_y", "可选")
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
@@ -80,6 +80,7 @@ func run() -> Dictionary:
 	return Core.forward(p)
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

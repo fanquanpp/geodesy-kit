@@ -1,10 +1,10 @@
 # core/adjustment/tolerance.gd —— GK-M6-4 限差检核（C8：用户自输限差模式 + 限差表查表模式）
 #
 # 设计约定（docs/ARCHITECTURE.md §4 GK-M6 / §5 协议 / §0 落地补 #2）：
-#   - ⚠ 诚实声明：data/tolerance.json 目前为占位空表（GB 50026 等规范限差未逐条核读，
+#   - ⚠ 诚实声明：限差数据文件目前为占位空表（GB 50026 等规范限差未逐条核读，
 #     不伪造标准值）。本模块提供两种模式：
-#       1) 用户自输限差（check_scalar / check_relative / √n·k、√L·k 公式推算助手）——当前主用；
-#       2) 限差表查表（lookup_table）——app 层读 data/tolerance.json 后整表传入，
+#       1) 用户自输限差（标量检核 / 相对闭合差检核 / √n·k、√L·k 公式推算助手）——当前主用；
+#       2) 限差表查表——界面层读限差数据文件后整表传入，
 #          查不到即返回中文提示"未收录，请改用自输限差"，绝不编造限差；
 #   - 超限不是计算失败：ok=true 且 value.ok_limit=false（§5 规则③）；只有输入非法才 ok=false；
 #   - 超限提示必须含"限差值/实际值/依据"三要素（basis 字段 + steps 明细）；
@@ -18,7 +18,7 @@ extends RefCounted
 ## value: {f_actual, limit_value, ok_limit, basis}
 static func check_scalar(p: Dictionary) -> Dictionary:
 	if not p.has("name") or String(p["name"]).is_empty():
-		return _fail("缺少检核项名称 name")
+		return _fail("缺少检核项名称")
 	if not p.has("actual") or not _finite_num(p.get("actual")):
 		return _fail("缺少实际值 actual（数值）")
 	if not p.has("limit") or not _finite_num(p.get("limit")) or float(p["limit"]) < 0.0:
@@ -51,7 +51,7 @@ static func check_scalar(p: Dictionary) -> Dictionary:
 			"title": "2. 超限提示",
 			"formula": "超限三要素：实际值 / 限差值 / 依据",
 			"substitution": "实际 %s %s > 限差 %s %s" % [_fmt(actual), unit, _fmt(limit), unit],
-			"result": "请复核观测与已知数据；如需规范限差请先核读 GB 50026 等并填入 data/tolerance.json",
+			"result": "请复核观测与已知数据；如需规范限差请先核读 GB 50026 等规范后录入限差表",
 		})
 	return _ok(value, steps, "限差检核：%s（%s 模式）" % [name, basis])
 
@@ -60,9 +60,9 @@ static func check_scalar(p: Dictionary) -> Dictionary:
 ## value: {rel_actual_k, rel_limit_k, ok_limit, basis}
 static func check_relative(p: Dictionary) -> Dictionary:
 	if not p.has("actual_k") or not _finite_num(p.get("actual_k")) or float(p["actual_k"]) <= 0.0:
-		return _fail("缺少正的 actual_k（相对闭合差分母，如 1/2000 中的 2000）")
+		return _fail("缺少正的实际分母 k（相对闭合差分母，如 1/2000 中的 2000）")
 	if not p.has("limit_k") or not _finite_num(p.get("limit_k")) or float(p["limit_k"]) <= 0.0:
-		return _fail("缺少正的 limit_k（限差分母）")
+		return _fail("缺少正的限差分母 k（限差 1/k 的分母）")
 	var name := String(p.get("name", "相对闭合差"))
 	var actual_k := float(p["actual_k"])
 	var limit_k := float(p["limit_k"])
@@ -79,7 +79,7 @@ static func check_relative(p: Dictionary) -> Dictionary:
 	var steps := [
 		{
 			"title": "1. 相对精度限差检核（%s）" % name,
-			"formula": "实际 1/k_actual ≥ 1/k_limit → 通过（k 越大精度越高）",
+			"formula": "实际 1/k_实际 ≥ 1/k_限差 → 通过（k 越大精度越高）",
 			"substitution": "实际 1/%s，限差 1/%s" % [_fmt(actual_k), _fmt(limit_k)],
 			"result": ("通过" if ok else "超限") + "（依据：%s）" % basis,
 		},
@@ -90,7 +90,7 @@ static func check_relative(p: Dictionary) -> Dictionary:
 ## ⚠ k 不是规范值：本函数只做纯数学推算，系数来源与限差依据由调用方如实标注
 static func angle_limit_sqrt_n(p: Dictionary) -> Dictionary:
 	if not p.has("k_coef") or not _finite_num(p.get("k_coef")) or float(p["k_coef"]) <= 0.0:
-		return _fail("缺少正的 k_coef（测角推算系数，用户输入）")
+		return _fail("缺少正的测角推算系数 k（用户输入）")
 	if not p.has("n") or not _finite_num(p.get("n")) or int(p["n"]) < 1:
 		return _fail("缺少正整数 n（转折角个数）")
 	var k_coef := float(p["k_coef"])
@@ -109,31 +109,31 @@ static func angle_limit_sqrt_n(p: Dictionary) -> Dictionary:
 ## ⚠ k 不是规范值：本函数只做纯数学推算，系数来源与限差依据由调用方如实标注
 static func level_limit_sqrt_l(p: Dictionary) -> Dictionary:
 	if not p.has("k_coef") or not _finite_num(p.get("k_coef")) or float(p["k_coef"]) <= 0.0:
-		return _fail("缺少正的 k_coef（每公里推算系数 mm，用户输入）")
+		return _fail("缺少正的每公里推算系数 k（mm，用户输入）")
 	if not p.has("L_km") or not _finite_num(p.get("L_km")) or float(p["L_km"]) <= 0.0:
-		return _fail("缺少正的 L_km（路线长）")
+		return _fail("缺少正的路线长 L（km）")
 	var k_coef := float(p["k_coef"])
 	var l_km := float(p["L_km"])
 	var limit := k_coef * sqrt(l_km)
 	return _ok({"limit_value": limit, "k_coef": k_coef, "L_km": l_km}, [
 		{
 			"title": "1. 高差闭合差限差推算",
-			"formula": "限差 = k·√L_km（mm；纯数学推算；k 由用户输入，非规范值）",
+			"formula": "限差 = k·√L（mm，L 为路线长 km；纯数学推算；k 由用户输入，非规范值）",
 			"substitution": "k = %s mm，L = %s km" % [_fmt(k_coef), _fmt(l_km)],
 			"result": "限差 = %s mm" % _fmt(limit),
 		},
 	], "水准限差推算 k·√L（系数来源由用户声明）")
 
-## 限差表查表模式：table 为 app 层读入的 data/tolerance.json 的 tolerances 数组
+## 限差表查表模式：table 为 app 层读入的限差数据文件条目数组
 ## p = {table: Array, kind: 条目类型, level: 等级}
 ## 命中返回条目（limit_value/limit_formula/basis 原样透传）；查不到返回 ok=false 中文提示。
-## ⚠ 当前 data/tolerance.json 为占位空表（规范未核读），实际调用会走"未收录"分支。
+## ⚠ 当前限差数据文件为占位空表（规范未核读），实际调用会走"未收录"分支。
 static func lookup_table(p: Dictionary) -> Dictionary:
 	var table: Variant = p.get("table")
 	var kind := String(p.get("kind", ""))
 	var level := String(p.get("level", ""))
 	if not (table is Array):
-		return _fail("缺少限差表 table（app 层读入 data/tolerance.json 的 tolerances 数组）")
+		return _fail("缺少限差表（由限差数据文件读入的条目数组）")
 	if kind.is_empty() or level.is_empty():
 		return _fail("缺少 kind（限差类别）或 level（等级）")
 	for e_v in table:
@@ -151,12 +151,12 @@ static func lookup_table(p: Dictionary) -> Dictionary:
 			}, [
 				{
 					"title": "1. 限差表查表",
-					"formula": "按 kind + level 在 data/tolerance.json 中精确匹配",
-					"substitution": "kind = %s，level = %s" % [kind, level],
+					"formula": "按限差类别 + 等级在限差数据表中精确匹配",
+					"substitution": "类别 = %s，等级 = %s" % [kind, level],
 					"result": "命中（依据：%s）" % String(e.get("basis", "未注明")),
 				},
-			], "限差表查表（data/tolerance.json 驱动）")
-	return _fail("限差表未收录类别 %s / 等级 %s：当前 data/tolerance.json 为占位空表（规范限差未核读），请改用自输限差模式（check_scalar/check_relative），或在核读 GB 50026 等规范后补入数据" % [kind, level])
+			], "限差表查表（限差数据文件驱动）")
+	return _fail("限差表未收录类别 %s / 等级 %s：当前限差数据表为占位空表（规范限差未核读），请改用自输限差模式，或在核读 GB 50026 等规范后补入数据" % [kind, level])
 
 # ---------- 内部 ----------
 

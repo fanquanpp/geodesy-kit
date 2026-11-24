@@ -1,14 +1,10 @@
 # core/cogo/circle_tools.gd —— GK-M5：三点定圆（B9）+ 圆弧要素反算
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M5 / §5 协议）：
-#   - 纯静态函数、零引擎依赖；坐标/方位角约定同 cogo.gd（x=东、y=北、北起顺时针）；
-#   - 三点定圆：两弦垂直平分线联立（等价于线性方程组），
-#     2(x₂−x₁)·X + 2(y₂−y₁)·Y = x₂²+y₂²−x₁²−y₁² 与 2(x₃−x₁)·X + 2(y₃−y₁)·Y = … ；
-#     三点共线（行列式≈0）无解；
-#   - 圆弧要素：圆心角 Δ（顺/逆时针方向化到 (0°, 360°]）、弧长 L = R·Δrad、
-#     弦长 C = 2R·sin(Δ/2)、弓高 f = R(1−cos(Δ/2))、扇形面积 = R²Δrad/2、
-#     弓形面积 = R²(Δrad − sin Δrad)/2（Δ>180° 时为优弧弓形）；
-#   - 每个计算入口统一返回 §5 协议 {ok, value, steps, formula, error}。
+# 纯静态、零引擎依赖；坐标/方位约定同 cogo.gd（x=东、y=北、北起顺时针）。
+# 三点定圆：两弦垂直平分线联立（线性方程组），三点共线（行列式≈0）无解。
+# 圆弧要素：圆心角 Δ 化到 (0°,360°]、弧长 L=R·Δrad、弦长 C=2R·sin(Δ/2)、弓高 f=R(1−cos(Δ/2))、
+# 扇形面积=R²Δrad/2、弓形面积=R²(Δrad−sin Δrad)/2（Δ>180° 为优弧弓形）。
+# 每个计算入口统一返回 §5 协议 {ok, value, steps, formula, error}。
 class_name GKCircleTools
 extends RefCounted
 

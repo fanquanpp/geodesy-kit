@@ -1,5 +1,7 @@
 # scenes/calculators/projection/utm_forward.gd —— a7_utm_fwd UTM 正算（A7）
 # 计算器契约：继承 GKCalculatorBase（经 proj_calc_base），run() 返回 §5 协议。
+# 标签域 "utm"：core/projection/utm.gd 输出 n_m/e_m 为平面坐标，经域子表覆盖
+# 通用表 n_m=「卯酉圈曲率半径」的撞名词条。
 extends "res://scenes/calculators/projection/proj_calc_base.gd"
 
 const _UT := preload("res://core/projection/utm.gd")
@@ -10,11 +12,14 @@ func get_title() -> String:
 func get_description() -> String:
 	return "B/L → UTM 网格坐标（k0=0.9996，FE=500km，南半球 FN=10,000km；含挪威/斯瓦尔巴例外选带）。"
 
+func get_label_domain() -> String:
+	return "utm"
+
 func _setup() -> void:
 	_add_row("纬度 B（°或度分秒）", "lat_deg", "如 43.642556", true)
 	_add_row("经度 L（°或度分秒）", "lon_deg", "如 -70.252228", true)
 	_add_row("带号（可空自动）", "zone", "1..60，留空自动选带", false)
-	_add_row("基准", "datum", "WGS84 / 其他", false)
+	_add_row("基准", "datum", "WGS84 / 其他", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var p := _fail_or(_params())

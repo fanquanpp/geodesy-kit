@@ -8,7 +8,7 @@ func get_title() -> String:
 	return "Web墨卡托正算（A14）"
 
 func get_description() -> String:
-	return "B/L → Web 地图米制坐标（球面公式，|B| ≤ 85.06°；EPSG:3857 定义）。"
+	return "B/L → Web 地图米制坐标（球面公式，|B| ≤ 85.05112878°；EPSG:3857 定义）。"
 
 func _setup() -> void:
 	_add_row("纬度 B（°或度分秒）", "lat_deg", "如 39.9075276", true)

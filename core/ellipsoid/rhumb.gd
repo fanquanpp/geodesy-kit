@@ -1,16 +1,9 @@
 # core/ellipsoid/rhumb.gd —— A12 恒向线（等角航线/loxodrome）正反解
 #
-# 精确 Mercator 参数法（球面严格式，ARCHITECTURE.md §4 GK-M2 指定）：
-#   等量纬度 ψ(φ) = ln tan(π/4 + φ/2)；
-#   Δψ = ψ(φ₂) − ψ(φ₁)；方位角 az = atan2(Δλ, Δψ)（常向线性质：沿航线上处处相等）；
-#   距离 d = |Δφ|·R / cos(az)（球面上 dφ = cos(az)·ds/R 严格成立）。
-#   等纬退化（|Δψ|≤1e-10，即沿平行圈东西航行）：d = R·|Δλ|·cos φ（平行圈弧长）。
-#   反解：δ=d/R；Δφ = δ·cos(az)；φ₂ = φ₁+Δφ；q = Δψ/Δφ（Δφ≈0 时取 cos φ₁）；
-#         Δλ = δ·sin(az)/q；λ₂ = λ₁ + Δλ。
-# 半径默认 R₁ = (2a+b)/3（WGS84 = 6371008.7714 m，与向量口径一致）。
-# 验收【构造·_scripts/gen_vectors_b.py:79-91 复跑一致】：
-#   北京(39.9075276,116.3912757) → 上海(31.1666667,121.4666667)：
-#   d = 1074590.1 m，az = 154.7528°（R1=6371008.7714 m）。
+# 精确 Mercator 参数法（球面严格式）：ψ=ln tan(π/4+φ/2)；az=atan2(Δλ,Δψ)（航线处处相等）；
+# d=|Δφ|·R/cos az；等纬退化（|Δψ|≤1e-10）d=R·|Δλ|·cos φ（平行圈弧长）。反解按 q=Δψ/Δφ（Δφ≈0 取 cos φ₁）。
+# 半径默认 R₁=(2a+b)/3（WGS84=6371008.7714 m，与向量口径一致）。
+# 验收（_scripts/gen_vectors_b.py:79-91 复跑一致）：北京→上海 d=1074590.1 m、az=154.7528°。
 # 协议：static func forward/inverse(p) -> {ok, value, steps, formula, error}。
 class_name GKRhumb
 extends RefCounted

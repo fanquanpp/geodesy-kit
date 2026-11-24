@@ -15,7 +15,7 @@ func get_entry_id() -> String:
 func _ready() -> void:
 	super._ready()
 	add_input_row("平均半径 R（米，可留空）", "radius_m", "留空用 WGS84 R₁")
-	add_input_row("椭球（datum 名）", "datum", "CGCS2000 / WGS84")
+	add_input_row("椭球（datum 名）", "datum", "CGCS2000 / WGS84", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	add_input_row("B₁（度/度分秒）", "lat1_deg", "起点纬度")
 	add_input_row("L₁（度/度分秒）", "lon1_deg", "起点经度")
 	add_input_row("B₂（度/度分秒）", "lat2_deg", "正解：终点纬度")
@@ -28,6 +28,7 @@ func get_inputs() -> Dictionary:
 	return _snapshot(["radius_m", "datum", "lat1_deg", "lon1_deg", "lat2_deg", "lon2_deg", "az_deg", "distance_m"])
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in ["radius_m", "datum", "lat1_deg", "lon1_deg", "lat2_deg", "lon2_deg", "az_deg", "distance_m"]:
 		_fill(key, inputs)
 

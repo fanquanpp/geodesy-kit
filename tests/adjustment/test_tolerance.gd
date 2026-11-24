@@ -82,3 +82,54 @@ func test_c8_invalid_inputs() -> void:
 	assert_false(bool(r3.get("ok", true)), "非正 k 应失败")
 	var r4 := TL.lookup_table({"kind": "a", "level": "b"})
 	assert_false(bool(r4.get("ok", true)), "缺表应失败")
+	# P4 文案口径：错误提示用中文量名，不含裸键名
+	var r5 := TL.check_scalar({"actual": 1.0, "limit": 1.0})
+	assert_false(bool(r5.get("ok", true)), "缺名称应失败")
+	assert_true(String(r5.get("error", "")).contains("缺少检核项名称"), "缺名称提示：" + String(r5.get("error", "")))
+	assert_false(String(r5.get("error", "")).contains(" name"), "提示不应含裸键名 name")
+	var r6 := TL.lookup_table({"kind": "a", "level": "b"})
+	assert_true(String(r6.get("error", "")).contains("缺少限差表"), "缺表提示：" + String(r6.get("error", "")))
+	assert_false(String(r6.get("error", "")).contains(" table"), "提示不应含裸键名 table")
+
+# ---------- P2 补充：推算/查表双路径扩展覆盖（更多 kind/level）----------
+# 复审确认 lookup_table 已存在（tolerance.gd lookup_table），此处扩展双路径覆盖：
+#   路径一：公式推算（k·√n / k·√L）——纯数学推算助手；
+#   路径二：限差表查表（lookup_table）——自建多 kind/level 表，命中与未收录两种结果。
+
+## P2：推算路径扩展——√n 公式在不同 n 下的数值核对（n=9，k=8 → 24）
+func test_c8_formula_path_sqrt_n_expanded() -> void:
+	var r1 := TL.angle_limit_sqrt_n({"k_coef": 8.0, "n": 9})
+	assert_true(bool(r1.get("ok", false)), "√n 公式（n=9）应成功")
+	assert_almost_eq(float(r1["value"]["limit_value"]), 24.0, 1e-12, "8·√9 = 24")
+	# 与查表路径同一 kind/level 语义：推算结果可经 check_scalar 直接检核
+	var chk := TL.check_scalar({"name": "角度闭合差", "actual": 20.0, "limit": float(r1["value"]["limit_value"]), "unit": "″", "basis": "推算限差 k·√n（k=8，用户输入）"})
+	assert_true(bool(chk.get("ok", false)), "推算限差可喂给 check_scalar 检核")
+	assert_true(bool(chk["value"]["ok_limit"]), "|20|≤24 推算口径应通过")
+
+## P2：推算路径扩展——√L 公式（L=9km，k=12mm → 36mm）
+func test_c8_formula_path_sqrt_l_expanded() -> void:
+	var r := TL.level_limit_sqrt_l({"k_coef": 12.0, "L_km": 9.0})
+	assert_true(bool(r.get("ok", false)), "√L 公式（L=9）应成功")
+	assert_almost_eq(float(r["value"]["limit_value"]), 36.0, 1e-12, "12·√9 = 36 mm")
+
+## P2：查表路径扩展——多 kind/level 自建表：命中各自条目、跨等级不串行
+func test_c8_lookup_path_multi_kind_level() -> void:
+	# 用户自建表（测试数据，非规范值）：3 类条目
+	var table := [
+		{"kind": "traverse_angle", "level": "图根", "limit_value": 60.0, "limit_formula": "60√n", "basis": "测试自建表·图根"},
+		{"kind": "traverse_angle", "level": "一级", "limit_value": 16.0, "limit_formula": "16√n", "basis": "测试自建表·一级"},
+		{"kind": "traverse_rel", "level": "图根", "limit_value": 2000.0, "limit_formula": "1/2000", "basis": "测试自建表·相对"},
+	]
+	var h1 := TL.lookup_table({"table": table, "kind": "traverse_angle", "level": "一级"})
+	assert_true(bool(h1.get("ok", false)), "traverse_angle/一级 应命中")
+	if bool(h1.get("ok", false)):
+		assert_almost_eq(float(h1["value"]["limit_value"]), 16.0, 1e-12, "一级限差 16（不与图根 60 串行）")
+		assert_eq(String(h1["value"]["limit_formula"]), "16√n", "限差表达式透传")
+	var h2 := TL.lookup_table({"table": table, "kind": "traverse_rel", "level": "图根"})
+	assert_true(bool(h2.get("ok", false)), "traverse_rel/图根 应命中")
+	if bool(h2.get("ok", false)):
+		assert_almost_eq(float(h2["value"]["limit_value"]), 2000.0, 1e-12, "相对闭合差限差透传")
+	var miss := TL.lookup_table({"table": table, "kind": "level_per_km", "level": "三等"})
+	assert_false(bool(miss.get("ok", true)), "未收录类别应失败")
+	assert_true("未收录" in String(miss.get("error", "")), "未收录提示保留")
+	assert_true("自输限差" in String(miss.get("error", "")), "改用自输限差提示保留")

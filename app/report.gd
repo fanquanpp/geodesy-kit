@@ -14,6 +14,8 @@ extends RefCounted
 
 const DIR := "user://reports"
 const FOOTNOTE := "本报告由 GeodesyKit 自动生成，供教学演示与步骤追溯，不替代生产级平差/工程软件。"
+## rows 摘要化预览行数上限（完整明细走 CSV 导出，不进报告表）
+const PREVIEW_ROWS := 10
 
 ## 渲染 Markdown 报告。title=计算器名；inputs=输入快照；result=§5 协议结果。
 static func render_markdown(title: String, entry_id: String, inputs: Dictionary, result: Dictionary) -> String:
@@ -69,7 +71,10 @@ static func render_markdown(title: String, entry_id: String, inputs: Dictionary,
 			L.append("| 量 | 值 |")
 			L.append("| --- | --- |")
 			for k: String in value.keys():
+				if is_meta_key(k):
+					continue  # 机器契约键（rows/n_ok/…）不逐项进报告，见 value 摘要
 				L.append("| %s | %s |" % [_md_cell(k), _md_cell(_fmt(value[k]))])
+			_append_value_summary(L, value)
 			L.append("")
 		var lim := _limits_lines(result)
 		if not lim.is_empty():
@@ -140,6 +145,55 @@ static func save_text(title: String, entry_id: String, inputs: Dictionary, resul
 
 # ---------- 内部 ----------
 
+## 机器契约键判定（与 calculator_base 的 is_meta_key 同一前缀口径，P3 合入后收口）：
+## G2 批量转换的 value 七键（rows/n_ok/n_err/pipeline/label/in_cols/out_cols）是
+## 机器契约，不逐项进报告表——rows 由 _append_value_summary 摘要化，
+## 其余统计/列名键在报告里没有可读意义。summary 展示键不在此列（用户可见统计行）。
+static func is_meta_key(k: String) -> bool:
+	return k == "rows" or k == "n_ok" or k == "n_err" or k == "pipeline" \
+			or k == "label" or k == "in_cols" or k == "out_cols"
+
+## value 摘要化（防报告表被大数组撑爆）：
+## - 有 summary 展示键（G2 统计行）→ 原文输出；
+## - 有 rows 行数组（G2）→ 前 PREVIEW_ROWS 行明细（超预览提示导出 CSV）；
+## - 其余 value 不加任何内容（非 G2 计算器报告行为不变）。
+static func _append_value_summary(L: Array[String], value: Dictionary) -> void:
+	var rows: Array = []
+	if value.get("rows", null) is Array:
+		rows = value["rows"]
+	if value.has("summary"):
+		L.append("")
+		L.append(String(value["summary"]))
+		_append_rows_preview(L, rows)
+		return
+	if rows.is_empty():
+		return
+	_append_rows_preview(L, rows)
+
+## rows 明细预览：统计行（无 summary 键时）+ 前 PREVIEW_ROWS 行 + 超预览提示
+static func _append_rows_preview(L: Array[String], rows: Array) -> void:
+	if rows.is_empty():
+		return
+	var preview := mini(rows.size(), PREVIEW_ROWS)
+	if preview > 0:
+		L.append("")
+		L.append("前 %d 行明细：" % preview)
+		for i in preview:
+			var r: Dictionary = rows[i]
+			var vals: Array = r.get("values", [])
+			var err := String(r.get("error", ""))
+			var body := ""
+			if not err.is_empty():
+				body = "错误：%s" % err
+			else:
+				var parts := PackedStringArray()
+				for j in vals.size():
+					parts.append(_fmt(vals[j]))
+				body = "值：" + "，".join(parts)
+			L.append("- 第 %d 行 %s：%s" % [int(r.get("line", 0)), String(r.get("name", "")), body])
+	if rows.size() > preview:
+		L.append("（其余 %d 行详见导出 CSV）" % (rows.size() - preview))
+
 ## 条目 id 的文件名安全化：只保留字母数字下划线连字符（小写），空则回退 "report"。
 ## save()/save_text() 共用收口，防止含 / 或 .. 的 id 写出 reports 目录。
 static func _safe_id(entry_id: String) -> String:
@@ -160,7 +214,7 @@ static func _limits_lines(result: Dictionary) -> Array:
 	var ok := bool(value["ok_limit"])
 	out.append("结论：%s" % ("通过" if ok else "超限"))
 	for k: String in value.keys():
-		if k.begins_with("f_") or k.begins_with("limit_") or k.begins_with("rel_") or k == "basis":
+		if GKCalculatorBase.is_limit_key(k) and k != "ok_limit":
 			out.append("%s = %s" % [k, _fmt(value[k])])
 	return out
 

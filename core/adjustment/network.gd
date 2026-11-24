@@ -1,17 +1,10 @@
 # core/adjustment/network.gd —— GK-M6-2 平面控制网严密平差（C5 导线网/测边网/边角网·间接平差）
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M6 / §5 协议）：
-#   - 间接平差（参数：未知点坐标改正数 δx, δy）：
-#       测边 v = (Δx/S)·(δx_j−δx_i) + (Δy/S)·(δy_j−δy_i) − l，l = s_obs − S(x0)；
-#       角度（在 k 点、由后视 back 瞄至前视 front）β = α_{k→front} − α_{k→back}，
-#       解析线性化系数 dα/∂(from) = (−Δy/S², +Δx/S²)、dα/∂(to) = (+Δy/S², −Δx/S²)
-#       （已与本会话 numpy 数值导数互检，差 ≤2e-9，见 tests/adjustment/test_network.gd）；
-#   - 权：p_i = 1/σ_i²（σ 与观测同单位：测边 m、角度 弧度——输入给度时内部换算）；
-#     obs 显式给 "w" 时优先使用（高级用法）；
-#   - 单次线性化：近似坐标误差 ≤0.1 m 时二次项 <0.1 mm，教学算例精度足够（文件头如实声明）；
-#   - 法方程 N = BᵀPB 对称正定 → GKMatrix.cholesky_solve；失败给出中文成因提示；
-#   - _build_design 为模块内共享构建器（C12 Helmert 分组估计复用，同域内部复用、不跨域）；
-#   - 全部静态函数、零引擎依赖；非法输入返回 {"ok":false,"error":中文}。
+# 参数为未知点坐标改正数 δx,δy；测边/角度误差方程解析线性化系数已与 numpy 数值导数互检
+# （差 ≤2e-9，见 tests/adjustment/test_network.gd）。权 p=1/σ²（测边 m、角度 rad，输入度内部换算），
+# obs 显式给 w 优先。单次线性化：近似坐标误差 ≤0.1 m 时二次项 <0.1 mm（教学算例足够，如实声明）。
+# 法方程对称正定走 GKMatrix.cholesky_solve；_build_design 为域内共享构建器（C12 复用，不跨域）。
+# 全部静态、零引擎依赖；非法输入 {ok:false, error:中文}。
 class_name GKAdjustNetwork
 extends RefCounted
 
@@ -114,7 +107,7 @@ static func adjust(p: Dictionary) -> Dictionary:
 			"title": "3. 精度评定",
 			"formula": "μ = √(VᵀPV/(n−t))；点位中误差 m_p = μ·√(q_xx + q_yy)",
 			"substitution": "VᵀPV = %s" % _fmt(pvv),
-			"result": (("μ = ±%s；各未知点 mp 见结果" % _fmt(mu)) if dof > 0 else "无多余观测，精度无法评定"),
+			"result": (("μ = ±%s；各未知点 mp 见结果" % _fmt(mu)) if dof > 0 and is_finite(mu) else "无多余观测，精度无法评定"),
 		},
 		{
 			"title": "精度声明",

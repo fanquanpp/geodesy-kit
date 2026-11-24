@@ -133,3 +133,20 @@ func test_epsg_table() -> void:
 					found_21460 = not bool(jr.get("y_prefix_zone", true))
 			assert_true(found_4527, "JSON: 4527 为带前缀")
 			assert_true(found_21460, "JSON: 21460 为自然 y")
+
+# ---------- P1 追加：带号口径区分（中国 3°/6° 带 vs UTM 1..60） ----------
+# 中国 6° 带：L0=6n−3（中国境内 n=13..23）；UTM：L0=6n−183（n=1..60，180°W 起编号）。
+# 同一中央子午线 117°E 下中国 6° 带号 20、UTM 带号 50，两口径数值差 12，不可混写。
+
+func test_zone_numbering_convention_distinction() -> void:
+	# 中国 6° 带口径：CM117 → n=20（116.39E 在带 20）
+	assert_int_eq(ZN.zone6_from_lon(116.3913), 20, "中国 6° 带 CM117=带 20")
+	assert_almost_eq(ZN.cm6(20), 117.0, 1e-12, "中国口径 L0=6n−3")
+	# 中国 3° 带口径：CM117 → n=39，L0=3n
+	assert_int_eq(ZN.zone3_from_lon(117.0), 39, "中国 3° 带 CM117=带 39")
+	assert_almost_eq(ZN.cm3(39), 117.0, 1e-12, "中国口径 L0=3n")
+	# 同一 CM117 在 UTM 口径为带 50（L0=6×50−183=117）——由换算关系断言，
+	# UTM 本体实现与带号在 utm.gd（A7），此处仅钉死口径区分注释所述关系
+	assert_almost_eq(6.0 * 50 - 183.0, 117.0, 1e-12, "UTM 口径 CM117=带 50（6n−183）")
+	# EPSG 表与口径注释一致：4548 = CGCS2000 3° CM117E 自然 y（"CM xxE" 系列）
+	assert_int_eq(ZN.epsg_of("CGCS2000", "3", 39, false), 4548, "EPSG:4548 为 CM117 自然 y 系列")

@@ -22,18 +22,18 @@ func _ready() -> void:
 	_type_opt.custom_minimum_size = Vector2(0, 96)
 	row.add_child(_type_opt)
 	_inputs_root.add_child(row)
-	add_input_row("起点 X 东 (m)", "x_m", "如 1000")
-	add_input_row("起点 Y 北 (m)", "y_m", "如 2000")
-	add_input_row("起点切线方位 (°)", "bearing_deg", "如 10")
-	add_input_row("转向 dir (+1右/-1左)", "dir", "默认 +1")
-	add_input_row("半径 R / 大圆 R1 (m)", "r_m", "基本型/回头用")
-	add_input_row("小圆 R2 (m)", "r2_m", "S型/卵型/C型用")
-	add_input_row("缓和曲线长 l0 / l01 (m)", "l0_m", "如 60")
-	add_input_row("回旋线长 l02 (m)", "l02_m", "S型/C型用")
-	add_input_row("转角 α / 圆1转角 (°)", "alpha_deg", "如 30；回头曲线填 >180")
-	add_input_row("圆2转角 (°)", "arc2_turn_deg", "S型/卵型/C型用")
-	add_input_row("圆1转角 β1 (°)", "arc1_turn_deg", "S型/卵型/C型用")
-	add_input_row("C型夹直线长 (m)", "straight_m", "仅 C 型，默认 0")
+	add_input_row("起点 X 东（m）", "x_m", "如 1000")
+	add_input_row("起点 Y 北（m）", "y_m", "如 2000")
+	add_input_row("起点切线方位（°）", "bearing_deg", "如 10")
+	add_input_row("转向 dir （+1右/-1左）", "dir", "默认 +1", LineEdit.KEYBOARD_TYPE_DEFAULT)
+	add_input_row("半径 R / 大圆 R1（m）", "r_m", "基本型/回头用")
+	add_input_row("小圆 R2（m）", "r2_m", "S型/卵型/C型用")
+	add_input_row("缓和曲线长 l0 / l01（m）", "l0_m", "如 60")
+	add_input_row("回旋线长 l02（m）", "l02_m", "S型/C型用")
+	add_input_row("转角 α / 圆1转角（°）", "alpha_deg", "如 30；回头曲线填 >180")
+	add_input_row("圆2转角（°）", "arc2_turn_deg", "S型/卵型/C型用")
+	add_input_row("圆1转角 β1（°）", "arc1_turn_deg", "S型/卵型/C型用")
+	add_input_row("C型夹直线长（m）", "straight_m", "仅 C 型，默认 0")
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
@@ -88,6 +88,7 @@ func get_inputs() -> Dictionary:
 	return out
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

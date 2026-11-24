@@ -48,3 +48,50 @@ func test_error_paths() -> void:
 	assert_false(bool(e3.get("ok", true)), "桩号重复拒绝")
 	var e4: Dictionary = Sv.forward({"chains_m": [0.0, 50.0], "fill_areas_m2": [-1.0, 20.0]})
 	assert_false(bool(e4.get("ok", true)), "负面积拒绝")
+
+# ---------- P5 追加：双口径 cut_minus_fill_m3 与棱台公式路径 ----------
+
+## 双口径：net_m3（填−挖）与 cut_minus_fill_m3（挖−填）互为相反数
+func test_dual_net_conventions() -> void:
+	var res: Dictionary = Sv.forward({"chains_m": [0.0, 20.0, 60.0],
+		"fill_areas_m2": [10.0, 0.0, 0.0], "cut_areas_m2": [0.0, 8.0, 12.0]})
+	assert_true(bool(res.get("ok", false)), "双口径算例成功")
+	if bool(res.get("ok", false)):
+		var v: Dictionary = res["value"]
+		assert_almost_eq(float(v["net_m3"]), -380.0, 1e-9, "净量 = 填−挖 = −380")
+		assert_almost_eq(float(v["cut_minus_fill_m3"]), 380.0, 1e-9, "挖减填 = 380（互为相反数）")
+		assert_almost_eq(float(v["net_m3"]) + float(v["cut_minus_fill_m3"]), 0.0, 1e-12, "两口径代数和为 0")
+
+## 棱台公式纯核与权威算例：A₁=100、A_m=144、A₂=100 m²、L=100 m → 12933.333333 m³（1e-6）
+## 端面平均 = (100+100)/2×100 = 10000 m³（Python 复核一致）
+func test_frustum_formula_authority_vector() -> void:
+	assert_almost_eq(Sv.frustum_volume(100.0, 144.0, 100.0, 100.0), 12933.333333, 1e-4, "棱台 12933.333333 m³")
+	assert_almost_eq(Sv.frustum_volume(100.0, 144.0, 100.0, 100.0), 12933.333333333334, 1e-6, "棱台全精度")
+	# 端面平均对照
+	var mean_v := (100.0 + 100.0) / 2.0 * 100.0
+	assert_almost_eq(mean_v, 10000.0, 1e-9, "端面平均 10000 m³")
+	# 退化输入
+	assert_true(is_nan(Sv.frustum_volume(100.0, 144.0, 100.0, -1.0)), "负段长返回 NAN")
+	assert_true(is_nan(Sv.frustum_volume(NAN, 144.0, 100.0, 100.0)), "NaN 面积返回 NAN")
+
+## 协议入口棱台路径（prismoidal_segments 显式给 A₁/A_m/A₂/L）
+func test_frustum_protocol_path() -> void:
+	var res: Dictionary = Sv.forward({
+		"chains_m": [0.0, 100.0],
+		"fill_areas_m2": [100.0, 100.0],
+		"prismoidal_segments": [{"a1_m2": 100.0, "am_m2": 144.0, "a2_m2": 100.0, "l_m": 100.0}],
+	})
+	assert_true(bool(res.get("ok", false)), "棱台协议路径成功：" + String(res.get("error", "")))
+	if bool(res.get("ok", false)):
+		var v: Dictionary = res["value"]
+		assert_almost_eq(float(v["frustum_m3"]), 12933.333333, 1e-4, "协议棱台体积 12933.333333 m³")
+		assert_almost_eq(float(v["fill_m3"]), 10000.0, 1e-9, "平均断面法 10000 m³")
+		assert_true(String(v.get("prismoidal_note", "")).contains("1/2 桩号"), "输出含 A_m 口径说明")
+	# 非法棱台分段输入
+	var bad: Dictionary = Sv.forward({
+		"chains_m": [0.0, 100.0],
+		"fill_areas_m2": [100.0, 100.0],
+		"prismoidal_segments": [{"a1_m2": 100.0, "am_m2": "abc", "a2_m2": 100.0, "l_m": 100.0}],
+	})
+	assert_false(bool(bad.get("ok", true)), "棱台分段非法输入拒绝")
+	assert_true(String(bad.get("error", "")).contains("棱台分段"), "中文错误提示棱台分段")

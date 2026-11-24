@@ -24,7 +24,7 @@ func _build_rows() -> void:
 	add_input_row("已知点 B y（北，m）", "y_b_m", "1200")
 	add_input_row("A 点角 β₁ = ∠BAP", "beta1_deg", "48.690068（或 48 41 24）")
 	add_input_row("B 点角 β₂ = ∠ABP", "beta2_deg", "50.708494（或 50 42 31）")
-	add_input_row("交点侧别（P 在 AB 的）", "side", "左（默认）/ 右")
+	add_input_row("交点侧别（P 在 AB 的）", "side", "左（默认）/ 右", LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var bad: Array = []

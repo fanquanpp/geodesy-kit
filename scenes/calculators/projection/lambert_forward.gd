@@ -19,7 +19,7 @@ func _setup() -> void:
 	_add_row("原点经度 L0（°）", "lon0_deg", "如 3", true)
 	_add_row("假东 FE（m）", "fe_m", "如 700000", false)
 	_add_row("假北 FN（m）", "fn_m", "如 6600000", false)
-	_add_row("基准", "datum", "GRS80 / CGCS2000 / WGS84", false)
+	_add_row("基准", "datum", "GRS80 / CGCS2000 / WGS84", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var p := _fail_or(_params())

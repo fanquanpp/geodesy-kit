@@ -13,7 +13,7 @@ D 起点 终点 边长 σ_m
 L 测站 后视 前视 角度° σ_″"""
 
 func _build_fields() -> void:
-	add_input_row("模式：helmert / free", "mode", "free")
+	add_input_row("模式：helmert / free", "mode", "free", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	_add_text_area("已知点 K 名称 x y（仅 helmert 用）", "known",
 			"K A 0 0\nK B 1000 0\nK C 500 866.0254")
 	_add_text_area("未知点 U 名称 x0 y0", "approx",

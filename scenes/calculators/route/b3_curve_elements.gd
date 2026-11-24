@@ -6,10 +6,10 @@ const Ui := preload("res://scenes/calculators/route/ui_common.gd")
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("半径 R (m)", "r_m", "如 500")
-	add_input_row("缓和曲线长 l0 (m)", "l0_m", "纯圆曲线填 0")
-	add_input_row("转角 α (°)", "alpha_deg", "如 30 或 25-30-00 度分秒")
-	add_input_row("交点里程 JD (m)", "jd_chain_m", "可选，如 1234.5")
+	add_input_row("半径 R（m）", "r_m", "如 500")
+	add_input_row("缓和曲线长 l0（m）", "l0_m", "纯圆曲线填 0")
+	add_input_row("转角 α（°）", "alpha_deg", "如 30 或 25-30-00 度分秒")
+	add_input_row("交点里程 JD（m）", "jd_chain_m", "可选，如 1234.5")
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
@@ -40,6 +40,7 @@ func run() -> Dictionary:
 	return Core.forward(p)
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

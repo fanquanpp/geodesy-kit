@@ -30,11 +30,11 @@ static func forward(p: Dictionary) -> Dictionary:
 	if not is_nan(pct): given += 1
 	if given < 2:
 		return _err("至少需要两个独立量：dh_m（高差）/ d_horiz_m（平距）/ d_slope_m（斜距）/ slope_pct 或 slope_deg（坡度），当前仅 %d 个" % given)
-	# 路径1：高差+平距（最常见）
+	# 路径1：高差+平距（最常见；若同时给了斜距，转发做三量一致性校验）
 	if not is_nan(dh) and not is_nan(horiz):
 		if horiz <= 0.0:
 			return _err("平距必须大于 0")
-		return _pack(dh, horiz, pct, adeg)
+		return _pack(dh, horiz, pct, adeg, slope_d)
 	# 路径2：高差+斜距
 	if not is_nan(dh) and not is_nan(slope_d):
 		if slope_d <= 0.0:
@@ -62,6 +62,7 @@ static func forward(p: Dictionary) -> Dictionary:
 		if pct == 0.0:
 			if absf(dh) > 1e-12:
 				return _err("坡度为 0% 时高差必须为 0")
+			# 零解：Δh=0、坡度 0 → 平距/斜距不定（任意值均满足），返回完整零解并说明
 			return _pack(0.0, 0.0, pct, adeg)
 		horiz = dh / (pct / 100.0)
 		if horiz <= 0.0:
@@ -79,15 +80,23 @@ static func forward(p: Dictionary) -> Dictionary:
 
 # ---------- 内部工具 ----------
 
-## 组装协议结果；第三/四个已知量存在时做一致性校验（相对容差 1e-6）
-static func _pack(dh: float, horiz: float, pct_in: float, adeg_in: float) -> Dictionary:
-	var pct := dh / horiz * 100.0
+## 组装协议结果；第三/四个已知量存在时做一致性校验（相对容差 1e-6，超差写 warn）。
+## 零解特殊情形（Δh=0 且平距=0）：平距为 0 时坡度无定义，斜距取 0（完整零解），不产生 NaN。
+static func _pack(dh: float, horiz: float, pct_in: float, _adeg_in: float, slope_d_in := NAN) -> Dictionary:
+	var zero_horiz := absf(horiz) < 1e-12
+	var pct := 0.0 if zero_horiz else dh / horiz * 100.0
 	var slope_d := sqrt(horiz * horiz + dh * dh)
-	var adeg := rad_to_deg(atan2(absf(dh), horiz))
+	var adeg := 0.0 if zero_horiz else rad_to_deg(atan2(absf(dh), horiz))
 	var warn := ""
+	if zero_horiz:
+		warn = "；说明：Δh=0 且平距=0 为零解（水平零距离），坡度无定义、斜距取 0"
 	if not is_nan(pct_in) and absf(pct_in) > 1e-12:
 		if absf(pct_in - pct) > 1e-6 * maxf(absf(pct), 1.0):
-			warn = "；注意：输入坡度 %s%% 与由高差/平距解出的 %.6f%% 存在差异" % [str(pct_in), pct]
+			warn += "；注意：输入坡度 %s%% 与由高差/平距解出的 %s%% 存在差异" % [str(pct_in), str(pct)]
+	# 一致性校验：高差 + 平距 + 斜距三量自洽（相对容差 1e-6，超差写 warn）
+	if not is_nan(slope_d_in) and absf(slope_d_in) > 1e-12:
+		if absf(slope_d_in - slope_d) > 1e-6 * maxf(slope_d, 1.0):
+			warn += "；注意：输入斜距 %s m 与由高差/平距解出的 %s m 存在差异（三者不一致）" % [str(slope_d_in), str(slope_d)]
 	var value := {
 		"dh_m": dh,
 		"d_horiz_m": horiz,
@@ -101,9 +110,9 @@ static func _pack(dh: float, horiz: float, pct_in: float, adeg_in: float) -> Dic
 			"substitution": "√(%.4f² + %.4f²)" % [horiz, dh],
 			"result": "%.4f m" % slope_d},
 		{"title": "2. 坡度与坡度角",
-			"formula": "i = Δh/平距 × 100%；θ = arctan(|Δh|/平距)",
+			"formula": "i = Δh/平距 × 100%；θ = arctan(|Δh|/平距)" + ("（平距为 0 时坡度无定义，取 0）" if zero_horiz else ""),
 			"substitution": "%.4f/%.4f" % [dh, horiz],
-			"result": "i = %.4f%%，θ = %.6f°%s" % [pct, adeg, warn]},
+			"result": "i = %s%%，θ = %s°%s" % [str(pct), str(adeg), warn]},
 	]
 	return {"ok": true, "value": value, "steps": steps,
 			"formula": "平距/斜距/高差/坡度换算：斜距²=平距²+高差²，i=Δh/平距（符号随高差，下坡为负）",

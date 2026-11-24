@@ -1,17 +1,9 @@
 # core/projection/mgrs.gd —— GK-M3-6 军用网格参考系统 MGRS（A13，US NGA 标准字母方格方案）
 #
-# 方案（本会话经 mgrs 1.7.0 权威库逐点复核）：
-#   UTM 部分（-80°≤B<84°）：
-#     - 带号 1..60（含挪威 32V/斯瓦尔巴 31X/33X/35X/37X 例外），纬度带字母
-#       "CDEFGHJKLMNPQRSTUVWX"（8° 一带，无 I/O），100km 方格列字母取
-#       sets[(n-1)%3]="ABCDEFGH"/"JKLMNPQR"/"STUVWXYZ" 的 [(E100-1)%8]，
-#       行字母取 "ABCDEFGHJKLMNPQRSTUV"（奇带）/"FGHJKLMNPQRSTUVABCDE"（偶带）的 [N100%20]；
-#     - 数字部分按精度位（1 位=10km … 5 位=1m）截尾。
-#   UPS 部分（B≥84° 或 B<-80°）：
-#     - 带字母：北 Y（λ<0）/Z（λ≥0），南 A（λ<0）/B（λ≥0）；
-#     - 列字母表 20 字母 "ABCFGHJKLMNPQSTUXYZ"（24 字母表再去 D/E/V/W），列号=[(E100-20)%20]；
-#     - 行字母表 24 字母 "ABCDEFGHJKLMNPQRSTUVWXYZ"，北行号=[(N100-13)%24]，南=[(N100-8)%24]。
-# 验收向量：天安门→50SMK4796917671；北海→31UDV4268262666；18SUJ2285070542→(39.4662462,-77.0592989)。
+# UTM 部分（−80°≤B<84°）：带号 1..60（含 32V/31X/33X/35X/37X 例外）、纬度带字母无 I/O、
+# 100km 方格列/行字母按奇偶带查表，数字部分按精度位（1 位=10km … 5 位=1m）截尾。
+# UPS 部分（B≥84° 或 B<−80°）：带字母北 Y/Z、南 A/B；列/行字母表与偏移按 NGA 标准查表。
+# 方案经 mgrs 1.7.0 权威库逐点复核；验收向量：天安门→50SMK4796917671、北海→31UDV4268262666。
 class_name GKMgrs
 extends RefCounted
 const _GK := preload("res://core/projection/gauss_kruger.gd")

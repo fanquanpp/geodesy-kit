@@ -9,7 +9,7 @@ var _dir_opt: OptionButton
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("断链表 前=后（分号分行）", "breaks", "如 5000=5200; 8000=7900（前桩号=后桩号）")
+	add_input_row("断链表 前=后（分号分行）", "breaks", "如 5000=5200; 8000=7900（前桩号=后桩号）", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	var row := HBoxContainer.new()
 	var lab := Label.new()
 	lab.text = "断链方向"
@@ -21,7 +21,7 @@ func _ready() -> void:
 	_dir_opt.custom_minimum_size = Vector2(0, 96)
 	row.add_child(_dir_opt)
 	_inputs_root.add_child(row)
-	add_input_row("待换算里程 (m)", "chains", "空格分隔，如 1000 4000 6000 9000")
+	add_input_row("待换算里程（m）", "chains", "空格分隔，如 1000 4000 6000 9000", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	var row2 := HBoxContainer.new()
 	var lab2 := Label.new()
 	lab2.text = "超高/加宽模式"
@@ -33,12 +33,12 @@ func _ready() -> void:
 	_mode_opt.custom_minimum_size = Vector2(0, 96)
 	row2.add_child(_mode_opt)
 	_inputs_root.add_child(row2)
-	add_input_row("半径 R (m)", "r_m", "超高用，如 500")
-	add_input_row("缓和曲线长 l0 (m)", "l0_m", "如 60")
-	add_input_row("转角 α (°)", "alpha_deg", "如 30")
-	add_input_row("全超高 e_max (%)", "e_max_pct", "如 6")
-	add_input_row("全加宽 w_max (m)", "w_max_m", "如 1.5，可选")
-	add_input_row("查询弧长（自 ZH，m）", "query_m", "空格分隔，如 0 30 60 160.9")
+	add_input_row("半径 R（m）", "r_m", "超高用，如 500")
+	add_input_row("缓和曲线长 l0（m）", "l0_m", "如 60")
+	add_input_row("转角 α（°）", "alpha_deg", "如 30")
+	add_input_row("全超高 e_max（%）", "e_max_pct", "如 6")
+	add_input_row("全加宽 w_max（m）", "w_max_m", "如 1.5，可选")
+	add_input_row("查询弧长（自 ZH，m）", "query_m", "空格分隔，如 0 30 60 160.9", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
@@ -88,6 +88,7 @@ func get_inputs() -> Dictionary:
 	return out
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

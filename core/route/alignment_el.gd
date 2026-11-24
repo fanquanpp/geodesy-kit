@@ -1,19 +1,11 @@
 # core/route/alignment_el.gd —— GK-M7-4 线元法 D2（直线/缓和曲线/圆曲线元拼接）
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M7 / §5）：
-#   - 纯静态、零引擎依赖；坐标系：x=东(E)、y=北(N)，方位角自北起顺时针；
-#   - ★ 线元（element）契约（D 组冻结，D1/D4/D6 复用，只增不改）：
-#       {"type": "line"|"arc"|"spiral",    # 类型仅用于展示/校验提示
-#        "len":  float,                    # 线元长度 (m)，>0
-#        "k0":   float, "k1": float}       # 带符号曲率 (1/m)：右转(顺时针)为正；
-#                                          # line 段 k0=k1=0；arc 段 k0=k1=±1/R；
-#                                          # spiral 段曲率沿弧长线性过渡 k(s)=k0+(k1−k0)s/len
-#     起点 start = {"x_m": 东, "y_m": 北, "bearing_deg": 方位角, "chain_m": 起点里程(默认0)}
-#   - 定位积分：θ(s)=θ0+k0·s+(k1−k0)s²/(2L)，位置为 ∫(cosθ,sinθ)ds：
-#       路径A 公式链：常曲率解析闭式（直线/圆曲线）+ 16 阶幂级数展开（广义缓和段）；
-#       路径B 数值积分：自适应辛普森（任意转角精度可靠，生产路径）；
-#     双路径互检由 tests/route/test_alignment_el.gd 承担（架构 §4 GK-M7 要求）；
-#   - 校验失败返回 ok=false + 中文 error；纯核函数失败返回空容器（地基纪律）。
+# 纯静态、零引擎依赖；x=东、y=北、方位自北起顺时针。★线元契约（D 组冻结，D1/D4/D6 复用）：
+#   {type: line|arc|spiral, len>0, k0, k1}——k 为带符号曲率（右转正）；line 段 k0=k1=0；
+#   arc 段 k0=k1=±1/R；spiral 段 k(s)=k0+(k1−k0)s/len。起点 start={x_m,y_m,bearing_deg,chain_m=0}。
+# 定位积分 θ(s)=θ0+k0·s+(k1−k0)s²/(2L)：A 常曲率闭式+16 阶级数；B 自适应辛普森（生产路径）；
+# 双路径互检见 tests/route/test_alignment_el.gd。
+# 校验失败 ok=false + 中文 error；纯核函数失败返回空容器。
 class_name GKAlignmentEl
 extends RefCounted
 

@@ -1,14 +1,10 @@
 # core/adjustment/gnss_net.gd —— GK-M6-7 GNSS 向量网三维间接平差（C11）
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M6 / §5 协议）：
-#   - 观测为 GNSS 基线向量（ΔX, ΔY, ΔZ，地心直角坐标系）；调用方（app 编排层）负责先把
-#     BLH 经 GK-M2 转 XYZ——core 不横向依赖（ARCHITECTURE §1.1）；
-#   - 每条基线 = 3 个同权观测：v = δx_to − δx_from − l，l = d_obs − (X⁰_to − X⁰_from)；
-#     权 p_i = 1/σ_i²（σ 为基线分量中误差 m，各分量同权；协方差阵输入暂不支持，如实声明）；
-#   - 基准：datum="fixed"（默认，需已知点）或 "free"（秩亏自由网，亏 3 个平移，
-#     附加条件 ΣδX = ΣδY = ΣδZ = 0 求最小范数解——附加条件法/拟稳平差口径）；
-#   - 法方程 3t×3t 对称正定 → GKMatrix.cholesky_solve；连通性用 BFS 检查后给中文成因；
-#   - 全部静态函数、零引擎依赖；非法输入返回 {"ok":false,"error":中文}。
+# 观测为 GNSS 基线向量（ΔX,ΔY,ΔZ，地心系）；BLH→XYZ 由调用方经 GK-M2 完成（core 不横向依赖）。
+# 每条基线=3 个同权观测：v=δx_to−δx_from−l，权 p=1/σ²（协方差阵输入暂不支持，如实声明）。
+# 基准：datum=fixed（默认，需已知点）或 free（秩亏亏 3 平移，附加 ΣδX=ΣδY=ΣδZ=0 最小范数解）。
+# 法方程 3t×3t 对称正定走 GKMatrix.cholesky_solve；连通性 BFS 检查后给中文成因；
+# 全部静态、零引擎依赖；非法输入 {ok:false, error:中文}。
 class_name GKAdjustGnssNet
 extends RefCounted
 

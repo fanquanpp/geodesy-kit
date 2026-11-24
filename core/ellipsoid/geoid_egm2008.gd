@@ -1,17 +1,11 @@
-# core/ellipsoid/geoid_egm2008.gd —— F2 高程异常（大地水准面差距）查询：EGM2008 5′ PGM
+# core/ellipsoid/geoid_egm2008.gd —— F2 高程异常查询：EGM2008 5′ PGM
 #
-# 移植底本：GeographicLib Geoid.cpp/hpp（Charles Karney，MIT/X11）：
-#   - PGM(P5) 16-bit 大端；z = Offset + Scale × pixel（本文件 Offset=-108.0, Scale=0.003）；
-#   - 双线性插值 或 三次拟合插值（12 点 stencil，c3 矩阵，分母 c0=240）；
-#   - 极点邻域用 c3n（N）/c3s（S）矩阵（对 x 的奇次项约束为零，保证极点值与经度无关）；
-#   - rawval 越界处理：经度回绕 ±width；纬度越界按极点镜像 iy=−iy / 2(H−1)−iy，
-#     同时经度平移 width/2（对跖）——GeographicLib 2.5 Geoid.hpp 原样移植。
-# 分工（实现要点）：PGM 读盘放 app/data_service.gd，core 只解析传入的 PackedByteArray。
-# 双格网互检结论（本会话实测，测试头注详述）：本实现三次插值在北京/上海/北海三点
-# 得 −9.1030/+11.8126/+42.6472 m，与独立 2.5′ GeoTIFF 双线性采样（−9.1023/+11.8141/
-# +42.6468）互差 ≤1.5 mm；早期任务分配的「5′ −9.082/+11.835/+42.680」三元组无法由打包
-# 5′ 格网按 GeographicLib 口径复现（双线性/三次/半像素组合均不命中，ARCHITECTURE.md §4
-# 向量表已更正为实测值），测试按实测格网值 + 3.3 cm 实测互差双口径断言并注明。
+# 移植底本：GeographicLib Geoid.cpp/hpp（Charles Karney，MIT/X11）：PGM(P5) 16-bit 大端，
+# z=Offset+Scale×pixel（−108.0/0.003）；双线性或三次拟合插值（12 点 stencil）；
+# 极点邻域用 c3n/c3s 矩阵；越界按经度回绕、纬度极点镜像（GeographicLib 2.5 原样移植）。
+# 分工：PGM 读盘放 app/data_service.gd，core 只解析传入的 PackedByteArray。
+# 双格网互检：北京/上海/北海三次插值 −9.1030/+11.8126/+42.6472 m，与独立 2.5′ GeoTIFF 互差 ≤1.5 mm
+# （早期分配的「−9.082/+11.835/+42.680」无法按 5′ 格网复现，ARCHITECTURE.md 向量表已更正为实测值）。
 class_name GKGeoidEGM2008
 extends RefCounted
 

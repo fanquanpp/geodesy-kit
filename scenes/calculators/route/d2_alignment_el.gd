@@ -8,11 +8,11 @@ var _mode_opt: OptionButton
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("起点 X 东 (m)", "x_m", "如 1000")
-	add_input_row("起点 Y 北 (m)", "y_m", "如 2000")
-	add_input_row("起点切线方位 (°)", "bearing_deg", "如 30")
-	add_input_row("起点里程 (m)", "chain_m", "默认 0")
-	add_input_row("线元表 类型,长,k0,k1（分号分行）", "elements", "如 line,100; spiral,60,0,0.002; arc,130.9,0.002,0.002")
+	add_input_row("起点 X 东（m）", "x_m", "如 1000")
+	add_input_row("起点 Y 北（m）", "y_m", "如 2000")
+	add_input_row("起点切线方位（°）", "bearing_deg", "如 30")
+	add_input_row("起点里程（m）", "chain_m", "默认 0")
+	add_input_row("线元表 类型,长,k0,k1（分号分行）", "elements", "如 line,100; spiral,60,0,0.002; arc,130.9,0.002,0.002", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	var row := HBoxContainer.new()
 	var lab := Label.new()
 	lab.text = "计算模式"
@@ -26,10 +26,10 @@ func _ready() -> void:
 	_mode_opt.custom_minimum_size = Vector2(0, 96)
 	row.add_child(_mode_opt)
 	_inputs_root.add_child(row)
-	add_input_row("查询里程 (m)", "chain_m_q", "正算用")
-	add_input_row("查询 X 东 (m)", "x_m_q", "反算用")
-	add_input_row("查询 Y 北 (m)", "y_m_q", "反算用")
-	add_input_row("采样步距 (m)", "step_m", "采样用，如 20")
+	add_input_row("查询里程（m）", "chain_m_q", "正算用")
+	add_input_row("查询 X 东（m）", "x_m_q", "反算用")
+	add_input_row("查询 Y 北（m）", "y_m_q", "反算用")
+	add_input_row("采样步距（m）", "step_m", "采样用，如 20")
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
@@ -101,6 +101,7 @@ func get_inputs() -> Dictionary:
 	return out
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

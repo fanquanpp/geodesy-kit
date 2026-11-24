@@ -6,16 +6,16 @@ const Ui := preload("res://scenes/calculators/route/ui_common.gd")
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("设计高程 (m)", "design_elev_m", "如 0")
-	add_input_row("格网边长 a (m)", "cell_size_m", "如 20")
-	add_input_row("格网点地面高程（分号分行）", "grid", "行内空格分隔：1 2; 1.5 0.5")
+	add_input_row("设计高程（m）", "design_elev_m", "如 0")
+	add_input_row("格网边长 a（m）", "cell_size_m", "如 20")
+	add_input_row("格网点地面高程（分号分行）", "grid", "行内空格分隔：1 2; 1.5 0.5", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
 	return "方格网法土方（E1）"
 
 func get_description() -> String:
-	return "V = a²·Σh/4（四角施工高度代数和的 1/4 × 面积）逐格累计填挖；h = 地面 − 设计（正挖负填）"
+	return "V = a²·Σh/4（四角施工高度代数和的 1/4 × 面积）逐格累计填挖；h = 地面 − 设计（正挖负填）；填挖混合格按零线分割（四分递归 + 零线直线化），steps 输出分割中间量"
 
 func get_entry_id() -> String:
 	return "e1_grid_volume"
@@ -34,6 +34,7 @@ func run() -> Dictionary:
 	return Core.forward(p)
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

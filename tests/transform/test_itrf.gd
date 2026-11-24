@@ -239,3 +239,70 @@ func test_errors_and_protocol() -> void:
 		})
 		for st: Dictionary in res4["steps"]:
 			assert_true(st.has_all(["title", "formula", "substitution", "result"]), "传播步骤四字段")
+
+# ---------- 本包追加：验收算例与历元链路警示（只追加，不改既有断言） ----------
+
+# 【验收算例】ITRF 14 参数时变（反号路径）：T=(1.4, 0.9, −1.4) mm、Ṫ=(0, 0.1, −0.2) mm/年、
+# D=+0.42 ppb、Ḋ=0、R=0、t_epoch=2015.0（即 ITRF2014→ITRF2020 方向，表中反向行/negate 生成），
+# 输入 (4000000, 500000, 4933000)；期望值本会话 Python 独立复核。
+const A_P := [4000000.0, 500000.0, 4933000.0]
+const A_2015 := [4000000.003080, 500000.001110, 4933000.000672]
+const A_2023 := [4000000.003080, 500000.001910, 4932999.999072]
+
+func _row2014_2020() -> Dictionary:
+	var data := _load_json()
+	if data.is_empty():
+		return {}
+	for row: Variant in data.get("transforms", []):
+		if row is Dictionary and String(row.get("from", "")) == "ITRF2014" and String(row.get("to", "")) == "ITRF2020":
+			return row
+	return {}
+
+func test_acceptance_time_dependent_reverse_path() -> void:
+	var row := _row2014_2020()
+	assert_false(row.is_empty(), "表中应有 ITRF2014→ITRF2020 反向行")
+	if row.is_empty():
+		return
+	# t=2015.0（Δt=0，速率项不生效）
+	var res1 := I.transform({"src_xyz": [A_P], "params_row": row, "epoch": 2015.0})
+	assert_true(res1["ok"], "反号路径 t=2015 应成功：" + String(res1.get("error", "")))
+	var out1: Array = res1["value"]["points_m"][0]
+	for i in 3:
+		assert_almost_eq(out1[i], A_2015[i], 1e-6, "t=2015 反号路径分量 %d（钉死反号）" % i)
+	# t=2023.0（Δt=8，速率项生效：Ṫ 反号后 (0, +0.1, −0.2) mm/年）
+	var res2 := I.transform({"src_xyz": [A_P], "params_row": row, "epoch": 2023.0})
+	assert_true(res2["ok"], "反号路径 t=2023 应成功")
+	var out2: Array = res2["value"]["points_m"][0]
+	for i in 3:
+		assert_almost_eq(out2[i], A_2023[i], 1e-6, "t=2023 反号路径分量 %d（钉死速率项）" % i)
+
+func test_epoch_chain_warning_step() -> void:
+	# Δt≠0 时 steps 应有历元链路警示（先传播到基准历元 → 转换 → 再传播到用户历元）
+	var row := _row2020_2014()
+	if row.is_empty():
+		return
+	var res := I.transform({"src_xyz": [P2], "params_row": row, "epoch": 2023.0})
+	assert_true(res["ok"], "时变转换应成功")
+	var found := false
+	for st: Dictionary in res["steps"]:
+		if String(st["title"]).contains("历元链路警示"):
+			found = true
+			assert_true(String(st["formula"]).contains("先传播到参数基准历元"), "警示含正确链路顺序")
+			assert_true(String(st["result"]).contains("确认输入坐标历元"), "警示提示确认坐标历元")
+	assert_true(found, "Δt≠0 应有历元链路警示步骤")
+	# Δt=0 无警示
+	var res0 := I.transform({"src_xyz": [P2], "params_row": row, "epoch": 2015.0})
+	var found0 := false
+	for st: Dictionary in res0["steps"]:
+		if String(st["title"]).contains("历元链路警示"):
+			found0 = true
+	assert_false(found0, "Δt=0 不应出现链路警示")
+
+func test_error_message_no_internal_names() -> void:
+	# error 文案不暴露类名/文件名/函数名（口径：规范中文测绘术语）
+	var res := I.transform({"src_xyz": [P2]})
+	assert_false(bool(res["ok"]), "缺参数行应失败")
+	var msg := String(res["error"])
+	for bad in ["GKITRF", "lookup", "itrf_params", "params_row", ".gd", ".json"]:
+		assert_false(msg.contains(bad), "error 不应含内部名“%s”：%s" % [bad, msg])
+	assert_true(msg.contains("参数"), "error 应为规范中文术语")

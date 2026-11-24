@@ -16,7 +16,7 @@ func _setup() -> void:
 	_add_row("原中央子午线 L0（°）", "l0_from_deg", "如 117", true)
 	_add_row("目标带宽（3 或 6）", "to_band", "3 / 6", true)
 	_add_row("目标带号（可空自动）", "to_zone", "如 40（留空按经度自动）", false)
-	_add_row("基准", "datum", "CGCS2000 / 北京54 / 西安80", false)
+	_add_row("基准", "datum", "CGCS2000 / 北京54 / 西安80", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var p := _fail_or(_params())

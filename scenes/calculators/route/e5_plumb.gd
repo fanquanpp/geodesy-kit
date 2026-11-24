@@ -6,11 +6,11 @@ const Ui := preload("res://scenes/calculators/route/ui_common.gd")
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("高度 H (m)", "h_m", "如 50")
-	add_input_row("顶部偏移 dx 东 (m)", "dx_m", "如 0.04")
-	add_input_row("顶部偏移 dy 北 (m)", "dy_m", "如 0.03")
+	add_input_row("高度 H（m）", "h_m", "如 50")
+	add_input_row("顶部偏移 dx 东（m）", "dx_m", "如 0.04")
+	add_input_row("顶部偏移 dy 北（m）", "dy_m", "如 0.03")
 	add_input_row("限差 1/N 的 N", "limit_den", "如 1000 表示 H/1000（可选）")
-	add_input_row("限差偏移 (mm)", "limit_offset_mm", "直接给限差时填（可选）")
+	add_input_row("限差偏移（mm）", "limit_offset_mm", "直接给限差时填（可选）")
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
@@ -31,6 +31,7 @@ func run() -> Dictionary:
 	return Core.forward(p)
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

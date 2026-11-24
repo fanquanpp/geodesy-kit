@@ -1,20 +1,21 @@
 # core/projection/sheet_gbt13989.gd —— GK-M3-8 地形图分幅编号（GB/T 13989-2012）
 #
-# 规则：
-#   - 1:100 万：纬差 4°（行 A-V，自赤道向北）、经差 6°（列号 1-60，东经列号 = int(L/6)+31），
-#     代码如 J50；
-#   - 比例尺代码：B=1:50万 C=1:25万 D=1:10万 E=1:5万 F=1:2.5万 G=1:1万 H=1:5000（代码 B~K 备扩展）；
-#   - 各比例尺把 1:100 万图幅按行列等分，行号自西北角（图幅上缘）起算，列号自西向东，
-#     行/列各三位数字（GB/T 13989-2012）；
-#   - 分割数（纬向 r × 经向 c）：50万 2×2、25万 4×4、10万 12×12、5万 24×24、2.5万 48×48、1万 96×96、5千 192×192。
-# 验收向量（天安门 39°54′27.1″N,116°23′28.6″E）：
-#   1:5万 J50E001010、1:10万 J50D001005、1:1万 J50G003039、1:50万 J50B001001、1:25万 J50C001002。
+# 1:100 万：纬差 4°（行 A–V 自赤道向北）、经差 6°（列 1–60，东经列号=int(L/6)+31），代码如 J50。
+# 比例尺代码 B=1:50万 … H=1:5000；各比例尺按行列等分 1:100 万图幅，行自西北角起、列自西向东，
+# 行/列各三位数字。分割数（纬向×经向）：50万 2×2、25万 4×4、10万 12×12、5万 24×24、
+# 2.5万 48×48、1万 96×96、5千 192×192。
+# 验收向量（天安门）：1:5万 J50E001010、1:10万 J50D001005、1:1万 J50G003039、1:50万 J50B001001、
+# 1:25万 J50C001002。
 class_name GKSheetGbT13989
 extends RefCounted
 
 const _AN := preload("res://core/math/angles.gd")
 
 const SCALES := {
+	# 比例尺代码与行列分割数：1:50万 B 2×2、1:25万 C 4×4、1:10万 D 12×12、
+	# 1:5万 E 24×24、1:2.5万 F 48×48、1:1万 G 96×96、1:5000 H 192×192
+	# （已由 tests/projection/test_sheet.gd 天安门权威向量回归覆盖；
+	#  代码 I/J/K 为 GB/T 13989-2012 保留扩展位，本表不凭记忆补数值，待核读标准原文）
 	500000: {"code": "B", "name_cn": "1:50万", "rows": 2, "cols": 2},
 	250000: {"code": "C", "name_cn": "1:25万", "rows": 4, "cols": 4},
 	100000: {"code": "D", "name_cn": "1:10万", "rows": 12, "cols": 12},
@@ -125,7 +126,7 @@ static func forward(p: Dictionary) -> Dictionary:
 		return _err("经度 %s 超出范围（|L|<180°）" % String.num(lon, 4))
 	var scale := int(_f(p, "scale_denom", 50000))
 	if scale != 1000000 and not SCALES.has(scale):
-		return _err("不支持的比例尺分母 %d（可选：1000000/%s）" % [scale, "/".join(_scale_keys())])
+		return _err("不支持的比例尺分母 %d（可选：%s）" % [scale, "/".join(_scale_keys())])
 	if scale == 1000000:
 		var code1m := sheet_number(lat, lon, 1000000)
 		var rng1m := sheet_range(code1m)
@@ -163,15 +164,36 @@ static func forward(p: Dictionary) -> Dictionary:
 	}
 	for k: String in all_codes.keys():
 		value["code_" + k] = all_codes[k]
+	# 步骤中间量显式计算（不从结果字符串反取）：
+	var sc: Dictionary = SCALES[scale]
+	var r_cnt: int = sc["rows"]
+	var c_cnt: int = sc["cols"]
+	var lat0 := row1m * 4.0                       # 1:100 万图幅南缘
+	var lon0 := (col1m - 31) * 6.0                # 1:100 万图幅西缘
+	var dlat := (lat - lat0) * r_cnt / 4.0        # 纬向分割序数（自南起算 0..r-1）
+	var dlon := (lon - lon0) * c_cnt / 6.0        # 经向分割序数（自西起算 0..c-1）
+	var lat_idx := clampi(int(floor(dlat)), 0, r_cnt - 1)
+	var lon_idx := clampi(int(floor(dlon)), 0, c_cnt - 1)
+	var row_no := r_cnt - lat_idx                 # 行号自西北角（图幅上缘）起算
+	var col_no := lon_idx + 1
 	var steps := [
 		{"title": "1. 1:100 万图幅", "formula": "行 = A + int(B/4)，列 = int(L/6) + 31（自 180°W 起算）",
 			"substitution": "B=%.6f°，L=%.6f°" % [lat, lon],
 			"result": "行 %s（%d 带，B∈[%.4f°,%.4f°)），列 %d（L∈[%.4f°,%.4f°)）" % [char(65 + row1m), row1m, row1m * 4.0, row1m * 4.0 + 4.0, col1m, (col1m - 31) * 6.0, (col1m - 30) * 6.0]},
-		{"title": "2. 比例尺行列号", "formula": "1:100 万图幅按 %d 行 × %d 列等分，行号自西北角（图幅上缘）起算，列号自西向东" % [SCALES[scale]["rows"], SCALES[scale]["cols"]],
-			"substitution": "B-%d×4°=%.6f°，L-%d×6°=%.6f°" % [row1m, lat - row1m * 4.0, col1m - 31, lon - (col1m - 31) * 6.0],
-			"result": "行 %03d，列 %03d" % [int(code.substr(code.length() - 6, 3)), int(code.substr(code.length() - 3, 3))]},
-		{"title": "3. 图幅代码", "formula": "代码 = 1:100 万代码 + 比例尺代码（%s）+ 行列三位序号" % SCALES[scale]["code"],
-			"substitution": "比例尺 %s" % SCALES[scale]["name_cn"],
+		{"title": "2. 图幅内偏距与分割序数",
+			# 注意：% 优先级高于 +，须先拼串再格式化
+			"formula": ("ΔB = B − B₀（图幅南缘）；ΔL = L − L₀（图幅西缘）；"
+				+ "纬向序数 = ΔB×%d/4（自南起算）；经向序数 = ΔL×%d/6（自西起算）") % [r_cnt, c_cnt],
+			"substitution": "B₀=%.1f°，L₀=%.1f°，ΔB=%.6f°，ΔL=%.6f°，(B−B₀)×%d/4=%.6f，(L−L₀)×%d/6=%.6f（若误以 1:100 万行南缘 %d°、行西缘 %d° 起算，(B−%d)×%d/4=%.6f / (L−%d)×%d/6=%.6f，属常见口径错误，B₀ 应为图幅南缘）"
+				% [lat0, lon0, lat - lat0, lon - lon0, r_cnt, dlat, c_cnt, dlon,
+				row1m * 4.0 + 3.0, (col1m - 31) * 6.0 + 2.0, row1m * 4.0 + 3.0, r_cnt, (lat - row1m * 4.0 - 3.0) * r_cnt / 4.0,
+				(col1m - 31) * 6.0 + 2.0, c_cnt, (lon - (col1m - 31) * 6.0 - 2.0) * c_cnt / 6.0],
+			"result": "纬向序数 %d（含零顶点取整后），经向序数 %d" % [lat_idx, lon_idx]},
+		{"title": "3. 行号换算（自西北角起算）", "formula": "行号 = 总行数 %d − 纬向序数；列号 = 经向序数 + 1" % r_cnt,
+			"substitution": "行号 = %d − %d；列号 = %d + 1" % [r_cnt, lat_idx, lon_idx],
+			"result": "行 %03d，列 %03d" % [row_no, col_no]},
+		{"title": "4. 图幅代码", "formula": "代码 = 1:100 万代码 + 比例尺代码（%s）+ 行列三位序号" % sc["code"],
+			"substitution": "比例尺 %s" % sc["name_cn"],
 			"result": code + ("（B∈[%.4f°,%.4f°]，L∈[%.4f°,%.4f°]）" % [rng["lat_min"], rng["lat_max"], rng["lon_min"], rng["lon_max"]])},
 	]
 	return {"ok": true, "value": value, "steps": steps,
@@ -189,14 +211,47 @@ static func lookup(p: Dictionary) -> Dictionary:
 		"lat_min_deg": rng["lat_min"], "lat_max_deg": rng["lat_max"],
 		"lon_min_deg": rng["lon_min"], "lon_max_deg": rng["lon_max"],
 	}
+	# 中间量显式换算（不从结果字符串反取）
+	var t := String(rng["code"]).strip_edges().to_upper().replace(" ", "")
+	var letter := t[0]
+	var i := 1
+	var col_part := ""
+	while i < t.length() and t[i] >= "0" and t[i] <= "9":
+		col_part += t[i]
+		i += 1
+	var row1m := letter.unicode_at(0) - 65
+	var col1m := int(col_part)
+	var row_no := -1
+	var col_no := -1
+	var r_cnt := 0
+	var c_cnt := 0
+	if int(rng["scale_denom"]) != 1000000:
+		var rest := t.substr(i)
+		var nums := rest.substr(1)
+		if nums.length() == 6 and nums.is_valid_int():
+			row_no = int(nums.substr(0, 3))
+			col_no = int(nums.substr(3, 3))
+			for den: int in SCALES:
+				if den == int(rng["scale_denom"]):
+					r_cnt = int(SCALES[den]["rows"])
+					c_cnt = int(SCALES[den]["cols"])
 	var steps := [
-		{"title": "1. 解析代码", "formula": "字母→1:100 万行，数字列→1:100 万列，比例尺代码→分割数，六位数字→行列序号",
+		{"title": "1. 解析代码", "formula": "字母 → 1:100 万行（A=0 起），数字列 → 1:100 万列（31 起），比例尺代码 → 分割数，六位数字 → 行列序号",
 			"substitution": "输入 = %s" % String(rng["code"]),
-			"result": "%s（%s）" % [String(rng["code"]), String(rng["name_cn"])]},
-		{"title": "2. 图幅范围", "formula": "行列序号换算经纬范围（行自西北角起算）",
-			"substitution": "输入 = %s（%s）" % [String(rng["code"]), String(rng["name_cn"])],
-			"result": "B∈[%.4f°,%.4f°]，L∈[%.4f°,%.4f°]" % [rng["lat_min"], rng["lat_max"], rng["lon_min"], rng["lon_max"]]},
+			"result": "%s（%s）：行 %s（1:100 万第 %d 行），列 %d" % [String(rng["code"]), String(rng["name_cn"]), letter, row1m + 1, col1m]},
 	]
+	if r_cnt > 0:
+		var d_lat := 4.0 / r_cnt
+		var d_lon := 6.0 / c_cnt
+		# 注意：% 优先级高于 +，须先拼串再格式化
+		var rng_formula: String = ("每格纬差 = 4°/%d = %.6f°，每格经差 = 6°/%d = %.6f°；"
+			+ "行号自西北角起算：纬度上缘 = 图幅北缘 − (行号−1)×纬差") % [r_cnt, d_lat, c_cnt, d_lon]
+		steps.append({"title": "2. 行列序号换算范围", "formula": rng_formula,
+			"substitution": "行号 %03d，列号 %03d；图幅 B∈[%.1f°,%.1f°)，L∈[%.1f°,%.1f°)" % [row_no, col_no, row1m * 4.0, row1m * 4.0 + 4.0, (col1m - 31) * 6.0, (col1m - 30) * 6.0],
+			"result": "纬差 %.6f°/格，经差 %.6f°/格" % [d_lat, d_lon]})
+	steps.append({"title": "图幅范围", "formula": "行列序号换算经纬范围（行自西北角起算）",
+		"substitution": "输入 = %s（%s）" % [String(rng["code"]), String(rng["name_cn"])],
+		"result": "B∈[%.4f°,%.4f°]，L∈[%.4f°,%.4f°]" % [rng["lat_min"], rng["lat_max"], rng["lon_min"], rng["lon_max"]]})
 	return {"ok": true, "value": value, "steps": steps,
 			"formula": "图幅编号反查（GB/T 13989-2012）", "error": ""}
 

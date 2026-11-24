@@ -199,6 +199,12 @@ func test_solve_outlier_flagged() -> void:
 	assert_true(warnings.size() > 0, "应输出中文粗差提示")
 	if warnings.size() > 0:
 		assert_true(String(warnings[0]).contains("粗差"), "提示应含“粗差”字样：%s" % str(warnings[0]))
+	# 剔除迭代后 warnings 应含「已按剔除迭代…」提示（P4 固化：append 须先于快照）
+	var has_refit_warn := false
+	for wr: Variant in warnings:
+		if String(wr).contains("已按剔除迭代"):
+			has_refit_warn = true
+	assert_true(has_refit_warn, "warnings 应含「已按剔除迭代…」提示")
 	assert_almost_eq(v["max_res_m"], 2.574, 0.2, "最大点残差量级（numpy 预演 2.574）")
 	# 无粗差对照：同一套数据去掉粗差 → 无提示
 	dst[3][0] -= 3.0
@@ -245,3 +251,93 @@ func test_input_validation_chinese_errors() -> void:
 	var res2 := B.solve({"src_xyz": [_pt(1, 2, 3), _pt(4, 5, 6)], "dst_xyz": [_pt(1, 2, 3)]})
 	assert_false(bool(res2["ok"]), "求参点数不一致应失败")
 	assert_true(String(res2["error"]).contains("数量不一致"), "中文错误：数量不一致")
+
+# ---------- 本包追加：验收算例与口径升级回归（只追加，不改既有断言） ----------
+
+func test_acceptance_three_param_translation() -> void:
+	# 【验收算例】纯平移三参数：T=(−199.87, 74.79, 246.62) m，输入 (4000000, 500000, 4933000)
+	# → 输出 = 输入 + T（1e-9）
+	var res := B.transform({
+		"src_xyz": [_pt(4000000.0, 500000.0, 4933000.0)],
+		"tx_m": -199.87, "ty_m": 74.79, "tz_m": 246.62,
+		"rx_as": 0.0, "ry_as": 0.0, "rz_as": 0.0,
+		"scale_ppm": 0.0, "convention": "PV",
+	})
+	assert_true(res["ok"], "验收三参数应成功：" + String(res.get("error", "")))
+	var out: Array = _first(res)
+	assert_almost_eq(out[0], 3999800.13, 1e-9, "x = 输入 + Tx")
+	assert_almost_eq(out[1], 500074.79, 1e-9, "y = 输入 + Ty")
+	assert_almost_eq(out[2], 4933246.62, 1e-9, "z = 输入 + Tz")
+
+func test_zero_filled_params_annotated_in_steps() -> void:
+	# 旋转/尺度留空 → 按 0 代入，但 steps 须显式标注哪些参数按 0 代入
+	var res := B.transform({
+		"src_xyz": [_pt(4000000.0, 500000.0, 4933000.0)],
+		"tx_m": "1.0", "ty_m": "2.0", "tz_m": "3.0",
+		"rx_as": "", "ry_as": "", "rz_as": "", "scale_ppm": "",
+		"convention": "PV",
+	})
+	assert_true(res["ok"], "留空参数应按 0 代入成功：" + String(res.get("error", "")))
+	var out: Array = _first(res)
+	assert_almost_eq(out[0], 4000001.0, 1e-12, "留空按 0：x 只加 Tx")
+	var found := false
+	for st: Dictionary in res["steps"]:
+		var sub := String(st.get("substitution", ""))
+		if sub.contains("按 0 代入"):
+			found = true
+			for name in ["旋转 Rx", "旋转 Ry", "旋转 Rz", "尺度 dS"]:
+				assert_true(sub.contains(name), "标注应列出留空参数 %s：%s" % [name, sub])
+	assert_true(found, "steps 应显式标注按 0 代入")
+
+func test_solve_refit_iteration() -> void:
+	# 复用 test_solve_outlier_flagged 的数据：检出粗差后应有 refit 剔除迭代，
+	# 剔除解参数应接近真值（真值 tx=1.5, ty=−2, tz=3.7）
+	var src := [
+		_pt(4200000.0, 300000.0, 4800000.0),
+		_pt(4100000.0, 500000.0, 4850000.0),
+		_pt(4000000.0, 700000.0, 4900000.0),
+		_pt(3900000.0, 900000.0, 4950000.0),
+		_pt(3800000.0, 1100000.0, 5000000.0),
+		_pt(3700000.0, 1300000.0, 5050000.0),
+		_pt(4300000.0, 800000.0, 4820000.0),
+		_pt(3650000.0, 600000.0, 5100000.0),
+	]
+	var tx := 1.5
+	var ty := -2.0
+	var tz := 3.7
+	var rx := 0.4 * PI / 648000.0
+	var ry := -0.3 * PI / 648000.0
+	var rz := 0.6 * PI / 648000.0
+	var ds := 0.7e-6
+	var dst := []
+	for q: Array in src:
+		dst.append([
+			q[0] + tx + ds * q[0] - rz * q[1] + ry * q[2],
+			q[1] + ty + ds * q[1] - rx * q[2] + rz * q[0],
+			q[2] + tz + ds * q[2] + rx * q[1] - ry * q[0],
+		])
+	dst[3][0] += 3.0
+	var res := B.solve({"src_xyz": src, "dst_xyz": dst, "convention": "PV"})
+	var v: Dictionary = res["value"]
+	assert_true(v.has("refit"), "检出粗差应有剔除迭代 refit：%s" % str(v.keys()))
+	if not v.has("refit"):
+		return
+	var rf: Dictionary = v["refit"]
+	assert_almost_eq(float(rf["tx_m"]), 1.5, 1e-4, "剔除解 tx 接近真值")
+	assert_almost_eq(float(rf["ty_m"]), -2.0, 1e-4, "剔除解 ty 接近真值")
+	assert_almost_eq(float(rf["tz_m"]), 3.7, 1e-4, "剔除解 tz 接近真值")
+	assert_almost_eq(float(rf["rx_as"]), 0.4, 1e-4, "剔除解 rx 接近真值")
+	assert_almost_eq(float(rf["ry_as"]), -0.3, 1e-4, "剔除解 ry 接近真值")
+	assert_almost_eq(float(rf["rz_as"]), 0.6, 1e-4, "剔除解 rz 接近真值")
+	assert_almost_eq(float(rf["scale_ppm"]), 0.7, 1e-4, "剔除解 scale 接近真值")
+	assert_almost_eq(float(rf["sigma0_m"]), 0.0, 1e-6, "剔除解精确数据 σ0≈0")
+	assert_eq(int(rf["n_used"]), 7, "剔除后 7 点")
+	assert_true(String(rf["note"]).contains("人工确认"), "refit 注明人工确认")
+	# 回代全部点：粗差点的较差应约 3 m（粗差量级）
+	assert_almost_eq(float(rf["max_res_m"]), 3.0, 0.2, "回代全部点最大较差≈粗差量级")
+	# warnings 保留人工确认提示
+	var found := false
+	for w: Variant in v["warnings"]:
+		if String(w).contains("人工确认"):
+			found = true
+	assert_true(found, "warnings 应保留人工确认提示")

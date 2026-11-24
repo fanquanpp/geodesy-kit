@@ -1,31 +1,11 @@
 # core/math/least_squares.gd —— GK-M1-2 叶子库：间接平差最小二乘（正规方程法）
 #
-# 数学模型（测量学口径，ARCHITECTURE.md §4 GK-M1 M1-2）：
-#   误差方程   V = B·x̂ − l          （n 个观测，t 个未知数，n ≥ t）
-#   法方程     N = BᵀP·B ， k = BᵀP·l
-#   解         x̂ = N⁻¹·k
-#   精度评定   VᵀP·V ；单位权中误差 μ = √(VᵀP·V/(n−t)) ；协因数阵 Qxx = N⁻¹
-#              未知数中误差 σ_xi = μ·√(Qxx[i][i])
-#
-# 设计约定（沿用地基 GK-M1 四文件纪律）：
-#   - 纯静态函数、零引擎依赖（extends RefCounted）；矩阵 Array×PackedFloat64Array 行主序；
-#   - P 观测权两种形态：PackedFloat64Array（对角权，长度 n，元素 ≥0）或
-#     Array（n×n 全权阵，对称、元素有限）；正定性由法方程 Cholesky 兜底；
-#   - 结构性失败（维度不符 / 欠定 n<t / 非有限元素 / P 不合法 / 法方程奇异或非正定）
-#     一律返回 {}（调用方 is_empty() 判别，与 GKEllipsoid.params 同口径）；
-#   - dof = n−t ≤ 0（恰定）时 x̂/Qxx 仍有效返回，mu = NAN（μ 无定义，调用方 is_nan 判别）；
-#   - 求解双路径：默认 Cholesky（法方程对称正定标准路径），use_cholesky=false 走
-#     部分主元消元（GKMatrix.solve），供双法互检与教学对照；
-#   - ⚠ GDScript 陷阱：对 PackedFloat64Array 的修改必须先拷贝（PackedFloat64Array(x)
-#     构造副本），凡行内改值一律"拷贝→改→整体写回"，不做 `(expr)[i]=v` 的临时副本赋值。
-#
-# 返回字典键（成功时）：xhat / v / vtpv / mu / dof / qxx / N / k / sigma_x / n_obs / n_unknowns
-# 说明：本文件是叶子数值库，返回裸数值结果，不携带 §5 协议外壳 ——
-#       {ok,value,steps,formula,error} 由调用域（M4/M6/G 组计算器）装配。
-#
-# 权威向量交叉验证：tests/mathk/test_least_squares.gd
-#   1)【构造】5×3 已知解回代 x=(1,2,3)，残差<1e-12，Cholesky/消元双路径；
-#   2)【权威·借 M6 水准网】ARCHITECTURE.md §4 GK-M6 C7 水准网（μ=±10.7mm）。
+# 模型：V=Bx̂−l；N=BᵀP·B、k=BᵀP·l、x̂=N⁻¹·k；μ=√(VᵀP·V/(n−t))，Qxx=N⁻¹。
+# 纯静态、零引擎依赖（RefCounted）；P 为对角权或全权阵；结构性失败返回 {}（is_empty 判别）；
+# dof=n−t≤0 时 x̂/Qxx 有效、mu=NAN；默认 Cholesky，use_cholesky=false 走部分主元消元双路径。
+# ⚠ PackedFloat64Array 修改须先拷贝再整体写回（GDScript 陷阱）。
+# 返回键：xhat/v/vtpv/mu/dof/qxx/N/k/sigma_x/n_obs/n_unknowns（裸数值，§5 外壳由调用域装配）。
+# 权威向量：tests/mathk/test_least_squares.gd（构造回代 + 借 M6 C7 水准网 μ=±10.7mm）。
 class_name GKLeastSquares
 extends RefCounted
 

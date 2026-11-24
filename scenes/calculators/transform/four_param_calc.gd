@@ -28,8 +28,8 @@ func _build_rows() -> void:
 		["fwd", "正算（源 → 目标）"],
 		["inv", "反算（目标 → 源）"],
 	])
-	for cfg: Array in [["dx_m", "平移 dx (m)"], ["dy_m", "平移 dy (m)"],
-			["scale", "尺度 m"], ["alpha_deg", "旋转 α (°)"]]:
+	for cfg: Array in [["dx_m", "平移 dx（m）"], ["dy_m", "平移 dy（m）"],
+			["scale", "尺度 m"], ["alpha_deg", "旋转 α（°）"]]:
 		var edit := add_input_row(cfg[1], cfg[0], "0")
 		_row_cache[cfg[0]] = edit
 	_add_points_row("源系平面坐标（每行 x, y）", "src_xy", "1000, 1000")
@@ -108,6 +108,7 @@ func _on_reset() -> void:
 	super._on_reset()
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in inputs:
 		var v: Variant = inputs[key]
 		if _opts.has(key):
@@ -172,11 +173,11 @@ func _parse_points_text(text: String, ncols: int, what: String) -> Dictionary:
 			cleaned = cleaned.replace("  ", " ")
 		var parts := cleaned.strip_edges().split(" ", false)
 		if parts.size() != ncols:
-			return {"ok": false, "rows": [], "error": "%s 第 %d 行应有 %d 个数字（逗号分隔），实际 %d 个：“%s”" % [what, li + 1, ncols, parts.size(), line]}
+			return {"ok": false, "rows": [], "error": "%s 第 %d 行应有 %d 个数字（逗号分隔），实际 %d 个：「%s」" % [what, li + 1, ncols, parts.size(), line]}
 		var vals := []
 		for p: String in parts:
 			if not p.is_valid_float():
-				return {"ok": false, "rows": [], "error": "%s 第 %d 行含非数字内容：“%s”" % [what, li + 1, p]}
+				return {"ok": false, "rows": [], "error": "%s 第 %d 行含非数字内容：「%s」" % [what, li + 1, p]}
 			vals.append(p.to_float())
 		rows.append(vals)
 	if rows.is_empty():

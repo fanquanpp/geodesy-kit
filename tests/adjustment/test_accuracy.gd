@@ -82,3 +82,28 @@ func test_c9_invalid_inputs() -> void:
 	assert_false(bool(neg.get("ok", true)), "负方差应失败")
 	var missing := AC.ellipse_from_q({"qxx": 1e-4})
 	assert_false(bool(missing.get("ok", true)), "缺 qyy/qxy 应失败")
+
+# ---------- P2 补充：φE 步骤并列 tan2φ_E 口径（与既有特征向量断言共存，不改期望值）----------
+
+## P2：步骤 3 公式文本应并列 tan2φ_E = 2q_xy/(q_xx−q_yy) 教材口径
+func test_c9_steps_show_tan2phi_formula() -> void:
+	var q := _make_q(0.030, 0.012, 37.5)
+	var res := AC.ellipse_from_q(q)
+	assert_true(bool(res.get("ok", false)), "椭圆计算应成功")
+	if not bool(res.get("ok", false)):
+		return
+	var all_text := ""
+	for st: Dictionary in res["steps"]:
+		all_text += String(st["formula"])
+	assert_true("tan2φ_E = 2q_xy/(q_xx−q_yy)" in all_text, "φE 步骤应含 tan2φ_E 教材公式")
+	assert_true("特征向量" in all_text, "φE 步骤应保留特征向量法口径（并列展示）")
+	# tan2φ_E 数值应出现在 substitution（0.030/0.012/37.5° 构造的 q 阵）
+	var qxx := float(q["qxx"])
+	var qyy := float(q["qyy"])
+	var qxy := float(q["qxy"])
+	var expected_ratio := 2.0 * qxy / (qxx - qyy)
+	var found_num := false
+	for st2: Dictionary in res["steps"]:
+		if "2q_xy" in String(st2["formula"]) and String(st2["substitution"]).contains("%.6f" % expected_ratio):
+			found_num = true
+	assert_true(found_num, "substitution 应含 tan2φ_E 的数值代入")

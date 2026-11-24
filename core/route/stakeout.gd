@@ -1,16 +1,10 @@
 # core/route/stakeout.gd —— GK-M7-6 中边桩坐标与极坐标放样 D4
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M7 / §5）：
-#   - 定位复用 D2 线元引擎（GKAlignmentEl.point_at）；
-#   - 中桩：offset=0；边桩：沿横断面方向（切线右法线，右正左负）偏移 offset；
-#   - 极坐标放样：给测站点 station + 后视（backsight_bearing_deg 或 backsight 点坐标），
-#     输出 平距 dist_m 与放样角 beta_deg = 方位(测站→放样点) − 方位(后视)；
-#   - p = {
-#       "elements": [...], "start": {...},           # D2 线元契约
-#       "stakes": [{"chain_m", "offset_m"=0}, ...],  # 桩列表 ≥1
-#       "station": {"x_m","y_m"}?,  "backsight_bearing_deg"? 或 "backsight": {"x_m","y_m"}?,
-#     }
-#   - 校验失败 ok=false + 中文 error（桩号越界、缺后视等）；偏距右正左负。
+# 定位复用 D2 线元引擎（GKAlignmentEl.point_at）；中桩 offset=0，边桩沿切线右法线偏移（右正左负）。
+# 极坐标放样：给测站 station 与后视（bearing 或点坐标），输出平距 dist_m 与放样角
+# beta_deg=方位(测站→放样点)−方位(后视)。
+# p={elements,start（D2 契约）, stakes:[{chain_m,offset_m=0},…], station?, backsight?}。
+# 校验失败 ok=false + 中文 error（桩号越界、缺后视等）；偏距右正左负。
 class_name GKStakeout
 extends RefCounted
 

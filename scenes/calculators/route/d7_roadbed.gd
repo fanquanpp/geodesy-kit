@@ -6,12 +6,12 @@ const Ui := preload("res://scenes/calculators/route/ui_common.gd")
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("设计中心高程 (m)", "design_elev_m", "如 55")
-	add_input_row("路基半宽 b (m)", "half_width_m", "如 10")
-	add_input_row("路拱横坡 i (%)", "cross_slope_pct", "默认 0，如 2")
+	add_input_row("设计中心高程（m）", "design_elev_m", "如 55")
+	add_input_row("路基半宽 b（m）", "half_width_m", "如 10")
+	add_input_row("路拱横坡 i（%）", "cross_slope_pct", "默认 0，如 2")
 	add_input_row("填方坡率 1:m 的 m", "fill_slope_ratio", "如 1.5 表示 1:1.5")
 	add_input_row("挖方坡率 1:n 的 n", "cut_slope_ratio", "如 0.75 表示 1:0.75")
-	add_input_row("地面线 偏距,高程（分号分行）", "ground", "如 -40,50; 0,50; 40,52（偏距右正左负）")
+	add_input_row("地面线 偏距,高程（分号分行）", "ground", "如 -40,50; 0,50; 40,52（偏距右正左负）", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
@@ -38,6 +38,7 @@ func run() -> Dictionary:
 	return Core.forward(p)
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

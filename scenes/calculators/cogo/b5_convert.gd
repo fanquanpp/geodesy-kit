@@ -14,7 +14,7 @@ func get_description() -> String:
 	return "十进制度 ⇄ 度分秒 ⇄ gon（百分度）⇄ 弧度，并给出象限角。输入可写 30.5、30°30′00″ 或 30 30 00；1 gon = 0.9°。"
 
 func _build_rows() -> void:
-	add_input_row("角度输入", "angle_text", "30.5 或 30 30 00")
+	add_input_row("角度输入", "angle_text", "30.5 或 30 30 00", LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var text := String(_fields["angle_text"].text).strip_edges()

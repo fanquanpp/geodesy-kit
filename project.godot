@@ -12,31 +12,49 @@ config_version=5
 
 config/name="GeodesyKit"
 config/description="面向测绘/GIS/遥感/地质专业学生的全离线计算器（Windows/Android/iOS）。"
+config/version="0.2"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://assets/icons/app_icon.png"
+
+[debug]
+
+file_logging/enable_file_logging.pc=false
+file_logging/enable_file_logging.mobile=true
 
 [display]
 
 window/size/viewport_width=720
 window/size/viewport_height=1280
-window/size/window_width_override=1080
-window/size/window_height_override=810
+window/size/window_width_override=720
+window/size/window_height_override=960
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation="portrait"
-window/size/min_window_size=Vector2i(960, 540)
+window/size/min_window_size=Vector2i(720, 960)
 
 [gui]
 
 theme/custom="res://themes/main.tres"
 theme/custom_font="res://assets/fonts/NotoSansSC-Regular.otf"
 
+[internationalization]
+
+locale/text_server_data_presets=true
+
 [physics]
 
 3d/physics_engine="Jolt Physics"
+
+[input]
+
+# 触屏不仿真鼠标（Android 默认 emulate_mouse_from_touch=true 会把手指事件变成
+# mouse 事件，ScrollContainer 收不到 ScreenDrag，真机只能拖滚动条——用户反馈根因）；
+# 桌面端 emulate_touch_from_mouse 保留默认 false（键鼠走原生 mouse 路径）。
+devices/pointing/emulate_mouse_from_touch=false
 
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true

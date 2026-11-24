@@ -11,7 +11,7 @@ B 起点 终点 dx dy dz [σ_m]   基线向量（σ 默认 0.01 m）"""
 
 func _build_fields() -> void:
 	_add_text_area("GNSS 网数据（XYZ）", "data", FMT_HINT)
-	add_input_row("基准：fixed / free（无已知点选 free）", "datum", "fixed")
+	add_input_row("基准：fixed / free（无已知点选 free）", "datum", "fixed", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	_add_section("说明")
 	var note := Label.new()
 	note.text = "三维基线向量间接平差。fixed=固定基准（需已知点）；free=秩亏自由网最小范数解（ΣδX=ΣδY=ΣδZ=0）。BLH→XYZ 请先用「椭球与大地线」域的 BLH↔XYZ 计算器转换。"

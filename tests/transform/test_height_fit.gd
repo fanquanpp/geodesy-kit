@@ -198,3 +198,113 @@ func test_protocol_shape() -> void:
 		assert_true(st.has_all(["title", "formula", "substitution", "result"]), "步骤四字段")
 	assert_true(String(res["formula"]).contains("平面拟合"), "formula 说明模型")
 	assert_true((res["value"] as Dictionary).has("model"), "value 应含模型字典供预测复用")
+
+# ---------- 本包追加：外插判定、系数/预测中误差、分段 σ0 与边界跳变量（只追加，不改既有断言） ----------
+
+func test_plane_predict_extrapolation_flag() -> void:
+	# 16 点格网（x,y ∈ [0,3000]）拟合平面：范围内不标外插、范围外标外插并给中文提示
+	var xy := _grid16()
+	var h := []
+	for q: Array in xy:
+		h.append(10.0 + 0.002 * q[0] - 0.001 * q[1])
+	var res := HF.fit({"xy": xy, "h": h, "model": "plane"})
+	var model: Dictionary = res["value"]["model"]
+	var inside := HF.predict({"model": model, "x": 1500.0, "y": 1500.0})
+	assert_false(bool(inside["value"]["extrapolated"]), "范围内不外插")
+	var outside := HF.predict({"model": model, "x": 5000.0, "y": 0.0})
+	assert_true(bool(outside["value"]["extrapolated"]), "x=5000 应判外插")
+	assert_true((outside["value"]["warnings"] as Array).size() > 0, "外插应给中文提示")
+	var outside_y := HF.predict({"model": model, "x": 0.0, "y": -1000.0})
+	assert_true(bool(outside_y["value"]["extrapolated"]), "y=−1000 应判外插")
+
+func test_plane_sigma_coeffs_and_predict_sigma() -> void:
+	# 系数中误差 σ_ci = σ0·√Qxx 对角元；预测中误差 σ_H（平面解析传播）：
+	# 用含噪数据（numpy 复核 σ0=0.0034779525365011455）检查输出有限为正
+	var xy := _grid16()
+	var h := []
+	var noise := [0.005, -0.004, 0.003, -0.002, 0.001, -0.005, 0.004, -0.003, 0.002, -0.001, 0.005, -0.004, 0.003, -0.002, 0.001, -0.005]
+	for i in xy.size():
+		var q: Array = xy[i]
+		h.append(10.0 + 0.002 * q[0] - 0.001 * q[1] + noise[i])
+	var res := HF.fit({"xy": xy, "h": h, "model": "plane"})
+	var v: Dictionary = res["value"]
+	assert_true(v.has("sigma_coeffs"), "应输出系数中误差")
+	var sc: Array = v["sigma_coeffs"]
+	assert_eq(sc.size(), 3, "平面 3 个系数中误差")
+	for i in 3:
+		assert_true(float(sc[i]) > 0.0, "σ_c%d 应为正" % i)
+		assert_true(is_finite(float(sc[i])), "σ_c%d 有限" % i)
+	# 预测中误差（模型字典携带 qxx 与 σ0）
+	var pred := HF.predict({"model": v["model"], "x": 1500.0, "y": 2500.0})
+	assert_true((pred["value"] as Dictionary).has("sigma_h_m"), "平面预测应输出 σ_H：%s" % str(pred["value"].keys()))
+	var sh: float = pred["value"]["sigma_h_m"]
+	assert_true(sh > 0.0 and is_finite(sh), "σ_H 有限为正")
+	# σ_H 应随预测点远离重心增大（重心 1500,1500）
+	var pred_c := HF.predict({"model": v["model"], "x": 1500.0, "y": 1500.0})
+	assert_true(float(pred_c["value"]["sigma_h_m"]) < sh, "重心处 σ_H 应最小")
+	# σ_H 步骤应展示
+	assert_true(String(pred["steps"][0]["result"]).contains("σ_H"), "预测步骤展示中误差")
+
+func test_strip_segment_sigma0_and_boundary_jumps() -> void:
+	# 两段真值（test_strip_two_segments_exact 的数据）：逐段 σ0=0（精确数据）、
+	# 边界跳变量 = 两段在 u=2000 处的拟合值之差 = (14−0.001·(−1000)) − (10+0.002·1000) = 15 − 12 = 3
+	var xy := []
+	var h := []
+	for u in [0.0, 500.0, 1000.0, 1500.0, 2000.0, 2500.0, 3000.0, 3500.0, 4000.0]:
+		xy.append([u, 1000.0])
+		if u < 2000.0:
+			h.append(10.0 + 0.002 * (u - 1000.0))
+		else:
+			h.append(14.0 - 0.001 * (u - 3000.0))
+	var res := HF.fit({"xy": xy, "h": h, "model": "strip", "segments": 2, "order": 1, "axis": "x"})
+	var v: Dictionary = res["value"]
+	assert_true(v.has("segment_sigma0"), "strip 应输出逐段 σ0：%s" % str(v.keys()))
+	var ss: Array = v["segment_sigma0"]
+	assert_eq(ss.size(), 2, "两段的 σ0")
+	assert_almost_eq(float(ss[0]["sigma0_m"]), 0.0, 1e-12, "seg0 精确数据 σ0=0")
+	assert_almost_eq(float(ss[1]["sigma0_m"]), 0.0, 1e-12, "seg1 精确数据 σ0=0")
+	assert_true(v.has("boundary_jumps"), "strip 应输出边界跳变量")
+	var jumps: Array = v["boundary_jumps"]
+	assert_eq(jumps.size(), 1, "一个边界")
+	assert_almost_eq(float(jumps[0]["boundary_u_m"]), 2000.0, 1e-9, "边界 u=2000")
+	assert_almost_eq(float(jumps[0]["jump_m"]), 3.0, 1e-9, "跳变量 = 15 − 12 = 3 m")
+	# 步骤展示分段 σ0 与跳变量
+	var step_found := false
+	for st: Dictionary in res["steps"]:
+		if String(st["title"]).contains("边界跳变量"):
+			step_found = true
+			assert_true(String(st["result"]).contains("跳变量"), "步骤展示跳变量")
+	assert_true(step_found, "应有分段精度与边界跳变量步骤")
+
+func test_refit_iteration_present_on_blunder() -> void:
+	# 复用 test_blunder_flagged_with_3sigma 数据：检出粗差后应有 refit（保留人工确认）
+	var xy := _grid16()
+	var h := []
+	for i in xy.size():
+		var q: Array = xy[i]
+		var val: float = 10.0 + 0.002 * q[0] - 0.001 * q[1]
+		if i == 5:
+			val += 0.8
+		h.append(val)
+	var res := HF.fit({"xy": xy, "h": h, "model": "plane"})
+	var v: Dictionary = res["value"]
+	assert_true(v.has("refit"), "检出粗差应有剔除迭代 refit：%s" % str(v.keys()))
+	if not v.has("refit"):
+		return
+	var rf: Dictionary = v["refit"]
+	assert_almost_eq(float(rf["sigma0_m"]), 0.0, 1e-9, "剔除解精确数据 σ0≈0")
+	assert_eq(int(rf["n_used"]), 15, "剔除后 15 点")
+	assert_true(String(rf["note"]).contains("人工确认"), "refit 注明人工确认")
+	# 回代全部点：粗差点较差≈0.8
+	assert_almost_eq(float(rf["max_res_m"]), 0.8, 0.1, "回代全部点最大较差≈粗差量级")
+	var found := false
+	for w: Variant in v["warnings"]:
+		if String(w).contains("人工确认"):
+			found = true
+	assert_true(found, "warnings 应保留人工确认提示")
+	# P4 固化：warnings 快照须在剔除迭代 append 之后，应含「已按剔除迭代…」
+	var has_refit_warn := false
+	for w: Variant in v["warnings"]:
+		if String(w).contains("已按剔除迭代"):
+			has_refit_warn = true
+	assert_true(has_refit_warn, "warnings 应含「已按剔除迭代…」提示")

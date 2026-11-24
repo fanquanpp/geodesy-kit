@@ -8,7 +8,7 @@ func get_title() -> String:
 	return "地形图分幅编号（GB/T 13989）"
 
 func get_description() -> String:
-	return "B/L → 图幅编号（1:100万 6°×4° 行 A-V 列 21-72；比例尺代码 B~K；行号自西北角起算）。"
+	return "纬度/经度 → 图幅编号（1:100 万 6°×4° 分幅，行 A–V、列 1–60；比例尺代码 B–H；行号自西北角起算，列号自西向东；步骤给出图幅内偏距与分割序数中间量）。"
 
 func _setup() -> void:
 	_add_row("纬度 B（°或度分秒）", "lat_deg", "如 39°54′27.1″", true)

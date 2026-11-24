@@ -1,22 +1,11 @@
 # core/route/alignment_jd.gd —— GK-M7-3 交点法中线正反算 D1
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M7 / §5）：
-#   - 复用本域内核：要素算 GKCurveElements（B3），坐标定位算 GKAlignmentEl（D2，线元法地基）；
-#     M7 域内文件互调不违反"core 域间禁止互调"（那是跨域约束）；
-#   - 输入 p = {
-#       "start": {"x_m","y_m","bearing_deg"?,"chain_m"=0},   # 路线起点（须在 JD1 切线上）；
-#                                                            # bearing 缺省时取 起点→JD1 方向
-#       "jds":  [{"x_m","y_m","r_m","l0_m"=0}, ...],         # 交点序列 ≥1；r_m>0；l0_m≥0
-#       "end_bearing_deg"?: float,                           # 末交点切线方位；缺省→末交点不设曲线（直线收尾）
-#     }
-#   - 转角 Δ_i = 方位(JD_i→JD_{i+1}) − 方位(JD_{i−1}→JD_i)，右转正/左转负；
-#   - 里程/几何（HZ_{i−1} 落在 JD_{i−1}→JD_i 连线上、距 JD_{i−1} 为 T_{i−1}）：
-#       chain(JD_0) = chain(起点) + S(起点,JD_0)；
-#       chain(JD_i) = chain(HZ_{i−1}) + S(JD_{i−1},JD_i) − T_{i−1}；
-#       本段直线长 = S_i − T_{i−1} − T_i（无曲线一侧不计其 T）；
-#   - 主点：ZH/HY/QZ/YZ/HZ（l0=0 时 ZY/QZ/YZ），坐标取自线元装配表；
-#   - 正算（chain→XY）与反算（XY→chain+偏距，右正左负）委托 D2；
-#   - 校验失败 ok=false + 中文 error（曲线伸入锚点之前、转角为零、|α|≥180° 等）。
+# 复用本域内核：要素算 GKCurveElements（B3），定位委托 GKAlignmentEl（D2）；M7 域内互调不违反跨域禁令。
+# 输入 p：start={x_m,y_m,bearing_deg?,chain_m=0}（起点须在 JD1 切线上，bearing 缺省取起点→JD1 方向）；
+#   jds=[{x_m,y_m,r_m>0,l0_m≥0},…]（≥1）；end_bearing_deg? 缺省→末交点不设曲线（直线收尾）。
+# 转角 Δ_i 右转正；里程：chain(JD_i)=chain(HZ_{i−1})+S(JD_{i−1},JD_i)−T_{i−1}，本段直线长=S_i−T_{i−1}−T_i。
+# 主点 ZH/HY/QZ/YZ/HZ（l0=0 时 ZY/QZ/YZ）；正算 chain→XY 与反算 XY→chain+偏距（右正左负）均委托 D2。
+# 校验失败 ok=false + 中文 error（曲线伸入锚点之前、转角为零、|α|≥180° 等）。
 class_name GKAlignmentJd
 extends RefCounted
 
@@ -259,7 +248,7 @@ static func build_elements(p: Dictionary) -> Dictionary:
 				"jds": jd_rows,
 				"main_points": main_points,
 				"start_x_m": sx, "start_y_m": sy,
-				"start_bearing_deg": rad_to_deg(az_in),
+				"start_bearing_deg": az_in,
 				"total_len_m": float(segs[segs.size() - 1]["chain1_m"]) - chain0,
 			},
 			"elements": elements, "start": bp["start"],

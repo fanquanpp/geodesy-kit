@@ -11,7 +11,7 @@ func get_description() -> String:
 	return "由图幅编号给出该图经纬范围（行自西北角起算）。"
 
 func _setup() -> void:
-	_add_row("图幅编号", "sheet_code", "如 J50E001010 或 J50", true)
+	_add_row("图幅编号", "sheet_code", "如 J50E001010 或 J50", true, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var p := _fail_or(_params())

@@ -15,7 +15,7 @@ func _ready() -> void:
 	# 顺序约定：先 super._ready()（基类建 UI 骨架并应用示例），再注册输入行，
 	# 最后再应用一次示例（保证后注册的字段也拿到示例/历史回放值）
 	super._ready()
-	add_input_row("椭球名（可留空）", "datum", "CGCS2000 / WGS84 / KRASOVSKY / IUGG75 …")
+	add_input_row("椭球名（可留空）", "datum", "CGCS2000 / WGS84 / KRASOVSKY / IUGG75 …", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	add_input_row("赤道半径 a（米）", "a_m", "留空则用椭球名查表")
 	add_input_row("扁率倒数 1/f", "inv_f", "留空则用椭球名查表")
 	add_input_row("纬度 B（度/度分秒）", "lat_deg", "30 或 30°00′00″，用于 N/M/X(B)")
@@ -30,6 +30,7 @@ func get_inputs() -> Dictionary:
 	}
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	_set_text_of("datum", inputs)
 	_set_text_of("a_m", inputs)
 	_set_text_of("inv_f", inputs)

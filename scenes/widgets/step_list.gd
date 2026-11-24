@@ -1,28 +1,35 @@
 # scenes/widgets/step_list.gd —— 可复用步骤列表控件（§5 四段式步骤卡片流）
-# 独立控件场景（step_list.tscn）：ScrollContainer + VBox；组装方调用
-# set_steps(steps: Array) 渲染 title/formula/substitution/result 四行卡片，
-# 空字段跳过（§5 规则②）。clear() 清空。
+# 独立控件场景（step_list.tscn）：VBoxContainer（P6：去内嵌 ScrollContainer，
+# 滚动权交给外层整页滚动，避免滚动嵌套；根节点 SIZE_FILL，纵向不抢高）。
+# 组装方调用 set_steps(steps: Array) 渲染 title/formula/substitution/result 四行
+# 折叠卡片（FoldableContainer，与 formula_card 同控件：折叠头触控口径一致），
+# 空字段跳过（§5 规则②）；默认全部折叠、只展开最后一步（结果就近可读）。
+# clear() 清空。set_visible_by_steps 已删（无人调用，越界操作 get_parent 的接口）。
 class_name GKStepList
-extends ScrollContainer
+extends VBoxContainer
 
 var _root: VBoxContainer
 
 func _ready() -> void:
 	if _root == null:
-		_root = VBoxContainer.new()
-		_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		add_child(_root)
+		_root = self
 
-## 渲染步骤数组（元素 {title, formula, substitution, result}）
+## 渲染步骤数组（元素 {title, formula, substitution, result}）；
+## 默认折叠，仅最后一步展开（结果行用 ResultAccent 强调）。
 func set_steps(steps: Array) -> void:
 	_ensure_root()
 	clear()
-	for st: Dictionary in steps:
-		var card := PanelContainer.new()
-		card.theme_type_variation = &"Card"
+	var n := steps.size()
+	for i in n:
+		var st: Dictionary = steps[i]
+		var card := FoldableContainer.new()
+		card.folded = i != n - 1  # 默认只展开最后一步
+		var title_txt := String(st.get("title", ""))
+		card.title = "步骤 %d/%d　%s" % [i + 1, n, _strip_existing_index(title_txt)]
 		var cv := VBoxContainer.new()
 		card.add_child(cv)
-		for pair: Array in [["title", "Header"], ["formula", ""], ["substitution", "Muted"], ["result", ""]]:
+		# 四行层级：formula 弱化（Muted）、substitution 正常、result 强调（ResultAccent）
+		for pair: Array in [["formula", "Muted"], ["substitution", ""], ["result", "ResultAccent"]]:
 			var txt := String(st.get(pair[0], ""))
 			if txt.is_empty():
 				continue
@@ -32,23 +39,26 @@ func set_steps(steps: Array) -> void:
 			if pair[1] != "":
 				lab.theme_type_variation = StringName(pair[1])
 			cv.add_child(lab)
-		_root.add_child(card)
+		add_child(card)
 
-func set_visible_by_steps(steps: Array) -> void:
-	_ensure_root()
-	get_parent().visible = not steps.is_empty()
+## 标题里已有的「1. 」式序号去掉，避免与「步骤 i/n」重复编号
+func _strip_existing_index(t: String) -> String:
+	var regex := RegEx.new()
+	# 匹配形如 "1. " / "12、" / "3．" 的前缀
+	regex.compile("^\\s*\\d+\\s*[.、．]\\s*")
+	return regex.sub(t, "", true)
 
 func clear() -> void:
 	_ensure_root()
 	# 立即移除旧卡（queue_free 延迟到帧尾，连续两次 run() 时旧卡仍会计入 step_count，
 	# 且 calculator_base 连续渲染会瞬时翻倍——这里用同步 remove_child+free 保证幂等）
-	for c in _root.get_children():
-		_root.remove_child(c)
+	for c in get_children():
+		remove_child(c)
 		c.free()
 
 func step_count() -> int:
 	_ensure_root()
-	return _root.get_child_count()
+	return get_child_count()
 
 func _ensure_root() -> void:
 	if _root == null:

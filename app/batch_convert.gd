@@ -18,56 +18,56 @@ extends RefCounted
 const PIPELINES := {
 	"blh_to_xyz": {
 		"label": "大地坐标 BLH → 空间直角 XYZ（EPSG 9602 闭式）",
-		"dims": 3, "in_cols": "B(°), L(°), h(m)",
-		"out_cols": ["X(m)", "Y(m)", "Z(m)"],
+		"dims": 3, "in_cols": "B（°）、L（°）、h（m）",
+		"out_cols": ["X 坐标（m）", "Y 坐标（m）", "Z 坐标（m）"],
 		"params_hint": "datum=椭球名（CGCS2000/WGS84…，留空 WGS84）",
 	},
 	"xyz_to_blh": {
 		"label": "空间直角 XYZ → 大地坐标 BLH（Bowring 闭式）",
-		"dims": 3, "in_cols": "X(m), Y(m), Z(m)",
-		"out_cols": ["B(deg)", "L(deg)", "h(m)"],
+		"dims": 3, "in_cols": "X（m）、Y（m）、Z（m）",
+		"out_cols": ["纬度（°）", "经度（°）", "高程（m）"],
 		"params_hint": "datum=椭球名（留空 WGS84）",
 	},
 	"blh_to_gauss": {
 		"label": "BLH → 高斯平面坐标 x/y（教材级数，与 pyproj 复核 ≤0.02mm）",
-		"dims": 3, "in_cols": "B(°), L(°), h(m)",
-		"out_cols": ["x(m)", "y(m)"],
+		"dims": 3, "in_cols": "B（°）、L（°）、h（m）",
+		"out_cols": ["X 坐标（m）", "Y 坐标（m）"],
 		"params_hint": "datum=椭球名（默认 CGCS2000）；l0_deg=中央子午线（度，必填）；k0/fe_m/fn_m 可选",
 	},
 	"gauss_to_blh": {
 		"label": "高斯平面坐标 → BLH（μ1 迭代 + Newton 精化）",
-		"dims": 2, "in_cols": "x(m), y(m)",
-		"out_cols": ["B(deg)", "L(deg)"],
+		"dims": 2, "in_cols": "x（m）、y（m）",
+		"out_cols": ["纬度（°）", "经度（°）"],
 		"params_hint": "datum、l0_deg（度，必填）、k0/fe_m/fn_m 与正算同口径",
 	},
 	"blh_to_utm": {
 		"label": "BLH → UTM（k0=0.9996，自动选带可指定）",
-		"dims": 3, "in_cols": "B(°), L(°), h(m)",
-		"out_cols": ["E(m)", "N(m)"],
+		"dims": 3, "in_cols": "B（°）、L（°）、h（m）",
+		"out_cols": ["东坐标（m）", "北坐标（m）"],
 		"params_hint": "datum（默认 WGS84）；zone=带号（留空自动选带）",
 	},
 	"utm_to_blh": {
 		"label": "UTM（E/N）→ BLH",
-		"dims": 2, "in_cols": "E(m), N(m)",
-		"out_cols": ["B(deg)", "L(deg)"],
+		"dims": 2, "in_cols": "E（m）、N（m）",
+		"out_cols": ["纬度（°）", "经度（°）"],
 		"params_hint": "datum；zone=带号（1..60，必填）；hemisphere=N/S（必填，南北网格重叠无法自动判）",
 	},
 	"bursa_fwd": {
 		"label": "七参数布尔莎转换 XYZ → XYZ（PV/CF 双约定，一次传入 core 批量算）",
-		"dims": 3, "in_cols": "X(m), Y(m), Z(m)",
-		"out_cols": ["X2(m)", "Y2(m)", "Z2(m)"], "batch": true,
+		"dims": 3, "in_cols": "X（m）、Y（m）、Z（m）",
+		"out_cols": ["目标 X 坐标（m）", "目标 Y 坐标（m）", "目标 Z 坐标（m）"], "batch": true,
 		"params_hint": "tx_m/ty_m/tz_m；rx_as/ry_as/rz_as(″)；scale_ppm；convention=PV/CF；three_param=true 为三参数",
 	},
 	"four_param_fwd": {
 		"label": "平面四参数转换（正算：源平面 → 目标平面）",
-		"dims": 2, "in_cols": "x(m), y(m)",
-		"out_cols": ["X(m)", "Y(m)"], "batch": true,
+		"dims": 2, "in_cols": "x（m）、y（m）",
+		"out_cols": ["目标 X 坐标（m）", "目标 Y 坐标（m）"], "batch": true,
 		"params_hint": "dx_m, dy_m, scale, alpha_deg（°）",
 	},
 	"four_param_inv": {
 		"label": "平面四参数转换（反算：目标平面 → 源平面）",
-		"dims": 2, "in_cols": "X(m), Y(m)",
-		"out_cols": ["x(m)", "y(m)"], "batch": true,
+		"dims": 2, "in_cols": "X（m）、Y（m）",
+		"out_cols": ["源 X 坐标（m）", "源 Y 坐标（m）"], "batch": true,
 		"params_hint": "dx_m, dy_m, scale, alpha_deg（与正算同口径）",
 	},
 }
@@ -107,7 +107,9 @@ static func parse_points(text: String, dims: int) -> Dictionary:
 
 ## 执行批量转换。
 ## p：{pipeline: String（PIPELINES 键）, text: String（点文件内容）, params: Dictionary}
-## 返回 §5 协议：ok=true 时 value={rows, n_ok, n_err, pipeline, label, out_cols}，
+## 返回 §5 协议：ok=true 时 value={rows, n_ok, n_err, pipeline, label, out_cols,
+## in_cols, summary}；前七键为机器契约（tests/tools/test_tools.gd 直读，不可动），
+## summary 为面向用户的中文统计行（渲染层展示键，报告/结果卡优先取它）。
 ## rows=[{line,name,values,error}]（失败行 error 中文、不中断整批）；
 ## ok=false 仅当管线名非法、core 参数整体非法或全部行解析失败。
 static func convert(p: Dictionary) -> Dictionary:
@@ -129,7 +131,9 @@ static func convert(p: Dictionary) -> Dictionary:
 				"error": "没有可转换的数据行（%d 行解析失败）。%s" % [errors.size(), first]}
 	var params: Dictionary = p.get("params", {}) if p.get("params", {}) is Dictionary else {}
 	if bool(pipe.get("batch", false)):
-		return _run_batch(key, pipe, points, params, formula)
+		# 解析失败行也要进 rows 逐行报告（与 _run_per_point 口径一致），
+		# 否则坏行凭空消失、summary 失真
+		return _run_batch(key, pipe, points, params, errors, formula)
 	return _run_per_point(key, pipe, points, params, errors, formula)
 
 # ---------- 逐点协议模式（投影/BLH 类：逐行错误报告） ----------
@@ -162,7 +166,8 @@ static func _run_per_point(key: String, pipe: Dictionary, points: Array,
 
 # ---------- 点集一次传入模式（七参数/四参数：core 自身支持批量） ----------
 
-static func _run_batch(key: String, pipe: Dictionary, points: Array, params: Dictionary, formula: String) -> Dictionary:
+static func _run_batch(key: String, pipe: Dictionary, points: Array, params: Dictionary,
+		errors: Array, formula: String) -> Dictionary:
 	var spec: Variant = _DISPATCH.get(key)
 	if spec == null:
 		return {"ok": false, "value": {}, "steps": [], "formula": formula,
@@ -181,6 +186,9 @@ static func _run_batch(key: String, pipe: Dictionary, points: Array, params: Dic
 	var out_pts: Array = (r.get("value", {}) as Dictionary).get("points_m", [])
 	var rows := []
 	var n_ok := 0
+	# 解析失败行先行进 rows（序次与 _run_per_point 一致：坏行在前，按行号排列）
+	for e: Dictionary in errors:
+		rows.append({"line": int(e["line"]), "name": "", "values": [], "error": String(e["error"])})
 	for i in points.size():
 		var pt: Dictionary = points[i]
 		if i < out_pts.size():
@@ -231,20 +239,23 @@ const _DISPATCH := {
 static func _pack(key: String, pipe: Dictionary, rows: Array, n_ok: int,
 		formula: String, steps: Array = []) -> Dictionary:
 	var n_err := rows.size() - n_ok
+	# 用户可见统计口径与步骤卡 result 行一致：只说行数，不暴露机器键名
+	var summary := "共 %d 行：成功 %d 行，失败 %d 行" % [rows.size(), n_ok, n_err]
 	if steps.is_empty():
 		steps = [
 			{"title": "1. 选择转换管线", "formula": String(pipe["label"]),
 				"substitution": String(pipe.get("params_hint", "")),
 				"result": "成功 %d 行，失败 %d 行" % [n_ok, n_err]},
 			{"title": "2. 复用 core 转换函数", "formula": "逐点调用 core §5 协议入口",
-				"substitution": "算法与单点计算器完全一致（GKGaussKruger/GKUtm/GKBlhXYZ/GKBursa/GKFourParam）",
+				"substitution": "算法与单点计算器完全一致（同一 core 实现与精度口径）",
 				"result": "逐行错误见结果表（失败行不中断整批）"},
 		]
 	return {
 		"ok": true,
 		"value": {"rows": rows, "n_ok": n_ok, "n_err": n_err,
 				"pipeline": key, "label": String(pipe["label"]),
-				"out_cols": pipe["out_cols"], "in_cols": String(pipe["in_cols"])},
+				"out_cols": pipe["out_cols"], "in_cols": String(pipe["in_cols"]),
+				"summary": summary},
 		"steps": steps, "formula": formula, "error": "",
 	}
 
@@ -271,32 +282,45 @@ static func _point_name(pt: Dictionary, idx: int) -> String:
 	var n := String(pt.get("name", "")).strip_edges()
 	return n if not n.is_empty() else "点%d" % (idx + 1)
 
-## rows → CSV 文本（导出结果文件用；失败行输出「失败：<错误>」列）
-static func rows_to_csv(rows: Array) -> String:
+## rows → CSV 文本（导出结果文件用；失败行输出「失败：<错误>」状态列并按
+## max_v 补齐空值列，保证每行字段数与表头一致（Excel 打开状态列不错位）。
+## 表头优先用 out_cols（管线真实输出列名，与结果卡 _col_name 同源），
+## 列数不足或未传时回退「值N」；decimals 为用户设置的小数位数（1–12，
+## 与单点计算器 calculator_base._render_result 同口径）。
+static func rows_to_csv(rows: Array, out_cols: Array = [], decimals: int = 6) -> String:
 	var max_v := 0
 	for r: Dictionary in rows:
 		max_v = maxi(max_v, (r.get("values", []) as Array).size())
 	var head := "行号,点名"
 	for i in max_v:
-		head += ",值%d" % (i + 1)
+		head += ",%s" % _csv_cell(String(out_cols[i]) if i < out_cols.size() and not String(out_cols[i]).is_empty() else "值%d" % (i + 1))
 	head += ",状态"
 	var L := PackedStringArray()
 	L.append(head)
 	for r: Dictionary in rows:
 		var line := "%d,%s" % [int(r.get("line", 0)), _csv_cell(String(r.get("name", "")))]
+		var err := String(r.get("error", ""))
 		var vals: Array = r.get("values", [])
+		if not err.is_empty():
+			# 失败行：补齐空值占位列（与表头对齐）再接状态列
+			for i in max_v:
+				line += ","
+			line += ",失败：%s" % _csv_cell(err)
+			L.append(line)
+			continue
 		for i in max_v:
 			line += ","
 			if i < vals.size():
-				line += _num_text(vals[i])
-		var err := String(r.get("error", ""))
-		line += ",成功" if err.is_empty() else ",失败：%s" % _csv_cell(err)
+				line += _num_text(vals[i], decimals)
+		line += ",成功"
 		L.append(line)
 	return "\n".join(L)
 
-static func _num_text(v: Variant) -> String:
+## 数值 → 定点小数文本；decimals 由调用方传入（设置页「计算结果小数位数」口径，
+## 静态函数不依赖 GKServices 单例，面板侧负责取值）
+static func _num_text(v: Variant, decimals: int) -> String:
 	if v is float or v is int:
-		return String.num(float(v), 6)
+		return String.num(float(v), decimals)
 	return str(v)
 
 static func _csv_cell(s: String) -> String:

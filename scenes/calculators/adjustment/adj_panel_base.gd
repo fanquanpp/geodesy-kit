@@ -29,6 +29,7 @@ func get_inputs() -> Dictionary:
 
 ## 统一输入填充（历史回放/示例填充）
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

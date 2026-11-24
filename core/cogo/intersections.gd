@@ -1,14 +1,10 @@
 # core/cogo/intersections.gd —— GK-M5：交会定点（B1 前方/侧方/后方 + B2 方位-方位/方位-距离/距离-距离）
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M5 / §5 协议）：
-#   - 纯静态函数、零引擎依赖；坐标/方位角约定同 cogo.gd（x=东、y=北、北起顺时针方位）；
-#   - 侧别约定：side=+1 表示交点位于射线/基线前进方向的右侧（顺时针 90°），side=−1 为左侧；
-#     方位系顺时针旋转矩阵：x' = x·cosα + y·sinα，y' = −x·sinα + y·cosα；
-#   - 后方交会（角度 α=∠APB、β=∠BPC，顺时针观测）用"两定位圆求交"解析法：
-#     ∠APB=α 的轨迹是过 A、B 半径 R=AB/(2·sinα) 的圆；两组圆各取两侧共 4 种组合，
-#     交点剔除 B 后按角度+顺时针方向检核选解；两圆重合 ⟺ 危险圆（四点共圆），无解并给出中文警告；
-#   - 交会角 γ < 15°（或 > 165°）输出"精度较弱"提示（仍给出结果，不判失败）；
-#   - 每个计算入口统一返回 §5 协议 {ok, value, steps, formula, error}。
+# 纯静态、零引擎依赖；坐标/方位约定同 cogo.gd（x=东、y=北、北起顺时针）。
+# 侧别：side=+1 为射线/基线前进方向右侧（顺时针 90°），−1 为左侧。
+# 后方交会用「两定位圆求交」解析法：∠APB=α 的轨迹是过 A、B 半径 R=AB/(2sinα) 的圆，
+# 4 种组合交点剔除 B 后按角度+方向检核选解；两圆重合 ⟺ 危险圆（四点共圆），无解并给中文警告。
+# 交会角 γ<15°（或 >165°）输出「精度较弱」提示（仍给结果，不判失败）；统一返回 §5 协议。
 class_name GKIntersections
 extends RefCounted
 
@@ -160,6 +156,10 @@ static func resection(x1: float, y1: float, x2: float, y2: float, x3: float, y3:
 			and is_finite(x3) and is_finite(y3) and is_finite(alpha) and is_finite(beta)):
 		return {"danger": "输入存在非数值"}
 	if alpha <= 1e-6 or alpha >= 180.0 - 1e-6 or beta <= 1e-6 or beta >= 180.0 - 1e-6:
+		# 观测角即圆周角：α≥180° 意味着 A、B、P 已确定共圆（圆周角 = 弦所对角 ≤180°），
+		# 先给危险圆口径再谈区间，避免对共圆配置误报「区间」错误
+		if (alpha >= 180.0 - 1e-6 or beta >= 180.0 - 1e-6) 				and not (alpha <= 1e-6 or beta <= 1e-6):
+			return {"danger": "danger_circle"}
 		return {"danger": "观测角须在 (0°, 180°) 开区间内且不过小"}
 	# 已知点三角形有效性：A、B、C 不得共线（叉积相对面积检核）
 	var abx := x2 - x1

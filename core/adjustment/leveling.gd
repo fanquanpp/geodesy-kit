@@ -1,91 +1,148 @@
-# core/adjustment/leveling.gd —— GK-M6-3 水准测量（C6 单一水准路线 / C7 水准网平差·间接+条件双实现 / 三角高程）
+# core/adjustment/leveling.gd —— GK-M6-3 水准测量（C6 单一路线 / C7 水准网·间接+条件双实现 / 三角高程）
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M6 / §5 协议）：
-#   - C7 水准网提供间接平差与条件平差两条独立实现，结果互检（ARCHITECTURE §7.3 双法互检纪律）；
-#     两法输出残差 V 应逐位一致（法方程均为满秩对称正定，双精度解到 ~1e-12）；
-#   - 条件平差的独立闭合环用生成树找环（BFS 生成树 + 非树边成环），条件系数 ±1；
-#   - 权约定：p_i = 1/L_km（按路线长度定权，教材口径）；obs 显式给 "w" 时优先用 w；
-#   - 间接平差法方程 N = BᵀPB 对称正定（网连通且有起算数据时），走 GKMatrix.cholesky_solve；
-#   - 三角高程：单向 h = D·tanα + i − v + (1−k)·D²/(2R)；对向观测取均值时球气差自动抵消；
-#     k（大气折光系数）默认 0.13、R 默认 6371008.7714 m，均可由用户传入；
-#   - 全部静态函数、零引擎依赖；输入非法返回 {"ok":false,"error":中文}；超限返回 ok=true 且 ok_limit=false。
+# C7 提供间接与条件平差两条独立实现，残差 V 应逐位一致（双法互检纪律）；条件平差闭合环用
+# BFS 生成树+非树边成环，条件系数 ±1。权 p=1/L_km（按路线长度，教材口径），obs 显式给 w 优先。
+# 间接平差法方程对称正定走 GKMatrix.cholesky_solve。三角高程 h=D·tanα+i−v+(1−k)D²/(2R)，
+# k 默认 0.13、R 默认 6371008.7714 m 可传入；对向观测均值时球气差抵消。
+# 全部静态、零引擎依赖；输入非法 {ok:false,error:中文}；超限 ok=true 且 ok_limit=false。
 class_name GKAdjustLeveling
 extends RefCounted
 
 ## C6 单一水准路线闭合差与高差改正
 ## p = {h_start: H_A, h_end: H_B（附合）或 loop: true（闭合环，起终同点）,
-##      segs: [{h: 高差 m, L_km: 路线长 km}...], point_names?: [...], limit_mm?（自输限差，可选）}
+##      segs: [{h: 高差 m, L_km: 路线长 km, ns?: 测站数（可选，给 ns 时按站数定权）}...],
+##      point_names?: [...], limit_mm?（自输限差，可选）}
+## 定权口径：默认 v_i = −fh·L_i/ΣL（按路线长 km）；段给 ns 时改按测站数 v_i = −fh·n_i/Σn
+## （等价于 p_i = 1/n_i 口径；μ 相应为「每站观测中误差」口径——权基准与 μ 单位一致）
 static func single_route(p: Dictionary) -> Dictionary:
 	if not p.has("h_start") or not _finite_num(p.get("h_start")):
-		return _fail("缺少起点高程 h_start（m）")
+		return _fail("缺少起点已知高程（m）")
 	var is_loop := bool(p.get("loop", false))
 	if not is_loop and (not p.has("h_end") or not _finite_num(p.get("h_end"))):
-		return _fail("附合路线缺少终点已知高程 h_end（m）；闭合环请传 loop:true")
+		return _fail("附合路线缺少终点已知高程（m）；闭合环请传 loop 标志（闭合环起终同点）")
 	var segs_v: Variant = p.get("segs")
 	if not (segs_v is Array) or (segs_v as Array).is_empty():
-		return _fail("缺少测段 segs（每段 {h: 高差 m, L_km: 路线长 km}）")
+		return _fail("缺少测段列表（每段含高差 m、路线长 km，可附测站数）")
 	var hs := PackedFloat64Array()
 	var ls := PackedFloat64Array()
+	var ns_arr := PackedFloat64Array()
+	var all_ns := true  # 各测段是否都给出测站数（给全时按站数定权）
 	for s: Dictionary in segs_v:
 		if not s.has("h") or not _finite_num(s.get("h")):
-			return _fail("测段高差 h 含非法数值（空/非数字/NaN）")
+			return _fail("测段高差含非法数值（空/非数字/NaN）")
 		if s.has("L_km") and _finite_num(s.get("L_km")) and float(s["L_km"]) > 0.0:
 			ls.append(float(s["L_km"]))
 		else:
-			return _fail("测段路线长 L_km 必须为正数（用于按长度定权分配改正）")
+			return _fail("测段路线长必须为正数（用于定权分配改正）")
+		if s.has("ns") and _finite_num(s.get("ns")) and float(s["ns"]) > 0.0:
+			ns_arr.append(float(s["ns"]))
+		else:
+			ns_arr.append(0.0)
+			all_ns = false
 		hs.append(float(s["h"]))
 	var n := hs.size()
 	var sum_h := _sum(hs)
 	var fh := sum_h if is_loop else sum_h - (float(p["h_end"]) - float(p["h_start"]))
-	var sum_l := _sum(ls)
-	if sum_l <= 0.0:
-		return _fail("路线总长为零，无法分配改正数")
-	# 高差改正：按路线长比例反号分配
-	var vs := PackedFloat64Array()
-	for i in n:
-		vs.append(-fh * ls[i] / sum_l)
-	# 改正后测段高差与各点高程
+	# 限差判据在分配前执行：超限则停止分配并提示返工（不输出伪改正结果）
+	var ok_limit := true
+	var has_limit := p.has("limit_mm") and _finite_num(p.get("limit_mm"))
+	var lim := 0.0
+	if has_limit:
+		lim = absf(float(p["limit_mm"]))
+		ok_limit = absf(fh * 1000.0) <= lim
+	var over_limit := has_limit and not ok_limit
 	var names := _route_names(p, n)
 	var value := {}
+	value["fh_m"] = fh
+	value["fh_mm"] = fh * 1000.0
+	value["sum_h_m"] = sum_h
+	value["sum_l_km"] = _sum(ls)
+	value["weight_mode"] = "按路线长（每公里等精度，p_i = 1/L_km，μ 为每公里观测中误差口径）"
+	value["basis"] = "用户自输限差口径（按路线长或测站数比例分配改正，规范限差值请按等级自行填入）"
+	if has_limit:
+		value["limit_fh_mm"] = lim
+		value["f_fh_mm"] = fh * 1000.0
+		value["ok_limit"] = ok_limit
+	if over_limit:
+		# 超限：停止分配，不输出改正数与推算高程
+		value["sum_v_ok"] = false
+		var steps_over := [
+			{
+				"title": "1. 高差闭合差",
+				"formula": "附合：fh = Σh − (H_终 − H_起)；闭合环：fh = Σh",
+				"substitution": "Σh = %s m，闭合差 fh = %s m = %s mm" % [_fmt(sum_h), _fmt(fh), _fmt(fh * 1000.0)],
+				"result": "%d 个测段，路线总长 %s km" % [n, _fmt(_sum(ls))],
+			},
+			{
+				"title": "2. 限差判据：超限，应检查观测并返工",
+				"formula": "|fh| ≤ 限差（用户自输 ±%s mm）" % _fmt(lim),
+				"substitution": "|%s| mm 与 %s mm 比较" % [_fmt(fh * 1000.0), _fmt(lim)],
+				"result": "超限！停止改正分配，应检查观测并返工",
+			},
+		]
+		return _ok(value, steps_over, "单一水准路线闭合差检核（超限，停止分配）")
+	# 未超限：定权口径——优先测站数 n_i（给全时），否则路线长 L_i
+	var vs := PackedFloat64Array()
+	var sum_w := 0.0
+	if all_ns:
+		sum_w = _sum(ns_arr)
+		value["weight_mode"] = "按测站数（每站等精度，p_i = 1/n_i，μ 为每站观测中误差口径）"
+		for i in n:
+			vs.append(-fh * ns_arr[i] / sum_w)
+	else:
+		sum_w = _sum(ls)
+		value["weight_mode"] = "按路线长（每公里等精度，p_i = 1/L_km，μ 为每公里观测中误差口径）"
+		for i in n:
+			vs.append(-fh * ls[i] / sum_w)
+	if sum_w <= 0.0:
+		return _fail("定权基准之和为零，无法分配改正数")
+	# 改正后测段高差与各点高程
 	var h_pt := float(p["h_start"])
 	value["H_%s_m" % names[0]] = h_pt
 	for i in n:
 		h_pt += hs[i] + vs[i]
 		value["H_%s_m" % names[i + 1]] = h_pt
-	value["fh_m"] = fh
-	value["fh_mm"] = fh * 1000.0
-	value["sum_h_m"] = sum_h
-	value["sum_l_km"] = sum_l
 	value["v_m"] = vs
 	value["v_mm"] = _scaled(vs, 1000.0)
-	# 限差检核（自输限差；规范限差表未核读，不伪造标准值）
-	if p.has("limit_mm") and is_finite(float(p["limit_mm"])):
-		var lim := absf(float(p["limit_mm"]))
-		value["limit_fh_mm"] = lim
-		value["f_fh_mm"] = fh * 1000.0
-		value["ok_limit"] = absf(fh * 1000.0) <= lim
-		value["basis"] = "用户输入限差（未核读 GB 50026 等规范限差表，data/tolerance.json 为占位）"
+	# Σv = −fh 检核
+	var sv := _sum(vs)
+	value["sum_v_m"] = sv
+	var sv_ok := absf(sv + fh) <= 1e-9 * maxf(1.0, absf(fh))
+	value["sum_v_ok"] = sv_ok
 	var steps := [
 		{
 			"title": "1. 高差闭合差",
 			"formula": "附合：fh = Σh − (H_终 − H_起)；闭合环：fh = Σh",
 			"substitution": "Σh = %s m，闭合差 fh = %s m = %s mm" % [_fmt(sum_h), _fmt(fh), _fmt(fh * 1000.0)],
-			"result": "%d 个测段，路线总长 %s km" % [n, _fmt(sum_l)],
-		},
-		{
-			"title": "2. 高差改正（按路线长比例反号分配）",
-			"formula": "v_i = −fh · L_i / ΣL",
-			"substitution": "首段改正 v_1 = −(%s)×%s/%s = %s m" % [_fmt(fh), _fmt(ls[0]), _fmt(sum_l), _fmt(vs[0])],
-			"result": "Σv = %s m（应恰为 −fh）" % _fmt(-fh),
-		},
-		{
-			"title": "3. 改正后高程推算",
-			"formula": "H_{i+1} = H_i + h_i + v_i",
-			"substitution": "逐段累加",
-			"result": "终点推算高程 %s m" % _fmt(value["H_%s_m" % names[n]]),
+			"result": "%d 个测段，路线总长 %s km" % [n, _fmt(_sum(ls))],
 		},
 	]
-	return _ok(value, steps, "单一水准路线高差改正（按路线长比例分配）")
+	if has_limit:
+		steps.append({
+			"title": "2. 限差判据",
+			"formula": "|fh| ≤ 限差（用户自输 ±%s mm）" % _fmt(lim),
+			"substitution": "|%s| mm 与 %s mm 比较" % [_fmt(fh * 1000.0), _fmt(lim)],
+			"result": "未超限，进入改正分配",
+		})
+	steps.append({
+		"title": "%d. 高差改正（%s反号分配）" % [steps.size() + 1, "按测站数" if all_ns else "按路线长比例"],
+		"formula": ("v_i = −fh · n_i / Σn" if all_ns else "v_i = −fh · L_i / ΣL"),
+		"substitution": ("首段改正 v_1 = −(%s)×%s/%s = %s m" % [_fmt(fh), _fmt(ns_arr[0]), _fmt(sum_w), _fmt(vs[0])]) if all_ns else ("首段改正 v_1 = −(%s)×%s/%s = %s m" % [_fmt(fh), _fmt(ls[0]), _fmt(_sum(ls)), _fmt(vs[0])]),
+		"result": "Σv = %s m（应恰为 −fh）" % _fmt(sv),
+	})
+	steps.append({
+		"title": "%d. Σv = −fh 检核" % (steps.size() + 1),
+		"formula": "Σv + fh = 0（改正数总和恰抵消闭合差）",
+		"substitution": "%s + %s = %s m" % [_fmt(sv), _fmt(fh), _fmt(sv + fh)],
+		"result": "检核通过" if sv_ok else "检核不通过（数值误差超预期），请复核",
+	})
+	steps.append({
+		"title": "%d. 改正后高程推算" % (steps.size() + 1),
+		"formula": "H_下一点 = H_本点 + h + v（逐段累加）",
+		"substitution": "逐段累加",
+		"result": "终点推算高程 %s m" % _fmt(value["H_%s_m" % names[n]]),
+	})
+	return _ok(value, steps, "单一水准路线高差改正（限差判据 → %s分配 → Σv=−fh 检核）" % ("按测站数" if all_ns else "按路线长比例"))
 
 ## C7 水准网平差——间接平差（参数：未知点高程）
 ## p = {known: {name: H}, approx: {name: H0}, obs: [{from, to, h, L_km 或 w}]}
@@ -148,6 +205,7 @@ static func network_indirect(p: Dictionary) -> Dictionary:
 	if dof > 0 and pvv >= 0.0:
 		mu = sqrt(pvv / dof)
 	_fill_net_result(value, heights, v_res, mu, n, n - t, unknown_names, dx)
+	value["weight_note"] = "定权 p_i = 1/L_km（每公里等精度）；μ 为每公里高差观测中误差口径"
 	var steps := [
 		{
 			"title": "1. 误差方程",
@@ -165,13 +223,16 @@ static func network_indirect(p: Dictionary) -> Dictionary:
 			"title": "3. 精度评定",
 			"formula": "μ = √(VᵀPV / (n − t))",
 			"substitution": "VᵀPV = %s" % _fmt(pvv),
-			"result": ("μ = ±%s m" % _fmt(mu)) if dof > 0 else "无多余观测，无法评定精度",
+			"result": ("μ = ±%s m/km（每公里高差中误差口径：p 以 1/km 计权，μ 即每公里观测中误差）" % _fmt(mu)) if dof > 0 else "无多余观测，无法评定精度",
 		},
 	]
 	return _ok(value, steps, "水准网间接平差（参数：未知点高程）")
 
-## C7 水准网平差——条件平差（独立闭合环条件方程，生成树找环）
+## C7 水准网平差——条件平差（独立闭合环条件 + 已知点间附合条件，生成树找环）
 ## 输入输出与 network_indirect 同构，供双法互检
+## 条件方程：每条非树边给一个独立环条件（系数 ±1，w = Σ±h）；
+## 已知点 ≥2 时另补附合条件：沿生成树推算的另一已知点推算高程 − 其已知高程 = 0，
+## 树上系数取反后作为条件行（相当于把「推算路径 + 该观测」闭合成已知点间附合路线）。
 static func network_condition(p: Dictionary) -> Dictionary:
 	var prep := _prepare_net(p)
 	if prep.get("error", "") != "":
@@ -218,13 +279,24 @@ static func network_condition(p: Dictionary) -> Dictionary:
 	if visited.size() != nodes.size():
 		return _fail("水准网不连通（存在与起算点无路径相连的测段），无法组成闭合条件")
 	var n_tree := nodes.size() - 1
-	if n - n_tree < 1:
-		return _fail("无多余观测（n = %d，必要观测 = %d），无需也不可平差" % [n, n_tree])
+	# 必要观测 t = 未知点个数 = 节点数 − 已知点数；多余观测（条件数）
+	# r = 独立环条件 (n − n_tree) + 已知点附合条件 (n_known − 1) = n − t。
+	var n_known := 0
+	for k: String in known:
+		if nodes.has(k):
+			n_known += 1
+	var n_annex := maxi(n_known - 1, 0)
+	var t_need := nodes.size() - n_known
+	if n - t_need < 1:
+		return _fail("无多余观测（n = %d，必要观测 = %d），无需也不可平差" % [n, t_need])
 	# 非树边 → 独立闭合环条件：系数 ±1，w = Σ±h
 	var A := []
 	var w_vec := PackedFloat64Array()
+	var tree_idx := {}  # 观测号 → true（树边）
+	for pe: Dictionary in parent.values():
+		tree_idx[int(pe["idx"])] = true
 	for i in n:
-		if parent.values().any(func(pe): return int(pe["idx"]) == i):
+		if tree_idx.has(i):
 			continue  # 树边
 		var f: String = obs[i]["from"]
 		var tt: String = obs[i]["to"]
@@ -255,6 +327,29 @@ static func network_condition(p: Dictionary) -> Dictionary:
 		for j in n:
 			s += coef[j] * float(obs[j]["h"])
 		w_vec.append(s)
+	# 已知点附合条件（≥2 个已知点）：对每个非根已知点 P，
+	#   推算高程 H_P^树 = H_root + Σ_树边(±h) − h_P观测（P 处沿树的那条边，符号按推算方向），
+	#   条件 H_P^树 + v_推算 − H_P^已知 = 0 → 条件行系数 = −(推算路径系数)（把该观测含入条件时
+	#   其自身系数为 +1，其余树边取推算符号），闭合差 w = H_root + Σ±h − h_P观 − H_P^已知。
+	for k: String in known:
+		if k == root or not nodes.has(k):
+			continue
+		# 沿树从 k 回溯到 root，收集路径边（按推算方向给符号）
+		var coef := PackedFloat64Array()
+		coef.resize(n)
+		var cu: String = k
+		# w = Σ(推算符号·h) + H_root^已知 − H_k^已知（推算高程 − 已知高程的闭合差）
+		var w_annex := float(known[root]) - float(known[k])
+		while cu != root:
+			var pe: Dictionary = parent[cu]
+			var idx := int(pe["idx"])
+			# 推算：H_child = H_parent ± h；对条件行把 child 端观测系数记为推算符号
+			coef[idx] += 1.0 if bool(pe["forward"]) else -1.0
+			w_annex += float(obs[idx]["h"]) * (1.0 if bool(pe["forward"]) else -1.0)
+			cu = String(pe["node"])
+		# 条件行：A·(h+v) + w = 0，其中系数为路径符号、w 为推算 − 已知的闭合差
+		A.append(coef)
+		w_vec.append(w_annex)
 	var r := A.size()
 	# 联系数 K = −(A P⁻¹ Aᵀ)⁻¹ w；改正 v = P⁻¹AᵀK
 	var APinv := []
@@ -306,32 +401,39 @@ static func network_condition(p: Dictionary) -> Dictionary:
 	var value := {}
 	_fill_net_result(value, heights, v_res, mu, n, r, [], PackedFloat64Array())
 	value["w_m"] = w_vec
+	# 条件分类计数（环条件 / 附合条件）
+	var n_loop := n - n_tree
+	value["n_loop_cond"] = n_loop
+	if n_annex > 0:
+		value["n_annex_cond"] = n_annex
+	value["weight_note"] = "定权 p_i = 1/L_km（每公里等精度）；μ 为每公里高差观测中误差口径"
 	var steps := [
 		{
-			"title": "1. 独立闭合环条件方程（生成树找环）",
-			"formula": "Σ±(h + v) = 0，即 A·v + w = 0；w = Σ±h",
-			"substitution": "%d 个独立环，闭合差 w = %s m" % [r, _fmt_vec(w_vec)],
-			"result": "多余观测 r = %d" % r,
+			"title": "1. 条件方程（环条件 + 附合条件并列）",
+			"formula": "环条件：Σ±(h + v) = 0（每条非树边一个独立环，系数 ±1）；附合条件：Σ±(h + v) + H_起 − H_终 = 0（两已知点间沿树推算附合）；统记 A·v + w = 0",
+			"substitution": "%d 个独立环条件、%d 个已知点附合条件，闭合差 w = %s m" % [n_loop, n_annex, _fmt_vec(w_vec)],
+			"result": "条件总数 r = n − t = %d − %d = %d" % [n, t_need, r],
 		},
 		{
 			"title": "2. 联系数与改正数",
 			"formula": "K = −(A P⁻¹ Aᵀ)⁻¹ w；v = P⁻¹AᵀK",
-			"substitution": "权 p = 1/L",
+			"substitution": "权 p = 1/L（按路线长，km 口径）",
 			"result": "v = %s m" % _fmt_vec(v_res),
 		},
 		{
 			"title": "3. 精度评定",
 			"formula": "μ = √(VᵀPV / r)",
 			"substitution": "VᵀPV = −Kᵀw = %s" % _fmt(pvv),
-			"result": "μ = ±%s m" % _fmt(mu),
+			"result": "μ = ±%s m/km（每公里高差中误差口径：p 以 1/km 计权，μ 即每公里观测中误差）" % _fmt(mu),
 		},
 	]
-	return _ok(value, steps, "水准网条件平差（独立环条件法，与间接法双实现互检）")
+	return _ok(value, steps, "水准网条件平差（环条件+已知点附合条件，与间接法双实现互检）")
 
 ## 三角高程（单向 / 对向取均值）
 ## p = {D_m: 平距, v_angle_deg: 竖直角（仰角正）, i_m: 仪器高, v_m: 目标高,
 ##      k?: 折光系数 默认 0.13, R_m?: 默认 6371008.7714,
-##      back?: {v_angle_deg, i_m, v_m}（对向观测返测，取均值时球气差抵消）}
+##      back?: {v_angle_deg, i_m, v_m}（对向观测返测：i_m 为 B 站仪器高、v_m 为 A 站目标高，
+##             即各站均记「本侧仪器高 / 对侧目标高」；均值时球气差抵消）}
 static func trig_height(p: Dictionary) -> Dictionary:
 	if not p.has("D_m") or not _finite_num(p.get("D_m")) or float(p["D_m"]) <= 0.0:
 		return _fail("缺少平距 D_m（须为正数）")
@@ -357,7 +459,7 @@ static func trig_height(p: Dictionary) -> Dictionary:
 		{
 			"title": "1. 单向三角高程",
 			"formula": "h_AB = D·tanα + i_A − v_B + (1−k)·D²/(2R)",
-			"substitution": "D = %s m，α = %s°，i = %s m，v = %s m，k = %s" % [_fmt(D), _fmt(float(p["v_angle_deg"])), _fmt(i_h), _fmt(v_h), _fmt(k_r)],
+			"substitution": "D = %s m，α = %s°，i_A = %s m，v_B = %s m，k = %s" % [_fmt(D), _fmt(float(p["v_angle_deg"])), _fmt(i_h), _fmt(v_h), _fmt(k_r)],
 			"result": "h = %s m（球气差改正 f = %s m）" % [_fmt(h_one), _fmt(f_ball)],
 		},
 	]
@@ -365,19 +467,32 @@ static func trig_height(p: Dictionary) -> Dictionary:
 		var b: Dictionary = p["back"]
 		for k2 in ["v_angle_deg", "i_m", "v_m"]:
 			if not b.has(k2) or not _finite_num(b.get(k2)):
-				return _fail("对向观测 back 缺少 %s" % k2)
+				return _fail("对向观测返测缺少竖直角/仪器高/目标高数据")
 		var alpha2 := deg_to_rad(float(b["v_angle_deg"]))
 		var i2 := float(b["i_m"])
 		var v2 := float(b["v_m"])
-		# 对向均值：h = [D(tanα_往 − tanα_返) + (i往 − v返) − (i返 − v往)] / 2，球气差抵消
-		var h_two := 0.5 * (D * (tan(alpha) - tan(alpha2)) + (i_h - v2) - (i2 - v_h))
+		# 对向均值严格按本侧仪器高/目标高配对：
+		#   往测 A→B：h_AB = D·tanα往 + i_A − v_B(A 处仪器高、B 处目标高) + f
+		#   返测 B→A：h_BA = D·tanα返 + i_B − v_A(B 处仪器高、A 处目标高) + f
+		#   h_均 = ½(h_AB − h_BA)：D·tanα 项与球气差 f 均自动抵消，仪器高/目标高按各自测站本侧配对
+		var h_ab := D * tan(alpha) + i_h - v_h
+		var h_ba := D * tan(alpha2) + i2 - v2
+		var h_two := 0.5 * (h_ab - h_ba)
 		value["h_two_way_m"] = h_two
 		value["h_one_way_m"] = h_one
+		# 自洽检核：单向 − 对向均值 = f（球气差单项，仪器/目标高对称时成立）
+		value["h_one_minus_two_m"] = h_one - h_two
 		steps.append({
-			"title": "2. 对向观测取均值",
-			"formula": "h = [D(tanα_往 − tanα_返) + (i_往 − v_返) − (i_返 − v_往)] / 2（球气差自动抵消）",
-			"substitution": "α_返 = %s°，i_返 = %s m，v_返 = %s m" % [_fmt(float(b["v_angle_deg"])), _fmt(i2), _fmt(v2)],
-			"result": "对向均值 h = %s m" % _fmt(h_two),
+			"title": "2. 对向观测取均值（按本侧仪器高/目标高严格配对）",
+			"formula": "h_AB = D·tanα往 + i_A − v_B；h_BA = D·tanα返 + i_B − v_A；h_均 = ½(h_AB − h_BA)（D·tanα 与球气差 f 均抵消）",
+			"substitution": "h_AB = %s·tan(%s°) + %s − %s = %s m；h_BA = %s·tan(%s°) + %s − %s = %s m（i_A=%s、v_B=%s、i_B=%s、v_A=%s m）" % [_fmt(D), _fmt(float(p["v_angle_deg"])), _fmt(i_h), _fmt(v_h), _fmt(h_ab), _fmt(D), _fmt(float(b["v_angle_deg"])), _fmt(i2), _fmt(v2), _fmt(h_ba), _fmt(i_h), _fmt(v_h), _fmt(i2), _fmt(v2)],
+			"result": "对向均值 h_均 = ½(%s − %s) = %s m" % [_fmt(h_ab), _fmt(h_ba), _fmt(h_two)],
+		})
+		steps.append({
+			"title": "3. 自洽检核",
+			"formula": "单向 h_AB(含 f) − 对向均值 h_均 = f（球气差单项）",
+			"substitution": "%s − %s = %s m，球气差 f = %s m" % [_fmt(h_one), _fmt(h_two), _fmt(h_one - h_two), _fmt(f_ball)],
+			"result": "差值与球气差单项一致，检核通过" if absf((h_one - h_two) - f_ball) <= 1e-9 * maxf(1.0, absf(f_ball)) else "差值与球气差不一致，请复核输入",
 		})
 	return _ok(value, steps, "三角高程计算（k=%.2f，R=%.1f m）" % [k_r, R])
 
@@ -389,11 +504,11 @@ static func _prepare_net(p: Dictionary) -> Dictionary:
 	var approx: Dictionary = p.get("approx", {})
 	var obs: Array = p.get("obs", [])
 	if not (known is Dictionary) or not (approx is Dictionary) or not (obs is Array):
-		return {"error": "known/approx/obs 数据结构不合法"}
+		return {"error": "已知点、未知点与观测数据结构不合法"}
 	if obs.is_empty():
-		return {"error": "缺少高差观测 obs（每条 {from, to, h, L_km 或 w}）"}
+		return {"error": "缺少高差观测（每条含起点名、终点名、高差与路线长或权）"}
 	if known.is_empty():
-		return {"error": "缺少已知高程点 known（至少 1 个）"}
+		return {"error": "缺少已知高程点（至少 1 个）"}
 	var nodes := []
 	for k: String in known:
 		if not _finite_num(known[k]):
@@ -407,26 +522,26 @@ static func _prepare_net(p: Dictionary) -> Dictionary:
 	var weights := PackedFloat64Array()
 	for o_v in obs:
 		if not (o_v is Dictionary):
-			return {"error": "观测条目须为对象 {from, to, h, L_km 或 w}"}
+			return {"error": "观测条目须为对象，含起点名、终点名、高差（m）与权或路线长（km）"}
 		var o: Dictionary = o_v
 		if not o.has("from") or not o.has("to") or not o.has("h"):
-			return {"error": "观测条目缺少 from/to/h 字段"}
+			return {"error": "观测条目缺少起点、终点或高差字段"}
 		var f := String(o["from"])
 		var tt := String(o["to"])
 		if f == tt:
-			return {"error": "观测自点与至点相同：%s" % f}
+			return {"error": "观测的起点与终点相同：%s" % f}
 		if not nodes.has(f):
-			return {"error": "观测 from 点 %s 未在 known/approx 中定义" % f}
+			return {"error": "观测起点 %s 未在已知点或未知点中定义" % f}
 		if not nodes.has(tt):
-			return {"error": "观测 to 点 %s 未在 known/approx 中定义" % tt}
+			return {"error": "观测终点 %s 未在已知点或未知点中定义" % tt}
 		if not _finite_num(o.get("h")):
-			return {"error": "观测 %s→%s 高差 h 含非法数值" % [f, tt]}
+			return {"error": "观测 %s→%s 的高差含非法数值" % [f, tt]}
 		if o.has("w") and _finite_num(o.get("w")) and float(o["w"]) > 0.0:
 			weights.append(float(o["w"]))
 		elif o.has("L_km") and _finite_num(o.get("L_km")) and float(o["L_km"]) > 0.0:
 			weights.append(1.0 / float(o["L_km"]))
 		else:
-			return {"error": "观测 %s→%s 缺少正的权 w 或路线长 L_km" % [f, tt]}
+			return {"error": "观测 %s→%s 缺少正的权或路线长（km）" % [f, tt]}
 	var unknown_names := []
 	for k: String in approx:
 		unknown_names.append(k)

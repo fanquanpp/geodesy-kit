@@ -4,9 +4,9 @@ extends "res://scenes/calculators/adjustment/adj_panel_base.gd"
 const LV := preload("res://core/adjustment/leveling.gd")
 
 const FMT_HINT := """每行一条，空白或逗号分隔，# 注释：
-K 名称 H_m      已知点高程（至少 1 个）
+K 名称 H_m      已知点高程（至少 1 个，两个及以上自动加附合条件）
 U 名称 H0_m     未知点近似高程
-O 自点 至点 高差_m 路线长km   高差观测（权 p=1/L）"""
+O 起点 终点 高差_m 路线长km   高差观测（权 p=1/L_km，μ 为每公里高差中误差口径）"""
 
 func _build_fields() -> void:
 	_add_text_area("水准网数据", "data", FMT_HINT)
@@ -44,7 +44,7 @@ func _parse_net(text: String, errors: PackedStringArray) -> Dictionary:
 			approx[String(row[1])] = h0
 		elif tag == "O":
 			if row.size() < 5:
-				errors.append("O 行应为：O 自点 至点 高差 路线长km")
+				errors.append("O 行应为：O 起点 终点 高差 路线长km")
 				continue
 			var h := _num(row[3])
 			var l_km := _num(row[4])
@@ -98,7 +98,7 @@ func get_title() -> String:
 	return "水准网平差（双法互检）（C7）"
 
 func get_description() -> String:
-	return "水准网间接平差+条件平差双实现，自动互检并展示差异。输出各点高程、高差改正数、μ 与多余观测数。权威算例见示例按钮。"
+	return "水准网间接平差与条件平差双实现自动互检：条件法并列展示独立环条件与已知点间附合条件（条件总数 r = n − t），间接法参数为未知点高程。输出各点高程、高差改正数、单位权中误差 μ（定权 p=1/L_km，μ 为每公里高差中误差口径）与多余观测数。权威算例见示例按钮。"
 
 func get_entry_id() -> String:
 	return "c7_level_net"

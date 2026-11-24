@@ -3,6 +3,7 @@ extends "res://scenes/calculators/adjustment/adj_panel_base.gd"
 
 const NW := preload("res://core/adjustment/network.gd")
 const AC := preload("res://core/adjustment/accuracy.gd")
+const SketchScene := preload("res://scenes/widgets/sketch_panel.tscn")  # GKSketchPanel
 
 const FMT_HINT := """每行一条，空白或逗号分隔，# 开头为注释：
 K 名称 x y          已知点（至少 1 个）
@@ -18,6 +19,42 @@ func _build_fields() -> void:
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.theme_type_variation = &"Muted"
 	_inputs_root.add_child(note)
+
+var _sketch: Control  # 网图（GKSketchPanel）：按 K/U 行坐标与 D/L 行观测连线
+
+## 点位连线图挂在公式折叠卡之后；解析成功即按已知点/近似点与观测边连线重绘
+func _build_sketch() -> void:
+	_sketch = SketchScene.instantiate()
+	add_child(_sketch)
+
+## 网形文本 → 米制折线顶点序列：K/U 行收点，D 行按边连线（两顶点一段），
+## L 行不连线（角度无独立图形边）。无任何点返回空数组（控件清屏）。
+func _sketch_points(text: String) -> PackedVector2Array:
+	var pts: Dictionary = {}
+	var edges: Array = []
+	var errors := PackedStringArray()
+	var net := _parse_network(text, errors)
+	for nm: String in net["known"].keys():
+		var c: Array = net["known"][nm]
+		pts[nm] = Vector2(float(c[0]), float(c[1]))
+	for nm2: String in net["approx"].keys():
+		var c2: Array = net["approx"][nm2]
+		pts[nm2] = Vector2(float(c2[0]), float(c2[1]))
+	for o in net["dist_obs"]:
+		var a: String = String(o["from"])
+		var b: String = String(o["to"])
+		if pts.has(a) and pts.has(b):
+			edges.append(PackedVector2Array([pts[a], pts[b]]))
+	var out := PackedVector2Array()
+	if edges.is_empty():
+		# 无测边观测时退化为单点序列连线（按收录顺序），至少呈现点位分布
+		for nm3: String in pts.keys():
+			out.append(pts[nm3])
+		return out
+	for seg in edges:
+		out.append(seg[0])
+		out.append(seg[1])
+	return out
 
 ## 文本块 → core 输入字典；出错返回 {} 并填 errors
 func _parse_network(text: String, errors: PackedStringArray) -> Dictionary:
@@ -48,33 +85,35 @@ func _parse_network(text: String, errors: PackedStringArray) -> Dictionary:
 				continue
 			approx[String(row[1])] = [x0, y0]
 		elif tag == "D":
-			if row.size() < 5:
+			# D 起点 终点 边长 [σ_m]：4 列（无 σ）与 5 列（自定 σ）均合法
+			if row.size() < 4:
 				errors.append("D 行应为：D 起点 终点 边长 [σ]")
 				continue
 			var s := _num(row[3])
 			if is_nan(s):
-				errors.append("D 行边长非法：%s" % String(row[2]))
+				errors.append("D 行边长非法：%s" % String(row[3]))
 				continue
-			var sig := 0.01
-			if row.size() >= 4:
-				sig = _num(row[3])
+			var sig := 0.01  # 缺省 σ 默认 0.01 m
+			if row.size() >= 5:
+				sig = _num(row[4])
 				if is_nan(sig) or sig <= 0.0:
-					errors.append("D 行 σ 非法：%s" % String(row[3]))
+					errors.append("D 行 σ 非法：%s" % String(row[4]))
 					continue
 			dist_obs.append({"from": String(row[1]), "to": String(row[2]), "value": s, "sigma": sig})
 		elif tag == "L":
-			if row.size() < 6:
+			# L 测站 后视 前视 角度 [σ″]：5 列（无 σ）与 6 列（自定 σ）均合法
+			if row.size() < 5:
 				errors.append("L 行应为：L 测站 后视 前视 角度 [σ″]")
 				continue
 			var deg := _num(row[4])
 			if is_nan(deg):
-				errors.append("L 行角度非法：%s" % String(row[3]))
+				errors.append("L 行角度非法：%s" % String(row[4]))
 				continue
-			var sig_s := 2.0
-			if row.size() >= 5:
-				sig_s = _num(row[4])
+			var sig_s := 2.0  # 缺省 σ 默认 2″
+			if row.size() >= 6:
+				sig_s = _num(row[5])
 				if is_nan(sig_s) or sig_s <= 0.0:
-					errors.append("L 行 σ″ 非法：%s" % String(row[4]))
+					errors.append("L 行 σ″ 非法：%s" % String(row[5]))
 					continue
 			angle_obs.append({"at": String(row[1]), "back": String(row[2]), "front": String(row[3]),
 					"value_deg": deg, "sigma_s": sig_s})
@@ -85,6 +124,9 @@ func _parse_network(text: String, errors: PackedStringArray) -> Dictionary:
 func run() -> Dictionary:
 	var errors := PackedStringArray()
 	var net := _parse_network(_field_text("data"), errors)
+	# 网图：只要解析出点位就画（先于报错返回，便于用户对照图形找格式问题）
+	if _sketch != null:
+		_sketch.call("set_points", _sketch_points(_field_text("data")))
 	if errors.size() > 0:
 		return _parse_fail(errors)
 	var res := NW.adjust(net)

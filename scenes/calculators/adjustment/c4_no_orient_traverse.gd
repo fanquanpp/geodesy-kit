@@ -12,7 +12,7 @@ func _build_fields() -> void:
 			"237.094757\n200.224859")
 	_add_text_area("边长（每行一个 m，边数=角数+1）", "sides",
 			"640.312424\n632.455532\n640.312424")
-	add_input_row("中间点名（可选，逗号分隔）", "point_names", "P1,P2")
+	add_input_row("中间点名（可选，逗号分隔）", "point_names", "P1,P2", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	# C4 不需要限差字段（无方位检核，仅有坐标附合）
 
 func run() -> Dictionary:

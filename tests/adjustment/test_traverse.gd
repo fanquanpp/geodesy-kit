@@ -116,7 +116,7 @@ func test_c3_limit_user_input() -> void:
 	if not bool(ok_res.get("ok", false)):
 		return
 	assert_true(bool(ok_res["value"].get("ok_limit", false)), "fβ=0.5″<8″ 且 1/163526 优于 1/4000 应通过")
-	assert_eq(String(ok_res["value"].get("basis", "")), "用户输入限差（未核读 GB 50026 等规范限差表，data/tolerance.json 为占位）", "依据应如实标注自输限差")
+	assert_eq(String(ok_res["value"].get("basis", "")), "限差由用户输入，依据自定（规范限差表未核读前不提供标准值）", "依据应如实标注自输限差")
 	var over_in := base.duplicate()
 	over_in["limit_fb_s"] = 0.3
 	var over_res := TR.connect_traverse(over_in)
@@ -248,3 +248,107 @@ func test_traverse_error_paths() -> void:
 	assert_false(bool(r4.get("ok", true)), "非法角度文本应失败（不崩溃）")
 	var r5 := TR.closed_traverse({"start": [0.0, 0.0], "az_start_deg": 10.0, "angles_deg": [30.0, 30.0], "sides_m": [100.0, 100.0, 100.0]})
 	assert_false(bool(r5.get("ok", true)), "闭合导线角数≠边数应失败")
+
+# ---------- P2 补充：口径展示与回归（教材公式文案 / 末边强制闭合 / rel_k 同口径）----------
+
+## P2·文案：C2 步骤应给出教材内角和口径公式 fβ = Σβ − (n−2)·180°
+func test_c2_steps_show_textbook_formula() -> void:
+	var pts := {"A": [1000.0, 1000.0], "P1": [1300.0, 1050.0], "P2": [1350.0, 1350.0], "P3": [1050.0, 1300.0]}
+	var obs := _chain_obs(pts, ["A", "P1", "P2", "P3", "A"], true)
+	var res := TR.closed_traverse({
+		"start": pts["A"], "az_start_deg": obs["az"][0],
+		"angles_deg": Array(obs["angles"]), "sides_m": Array(obs["d"]),
+		"point_names": ["P1", "P2", "P3"],
+	})
+	assert_true(bool(res.get("ok", false)), "C2 应成功")
+	if not bool(res.get("ok", false)):
+		return
+	var all_text := ""
+	for st: Dictionary in res["steps"]:
+		all_text += String(st["formula"]) + String(st["substitution"])
+	assert_true("(n−2)·180°" in all_text, "C2 步骤应含教材公式 Σβ−(n−2)·180°")
+	assert_false("α_终" in all_text, "C2 步骤不应出现附合导线的 α_终 公式口径")
+
+## P2·文案：C3 步骤应给出教材附合口径公式 fβ = α起 + Σβ左 − n·180° − α终
+func test_c3_steps_show_textbook_formula() -> void:
+	var A := [5000.0, 5000.0]
+	var res := TR.connect_traverse({
+		"start": A, "end": [7143.2712, 4663.7980],
+		"az_start_deg": 95.5, "az_end_deg": 150.0,
+		"angles_deg": [B1_DMS, B2_DMS], "sides_m": [950.004, 1100.003, 200.002],
+		"point_names": ["P1", "P2"],
+	})
+	assert_true(bool(res.get("ok", false)), "C3 应成功")
+	if not bool(res.get("ok", false)):
+		return
+	var all_text := ""
+	for st: Dictionary in res["steps"]:
+		all_text += String(st["formula"]) + String(st["substitution"])
+	assert_true("α_终" in all_text, "C3 步骤应含教材公式 α起+Σβ左−n·180°−α终")
+	assert_false("(n−2)·180°" in all_text, "C3 步骤不应出现闭合导线的内角和公式口径")
+
+## P2·教学警示：C4 结果步骤应含「无角度检核条件、精度低于附合导线一档」
+func test_c4_steps_warn_no_angle_check() -> void:
+	var pts := {"A": [2000.0, 3000.0], "P1": [2500.0, 3400.0], "P2": [3100.0, 3200.0], "B": [3600.0, 2800.0]}
+	var obs := _chain_obs(pts, ["A", "P1", "P2", "B"], false)
+	var res := TR.no_orient_traverse({
+		"start": pts["A"], "end": pts["B"],
+		"angles_deg": Array(obs["angles"]), "sides_m": Array(obs["d"]),
+		"point_names": ["P1", "P2"],
+	})
+	assert_true(bool(res.get("ok", false)), "C4 应成功")
+	if not bool(res.get("ok", false)):
+		return
+	var all_text := ""
+	for st: Dictionary in res["steps"]:
+		all_text += String(st["title"]) + String(st["formula"]) + String(st["result"])
+	assert_true("无角度检核条件" in all_text, "C4 应警示无角度检核条件")
+	assert_true("精度低于附合导线一档" in all_text, "C4 应警示精度低于附合导线一档")
+
+## P2·末边强制闭合：注入误差后闭合环终点仍精确闭合（<1e-12 m）
+func test_c2_forced_closure_with_noise() -> void:
+	var pts := {"A": [1000.0, 1000.0], "P1": [1300.0, 1050.0], "P2": [1350.0, 1350.0], "P3": [1050.0, 1300.0]}
+	var obs := _chain_obs(pts, ["A", "P1", "P2", "P3", "A"], true)
+	var ds: Array = Array(obs["d"])
+	ds[2] += 0.08  # 注入 8cm 边长误差 → 坐标闭合差非零
+	var res := TR.closed_traverse({
+		"start": pts["A"], "az_start_deg": obs["az"][0],
+		"angles_deg": Array(obs["angles"]), "sides_m": ds,
+		"point_names": ["P1", "P2", "P3"],
+	})
+	assert_true(bool(res.get("ok", false)), "注入边长误差应计算成功")
+	if not bool(res.get("ok", false)):
+		return
+	var v: Dictionary = res["value"]
+	assert_true(absf(float(v["fx_m"])) > 1e-4, "注入 8cm 后 fx 应显著非零")
+	# 末边强制闭合：平差后终点（键名 A）与已知起点差 <1e-12 m
+	assert_almost_eq(float(v["x_A_m"]), 1000.0, 1e-12, "强制闭合：终点 A.x 与已知差 <1e-12")
+	assert_almost_eq(float(v["y_A_m"]), 1000.0, 1e-12, "强制闭合：终点 A.y 与已知差 <1e-12")
+
+## P2·rel_k 同口径：限差判定所用 fx/fy 与结果页展示 fx/fy 一致，可由展示值手算 1/k
+func test_c3_rel_k_consistent_with_shown_fx_fy() -> void:
+	var A := [5000.0, 5000.0]
+	var res := TR.connect_traverse({
+		"start": A, "end": [7143.2712, 4663.7980],
+		"az_start_deg": 95.5, "az_end_deg": 150.0,
+		"angles_deg": [B1_DMS, B2_DMS], "sides_m": [950.004, 1100.003, 200.002],
+		"limit_fb_s": 8.0, "limit_rel_k": 4000.0,
+		"point_names": ["P1", "P2"],
+	})
+	assert_true(bool(res.get("ok", false)), "C3 应成功")
+	if not bool(res.get("ok", false)):
+		return
+	var v: Dictionary = res["value"]
+	var fx := float(v["fx_m"])
+	var fy := float(v["fy_m"])
+	var sum_d := float(v["sum_d_m"])
+	var f := sqrt(fx * fx + fy * fy)
+	var k_hand := sum_d / f  # 用户由展示值手算的 1/k
+	assert_almost_eq(float(v["rel_k"]), k_hand, 1e-9, "rel_k 应等于 ΣD/√(fx²+fy²)（与展示 fx/fy 同口径）")
+	assert_almost_eq(float(v["f_m"]), f, 1e-12, "f_m 应由展示 fx/fy 合成")
+	# 步骤文本应提示可手算核对
+	var found_hint := false
+	for st: Dictionary in res["steps"]:
+		if "可手算核对" in String(st["result"]):
+			found_hint = true
+	assert_true(found_hint, "坐标闭合差步骤应提示相对闭合差可手算核对")

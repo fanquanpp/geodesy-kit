@@ -26,7 +26,7 @@ func get_title() -> String:
 	return "批量坐标转换（G2）"
 
 func get_description() -> String:
-	return "一份点文件（每行：点名,值1,值2[,值3]）整批套用坐标类模块的转换函数（高斯/UTM/BLH↔XYZ/七参数/四参数）。逐行输出结果与中文错误，失败的行不中断整批；算法复用各单点计算器的 core 实现，结果与单点口径一致。"
+	return "一份点文件（每行：点名,数值…）整批套用坐标类模块的转换函数（高斯/UTM/BLH↔XYZ/七参数/四参数）。逐行输出结果与中文错误，失败的行不中断整批；算法复用各单点计算器的 core 实现，结果与单点口径一致。"
 
 func get_entry_id() -> String:
 	return "g2_batch_convert"
@@ -68,7 +68,7 @@ func _build_rows() -> void:
 	# 点文件文本
 	var frow := VBoxContainer.new()
 	var flab := Label.new()
-	flab.text = "点文件内容（每行：点名,值1,值2[,值3]；# 注释行；分隔符支持逗号/空格/Tab）"
+	flab.text = "点文件内容（每行：点名,数值…；# 为注释行；分隔符支持逗号/空格/Tab）"
 	frow.add_child(flab)
 	_file_edit = TextEdit.new()
 	_file_edit.placeholder_text = "P1, 39.9075, 116.3913, 43.5\nP2, 30, 117, 50"
@@ -78,26 +78,26 @@ func _build_rows() -> void:
 	frow.add_child(_file_edit)
 	_inputs_root.add_child(frow)
 	# 参数行（全部建好，按管线显隐）
-	_add_param_row("椭球/基准 datum", "datum", "CGCS2000 / WGS84 / 北京54 / 西安80 …")
-	_add_param_row("中央子午线 l0（度）", "l0_deg", "117（3°带 L0=3n，6°带 L0=6n−3）")
-	_add_param_row("比例因子 k0", "k0", "1.0（留空默认）")
-	_add_param_row("东坐标加常数 FE(m)", "fe_m", "500000（留空默认）")
-	_add_param_row("北坐标加常数 FN(m)", "fn_m", "0（留空默认）")
-	_add_param_row("UTM/带号 zone", "zone", "1..60（留空自动选带；反算必填）")
-	_add_param_row("半球 hemisphere", "hemisphere", "N 或 S（UTM 反算必填）")
-	_add_param_row("平移 Tx(m)", "tx_m", "0")
-	_add_param_row("平移 Ty(m)", "ty_m", "0")
-	_add_param_row("平移 Tz(m)", "tz_m", "0")
-	_add_param_row("旋转 Rx(″)", "rx_as", "0")
-	_add_param_row("旋转 Ry(″)", "ry_as", "0")
-	_add_param_row("旋转 Rz(″)", "rz_as", "0")
-	_add_param_row("尺度 dS(ppm)", "scale_ppm", "0")
-	_add_param_row("旋转约定 convention", "convention", "PV 或 CF（默认 PV）")
-	_add_param_row("三参数模式 three_param", "three_param", "true 时忽略旋转/尺度")
-	_add_param_row("平移 dx(m)", "dx_m", "0")
-	_add_param_row("平移 dy(m)", "dy_m", "0")
-	_add_param_row("尺度因子 scale", "scale", "1.0002")
-	_add_param_row("旋转角 α(°)", "alpha_deg", "2")
+	_add_param_row("椭球基准", "datum", "CGCS2000 / WGS84 / 北京54 / 西安80 …")
+	_add_param_row("中央子午线（°）", "l0_deg", "117（3° 带 L0=3n，6° 带 L0=6n−3）")
+	_add_param_row("长度比 k₀", "k0", "1.0（留空默认）")
+	_add_param_row("东坐标加常数（m）", "fe_m", "500000（留空默认）")
+	_add_param_row("北坐标加常数（m）", "fn_m", "0（留空默认）")
+	_add_param_row("投影带号", "zone", "1..60（留空自动选带；反算必填）")
+	_add_param_row("半球", "hemisphere", "N 或 S（UTM 反算必填）")
+	_add_param_row("X 平移（m）", "tx_m", "0")
+	_add_param_row("Y 平移（m）", "ty_m", "0")
+	_add_param_row("Z 平移（m）", "tz_m", "0")
+	_add_param_row("X 旋转（″）", "rx_as", "0")
+	_add_param_row("Y 旋转（″）", "ry_as", "0")
+	_add_param_row("Z 旋转（″）", "rz_as", "0")
+	_add_param_row("尺度（ppm）", "scale_ppm", "0")
+	_add_param_row("旋转约定", "convention", "PV 或 CF（默认 PV）")
+	_add_param_row("三参数模式", "three_param", "true 时忽略旋转与尺度")
+	_add_param_row("东向平移（m）", "dx_m", "0")
+	_add_param_row("北向平移（m）", "dy_m", "0")
+	_add_param_row("尺度因子", "scale", "1.0002")
+	_add_param_row("旋转角（°）", "alpha_deg", "2")
 	# CSV 导出按钮
 	var csv_btn := Button.new()
 	csv_btn.text = "导出结果 CSV"
@@ -143,6 +143,7 @@ func get_inputs() -> Dictionary:
 	return out
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			(_fields[key] as LineEdit).text = String(inputs[key])
@@ -170,51 +171,104 @@ func run() -> Dictionary:
 	})
 
 # ---------- 结果行渲染（复用基类步骤卡；行数多时截断为摘要） ----------
+# 机器键（rows/n_ok/n_err/pipeline/label/in_cols/out_cols）只从 value 原位读取，
+# 不进渲染副本：结果卡只放 value.summary 中文统计行，步骤卡逐行展示
+# （失败行红字，错误列文案即其 error 原文）。
 
 func _on_run() -> void:
 	var res := run()
 	_last_result = res
 	if bool(res.get("ok", false)):
+		var value: Dictionary = res.get("value", {})
+		var rows: Array = value.get("rows", [])
+		# 渲染副本：value 置空，机器键不进基类结果卡（基类按 value 键逐行渲染）
 		var shown := res.duplicate(true)
-		var rows: Array = (shown.get("value", {}) as Dictionary).get("rows", [])
+		shown["value"] = {}
+		# 步骤卡：管线步骤 + 逐行结果卡（失败行红字）
 		var disp: Array = []
 		for i in mini(rows.size(), MAX_STEP_ROWS):
 			disp.append(_row_to_step(rows[i]))
 		if rows.size() > MAX_STEP_ROWS:
 			disp.append({"title": "（截断提示）", "formula": "", "substitution": "",
-					"result": "共 %d 行，步骤卡仅渲染前 %d 行；完整结果请导出 CSV" % [rows.size(), MAX_STEP_ROWS]})
+					"result": "共 %d 行，此处仅列前 %d 行；完整结果请导出 CSV" % [rows.size(), MAX_STEP_ROWS]})
 		shown["steps"] = (res.get("steps", []) as Array) + disp
 		_render_result(shown)
+		# 结果卡改放中文统计摘要（覆盖基类对空 value 的占位显示）
+		var sum_lines := PackedStringArray()
+		if value.has("summary"):
+			sum_lines.append(String(value["summary"]))
+		_result_card.call("set_result", sum_lines)
+		_last_result_text = _result_card.call("get_text")
+		_apply_failed_row_styles(disp, (res.get("steps", []) as Array).size())
 		if GKServices.ready_state():
-			GKServices.history.add(get_entry_id(), get_title(), get_inputs(), res)
+			# 历史只回放 inputs，rows（数千点可达数 MB）在历史中从未被消费，
+			# 写入前剥离防 SQLite/JSON 存储膨胀（summary/n_ok/n_err 保留）
+			var slim := res.duplicate(true)
+			(slim["value"] as Dictionary)["rows"] = []
+			GKServices.history.add(get_entry_id(), get_title(), get_inputs(), slim)
 	else:
 		_render_result(res)
+
+## 失败行卡片标红：行卡按 disp 顺序接在管线步骤之后，按索引定位对应卡片；
+## 卡片换 ErrorCard 变体、内部 Label 换 ErrorLabel 变体（主题缺失时回退默认，不报错）。
+## P6 步骤卡为 FoldableContainer（不继承 PanelContainer）：把折叠卡原位装入
+## PanelContainer(ErrorCard) 壳——失败卡以 PanelContainer 类型暴露给探针/主题，
+## 成功卡保持 FoldableContainer 原结构不动。
+func _apply_failed_row_styles(disp: Array, base_count: int) -> void:
+	for i in disp.size():
+		if not bool(disp[i].get("failed", false)):
+			continue
+		var idx := base_count + i
+		var fold := _steps_widget.get_child(idx) as FoldableContainer
+		if fold == null:
+			continue
+		var shell := PanelContainer.new()
+		shell.theme_type_variation = &"ErrorCard"
+		_steps_widget.remove_child(fold)
+		_steps_widget.add_child(shell)
+		_steps_widget.move_child(shell, idx)
+		shell.add_child(fold)
+		shell.size_flags_horizontal = Control.SIZE_FILL
+		_set_labels_error(shell)
+
+static func _set_labels_error(node: Node) -> void:
+	if node is Label:
+		(node as Label).theme_type_variation = &"ErrorLabel"
+	for c in node.get_children():
+		_set_labels_error(c)
 
 func _row_to_step(r: Dictionary) -> Dictionary:
 	var name := String(r.get("name", ""))
 	if name.is_empty():
-		name = "行%d" % int(r.get("line", 0))
+		name = "第 %d 行" % int(r.get("line", 0))
 	var vals: Array = r.get("values", [])
 	var err := String(r.get("error", ""))
 	var result_txt := ""
 	if not err.is_empty():
-		result_txt = "失败：%s" % err
+		# 错误列：失败行显示错误原文（与 CSV「失败：…」状态列同口径）
+		result_txt = "错误：%s" % err
 	else:
 		var parts := PackedStringArray()
 		for i in vals.size():
 			parts.append("%s = %s" % [_col_name(i), _num(vals[i])])
 		result_txt = "；".join(parts)
-	return {"title": "%s（第 %d 行）" % [name, int(r.get("line", 0))],
-			"formula": "", "substitution": "", "result": result_txt}
+	return {"title": "%s（文件第 %d 行）" % [name, int(r.get("line", 0))],
+			"formula": "", "substitution": "", "result": result_txt,
+			"failed": not err.is_empty()}
 
 func _col_name(i: int) -> String:
 	var res: Dictionary = _last_result
 	var cols: Array = res.get("value", {}).get("out_cols", [])
-	return String(cols[i]) if i < cols.size() else "值%d" % (i + 1)
+	return String(cols[i]) if i < cols.size() else "第 %d 列" % (i + 1)
 
 func _num(v: Variant) -> String:
 	if v is float or v is int:
-		return String.num(float(v), 6)
+		# 与单点计算器同口径：读设置页「计算结果小数位数」（calculator_base 同源）；
+		# 服务未引导（独立面板冒烟）时兜底 4 位（calculator_base 默认口径）
+		var d := 4
+		if GKServices.ready_state():
+			d = GKServices.settings.get_decimals()
+		return String.num(float(v), d)
 	return str(v)
 
 ## 结果行 → CSV 文件（user://batch/），状态栏显示绝对路径
@@ -226,7 +280,9 @@ func _on_export_csv() -> void:
 		_status_label.visible = true
 		return
 	var rows: Array = (res.get("value", {}) as Dictionary).get("rows", [])
-	var csv := BC.rows_to_csv(rows)
+	var out_cols: Array = (res.get("value", {}) as Dictionary).get("out_cols", [])
+	# 表头用管线真实输出列名、数值按用户小数位（与结果卡逐行展示同口径）
+	var csv := BC.rows_to_csv(rows, out_cols, GKServices.settings.get_decimals())
 	var stamp := "%04d%02d%02d_%02d%02d%02d" % _now_tuple()
 	var rel := "user://batch/batch_%s.csv" % stamp
 	if not GKFileIO.write_text(rel, csv):

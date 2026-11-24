@@ -290,7 +290,7 @@ static func _resolve_ell(p: Dictionary) -> Dictionary:
 
 static func _ell_error(datum: String) -> Dictionary:
 	return {"ok": false, "value": {}, "steps": [], "formula": "兰勃特等角圆锥投影",
-			"error": "未知的椭球/基准“%s”。可用：%s" % [datum, ", ".join(_EL.list_builtin())]}
+			"error": "未知的椭球/基准「%s」。可用：%s" % [datum, ", ".join(_EL.list_builtin())]}
 
 static func _err(msg: String) -> Dictionary:
 	return {"ok": false, "value": {}, "steps": [], "formula": "兰勃特等角圆锥投影（EPSG 9801/9802）", "error": msg}

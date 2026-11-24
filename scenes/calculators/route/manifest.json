@@ -152,7 +152,7 @@
     {
       "id": "e1_grid_volume",
       "name": "方格网法土方（E1）",
-      "keywords": "土方 方格网 填方 挖方 施工高度 体积 E1",
+      "keywords": "土方 方格网 填方 挖方 施工高度 零线分割 体积 E1",
       "scene": "res://scenes/calculators/route/e1_grid_volume.tscn",
       "formula_ref": "e1_grid_volume",
       "example": {
@@ -165,7 +165,7 @@
     {
       "id": "e2_section_volume",
       "name": "断面法土方（E2）",
-      "keywords": "土方 断面法 平均断面 填方 挖方 面积 E2",
+      "keywords": "土方 断面法 平均断面 棱台公式 填方 挖方 面积 E2",
       "scene": "res://scenes/calculators/route/e2_section_volume.tscn",
       "formula_ref": "e2_section_volume",
       "example": {
@@ -177,7 +177,7 @@
     {
       "id": "e3_dtm_volume",
       "name": "DTM 法土方（E3）",
-      "keywords": "土方 DTM TIN 三棱柱 三角网 填挖 零线 E3",
+      "keywords": "土方 DTM TIN 三棱柱 三角网 填挖 零线 重叠检测 E3",
       "scene": "res://scenes/calculators/route/e3_dtm_volume.tscn",
       "formula_ref": "e3_dtm_volume",
       "example": {
@@ -188,8 +188,8 @@
     },
     {
       "id": "e4_dist_slope",
-      "name": "平距/空间距离/坡度（E4）",
-      "keywords": "平距 斜距 空间距离 高差 坡度 坡度角 E4",
+      "name": "平距/斜距/坡度（E4）",
+      "keywords": "平距 斜距 高差 坡度 坡度角 三量一致 E4",
       "scene": "res://scenes/calculators/route/e4_dist_slope.tscn",
       "formula_ref": "e4_dist_slope",
       "example": {

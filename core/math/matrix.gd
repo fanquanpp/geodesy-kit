@@ -1,17 +1,10 @@
 # core/math/matrix.gd —— GK-M1 叶子库：稠密矩阵基本运算
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M1 / §9）：
-#   - 纯静态函数、零引擎依赖：extends RefCounted，禁止 Node/FileAccess 等引擎类；
-#   - 矩阵表示：Array（长度=行数 m）× PackedFloat64Array（长度=列数 n），行主序；
-#   - 输入校验先行：维度不符/奇异/非正定一律返回空容器 []，不抛异常、不输出堆栈；
-#   - 数值方式：求逆与解方程用部分主元高斯消元（Gauss-Jordan / 前后代入）+ 零行检测判奇异；
-#     Cholesky 用于对称正定方程（平差法方程 N·x=b 的标准路径），双路径可互检；
-#   - ⚠ GDScript 陷阱（本会话实测）：`(expr as PackedFloat64Array)[i] = v` 是对
-#     临时副本赋值，写不回容器 —— 凡对容器内的行做修改，一律
-#     "var row: PackedFloat64Array = M[i]; row[i] = ...; M[i] = row" 读改写回；
-#   - GDScript float 即 64 位双精度；浮点比较一律用容差，不用 ==。
-#
-# API 冻结提示：本文件公开签名按 Wave 0 纪律冻结，后续只增不改（ARCHITECTURE.md §9.2）。
+# 纯静态、零引擎依赖（RefCounted）；矩阵 Array×PackedFloat64Array 行主序。
+# 维度不符/奇异/非正定一律返回空容器 []，不抛异常；求逆与解方程用部分主元消元+零行检测，
+# Cholesky 走对称正定路径（平差法方程标准路径），双路径可互检。
+# ⚠ GDScript 陷阱：对容器内的行修改必须「拷贝→改→整体写回」，`(expr)[i]=v` 写不回。
+# float 即 64 位双精度；浮点比较一律用容差。API 按 Wave 0 纪律冻结，只增不改（ARCHITECTURE.md §9.2）。
 class_name GKMatrix
 extends RefCounted
 
@@ -127,12 +120,16 @@ static func inverse(A: Array) -> Array:
 					for j in 2 * n:
 						rrow[j] -= f * prow[j]
 					M[r] = rrow
-	# 零行检测：部分主元不选中全零行，须显式判（如 [[1,2],[2,4]]）
+	# 零行检测：部分主元不选中全零行，须显式判（如 [[1,2],[2,4]]）。
+	# 注意 Gauss-Jordan 每步已按主元归一化（主元位 = 1），故判据须相对归一化幅度：
+	# 非奇异行 A 部分 max|·| ≈ 1，只有整行 max|·| ≈ 0 才是真零行。
+	# 不能用 1e-12·scale 的绝对阈值——输入 scale 达 1e14 量级时阈值 > 1，
+	# 会把归一化后的单位阵行误判为全零（如七参数求参 N 的 scale≈3×10¹⁴）。
 	for r in n:
 		var all_zero := true
 		var rrow: PackedFloat64Array = M[r]
 		for j in n:
-			if absf(rrow[j]) > 1e-12 * scale:
+			if absf(rrow[j]) > 1e-6:
 				all_zero = false
 				break
 		if all_zero:

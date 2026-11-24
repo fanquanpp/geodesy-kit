@@ -152,6 +152,15 @@ func test_batch_rows_to_csv() -> void:
 	assert_true(lines[1].contains("2.25"), "数值列输出 2")
 	assert_true(lines[2].contains("\"坏,点\""), "含逗号点名加引号")
 	assert_true(lines[2].contains("失败：纬度超出范围"), "失败行状态列")
+	# 失败行按 max_v 补齐空值列：字段数与表头一致（状态列不错位）。
+	# 注意 CSV 引号包裹的「"坏,点"」内含逗号，朴素 split(",") 会多算 1，
+	# 故去掉引号内逗号后再按列数断言：失败行应为 行号,点名,空,空,状态 共 5 列
+	var line2 := lines[2]
+	var fields := line2.replace("\"坏,点\"", "X").split(",")
+	assert_eq(fields.size(), 5, "失败行字段数 = 表头列数（引号内逗号先剥除）")
+	assert_eq(fields[2], "", "失败行空值占位列 1")
+	assert_eq(fields[3], "", "失败行空值占位列 2")
+	assert_eq(fields[4], "失败：纬度超出范围", "失败行状态列在末列")
 
 # ---------- G2：UI 面板冒烟 ----------
 

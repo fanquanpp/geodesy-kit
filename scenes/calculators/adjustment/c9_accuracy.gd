@@ -5,9 +5,9 @@ const AC := preload("res://core/adjustment/accuracy.gd")
 
 func _build_fields() -> void:
 	_add_section("协因数阵 2×2 子阵（x=东、y=北）")
-	add_input_row("qxx（x 方向）", "qxx", "0.0000820048")
-	add_input_row("qyy（y 方向）", "qyy", "0.0000561621")
-	add_input_row("qxy", "qxy", "-0.0000000035566")
+	add_input_row("qxx（x 东方向）", "qxx", "0.0000820048")
+	add_input_row("qyy（y 北方向）", "qyy", "0.0000561621")
+	add_input_row("qxy（协因数）", "qxy", "-0.0000000035566")
 	add_input_row("单位权中误差 σ0", "sigma0", "0.371017784")
 	_add_section("说明")
 	var note := Label.new()

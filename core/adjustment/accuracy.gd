@@ -1,16 +1,9 @@
 # core/adjustment/accuracy.gd —— GK-M6-5 点位精度与误差椭圆（C9：Qxx → φE / A² / B²）
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M6 / §5 协议）：
-#   - 坐标约定与 core/math/angles.gd 一致：x=东、y=北；qxx/qyy 为 x(东)/y(北) 方向协因数（或方差）；
-#   - 误差椭圆（间接平差点位精度，σ0·Qxx 子阵）：
-#       W = √((qxx−qyy)² + 4qxy²)；
-#       A² = σ0²(qxx+qyy+W)/2（长半轴平方），B² = σ0²(qxx+qyy−W)/2（短半轴平方）；
-#       主轴方向由 [[qxx,qxy],[qxy,qyy]] 最大特征值对应特征向量确定；
-#       φE 为主轴方位角（从北方向起顺时针，[0°,180°)，与 GKAngles.azimuth 同基准）；
-#       圆退化（A=B）时方向不定，返回 phi_E_deg=0 并给 is_circle 标记；
-#   - 点位中误差 Mp = σ0·√(qxx+qyy) = √(A²+B²)；
-#   - 输入可为纯协因数（σ0=1，此时 A/B 即中误差量纲）或方差阵（σ0=1 同样成立）；
-#   - 全部静态函数、零引擎依赖；非半正定输入返回 {"ok":false,"error":中文}。
+# x=东、y=北；qxx/qyy 为对应方向协因数。W=√((qxx−qyy)²+4qxy²)；A²=σ0²(qxx+qyy+W)/2、
+# B²=σ0²(qxx+qyy−W)/2；主轴方向取最大特征值对应特征向量；φE 自北起顺时针 [0°,180°)；
+# 圆退化（A=B）时方向不定，phi_E_deg=0 并给 is_circle 标记；Mp=σ0√(qxx+qyy)=√(A²+B²)。
+# 输入可为纯协因数（σ0=1）或方差阵；全部静态、零引擎依赖；非半正定输入 {ok:false, error:中文}。
 class_name GKAdjustAccuracy
 extends RefCounted
 
@@ -77,8 +70,8 @@ static func ellipse_from_q(p: Dictionary) -> Dictionary:
 		},
 		{
 			"title": "3. 主轴方位角 φE",
-			"formula": "tan2φ 特征向量法：u = (qxy, λmax−qxx)，φE 从北起顺时针",
-			"substitution": "特征向量方向按解析式计算",
+			"formula": "tan2φ_E = 2q_xy/(q_xx−q_yy)（φE 从北起顺时针，象限判别同 q_xy 符号）；等价特征向量法：u = (qxy, λmax−qxx)",
+			"substitution": "2q_xy/(q_xx−q_yy) = %s（特征向量方向按解析式计算）" % _fmt(0.0 if absf(qxx - qyy) < 1e-15 else 2.0 * qxy / (qxx - qyy)),
 			"result": "φE = %s°%s" % [_fmt(phi_e), "（圆退化，方向不定取 0）" if is_circle else ""],
 		},
 		{

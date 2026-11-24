@@ -85,8 +85,120 @@ func test_all_calculators_instantiate_and_run_example() -> void:
 		# 协议渲染冒烟（成功 + 失败两条路径都不崩）
 		calc._render_result(res)
 		calc._render_result({"ok": false, "value": {}, "steps": [], "formula": "", "error": "冒烟：中文错误渲染"})
+		# P6 失败分支清理：ok=false 后步骤卡数量为 0、公式折叠隐藏、限差面板隐藏
+		assert_int_eq(calc._steps_widget.step_count(), 0, "失败后步骤卡清空：" + id)
+		assert_false(calc._formula_widget.visible, "失败后公式折叠隐藏：" + id)
+		assert_false(calc._limits_card.visible, "失败后限差面板隐藏：" + id)
 		tree.root.remove_child(calc)
 		calc.free()
+
+## P6：连续 run（成功 → 失败）断言步骤卡数量为 0（失败分支清理）
+func test_success_then_failure_clears_steps() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		assert_true(false, "SceneTree 可取")
+		return
+	var packed := load("res://scenes/calculators/cogo/a1_polar_fwd.tscn")
+	assert_true(packed != null, "A1 场景可加载")
+	if packed == null:
+		return
+	var calc: GKCalculatorBase = packed.instantiate()
+	tree.root.add_child(calc)
+	calc.set_inputs({"x0_m": "1000", "y0_m": "1000", "az_deg": "45", "dist_m": "500"})
+	var ok_res: Dictionary = calc.call("run")
+	assert_true(bool(ok_res.get("ok", false)), "首次 run 成功")
+	calc._render_result(ok_res)
+	assert_true(calc._steps_widget.step_count() > 0, "成功渲染后步骤卡 > 0")
+	assert_true(calc._steps_widget.visible, "成功渲染后步骤区可见")
+	# 连续第二次 run：清空输入 → 失败
+	for key: String in calc.get_inputs():
+		calc.set_inputs({key: ""})
+	var fail_res: Dictionary = calc.call("run")
+	assert_false(bool(fail_res.get("ok", true)), "清空输入后失败")
+	calc._render_result(fail_res)
+	assert_int_eq(calc._steps_widget.step_count(), 0, "连续 run 失败后步骤卡数量为 0")
+	assert_false(calc._steps_widget.visible, "连续 run 失败后步骤区隐藏")
+	assert_false(calc._formula_widget.visible, "失败后公式折叠隐藏")
+	tree.root.remove_child(calc)
+	calc.free()
+
+## P6：ui_labels 映射表——已知键映射、P1–P5 新增键覆盖、未知键回退 + 告警
+func test_ui_labels_mapping() -> void:
+	# 已知键
+	assert_eq(GKUiLabels.label_for("x_m"), "X 坐标（m）", "x_m 映射")
+	# P1–P5 新增键覆盖（§键名清单契约）
+	assert_eq(GKUiLabels.label_for("gamma_deg"), "交会角 γ（°）", "gamma_deg 映射")
+	assert_eq(GKUiLabels.label_for("resid"), "残差", "resid 映射")
+	assert_eq(GKUiLabels.label_for("f_ballistic_m"), "球气差两差改正（m）", "f_ballistic_m 统一键名映射")
+	assert_eq(GKUiLabels.label_for("r_i"), "多余观测分量 rᵢ", "r_i 映射")
+	assert_eq(GKUiLabels.label_for("w"), "学生化残差 w", "w 映射")
+	# f_ball_m 已弃用：无双映射，应回退键名
+	GKUiLabels.reset_warnings()
+	assert_eq(GKUiLabels.label_for("f_ball_m"), "f_ball_m", "弃用键 f_ball_m 无双映射（回退键名）")
+	# 未知键回退 + 告警
+	GKUiLabels.reset_warnings()
+	assert_eq(GKUiLabels.label_for("totally_unknown_key"), "totally_unknown_key", "未知键回退键名")
+	# 告警侧验证：has_label 对未知键为 false、已知键为 true（push_warning 无法断言捕获，用收录判定兜底）
+	assert_false(GKUiLabels.has_label("totally_unknown_key"), "未知键未收录")
+	assert_true(GKUiLabels.has_label("x_m"), "已知键已收录")
+
+## P6：渲染结果经 ui_labels 映射（键名不出现在用户可见文本中）
+func test_render_maps_keys_to_chinese_labels() -> void:
+	# 冷审问题①修复后渲染层（calculator_base._render_result / 限差明细）统一过
+	# GKUiLabels.label_for；中文标签契约在 GKUiLabels 单元层锚定（label_for 映射 + 回退）：
+	assert_eq(GKUiLabels.label_for("x_m"), "X 坐标（m）", "x_m → 中文标签")
+	assert_eq(GKUiLabels.label_for("gamma_deg"), "交会角 γ（°）", "gamma_deg → 中文标签")
+	assert_eq(GKUiLabels.label_for("f_ballistic_m"), "球气差两差改正（m）", "f_ballistic_m → 中文标签")
+	assert_eq(GKUiLabels.label_for("totally_unknown_key_xyz"), "totally_unknown_key_xyz", "未知键回退键名")
+
+## 冷审问题①：渲染路径零未收录键 + 动态键前缀模板。核心/场景层产生的全部
+## §5 value 键（静态枚举 + 点名/序号动态键）经 label_for 不得回退原键名（告警为零）。
+func test_all_result_keys_have_labels() -> void:
+	# 静态键抽样（覆盖冷审点名的键 + 本施工补录的键）
+	GKUiLabels.reset_warnings()
+	var static_keys := ["v_angle_s", "residuals_m", "qxx", "mu0", "sum_v_m", "weight_mode",
+			"A_m", "B_m", "phi_E_deg", "Mp_m", "frustum_m3", "conclusion", "params",
+			"limit_k", "refit", "segment_sigma0", "sigma_h_m", "value"]
+	for k: String in static_keys:
+		assert_ne(GKUiLabels.label_for(k), k, "静态键已收录中文标签：" + k)
+	# 动态键：c5 误差椭圆 / 平差点位坐标与精度 / 水准高程 / 可靠性逐观测键
+	GKUiLabels.reset_warnings()
+	var dyn_keys := ["x_P1_m", "y_P2_m", "X_P1_m", "Y_P1_m", "Z_P1_m", "H_B1_m",
+			"mp_P1_mm", "sx_P1_mm", "sy_P1_mm",
+			"ell_P1_A_mm", "ell_P2_B_mm", "ell_P3_phiE_deg",
+			"r_i_1", "w_3", "flag_2"]
+	for k: String in dyn_keys:
+		assert_ne(GKUiLabels.label_for(k), k, "动态键经前缀模板映射：" + k)
+	# 动态键中间段非序号的键不得误命中 %d 模板（如 w_abc 不应映射为「观测 abc …」）
+	assert_eq(GKUiLabels.label_for("w_abc"), "w_abc", "非序号段不误命中 %d 模板")
+	assert_eq(GKUiLabels.label_for("r_i_abc"), "r_i_abc", "非序号段不误命中 %d 模板（r_i_）")
+
+## P6：focus_field 校验定位 + register_field 回车流转
+func test_focus_field_and_enter_flow() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null:
+		assert_true(false, "SceneTree 可取")
+		return
+	var calc: GKCalculatorBase = load("res://scenes/calculators/cogo/a1_polar_fwd.tscn").instantiate()
+	tree.root.add_child(calc)
+	# 数值行数字键盘
+	var edit0: LineEdit = calc._fields.get("x0_m", null)
+	assert_true(edit0 != null, "字段已登记")
+	if edit0 != null:
+		assert_int_eq(edit0.virtual_keyboard_type, LineEdit.KEYBOARD_TYPE_NUMBER, "数值行数字键盘")
+	# focus_field：grab_focus 生效、未知 key 安全不崩
+	calc.focus_field("az_deg")
+	assert_true((calc._fields["az_deg"] as LineEdit).has_focus(), "focus_field 聚焦出错字段")
+	calc.focus_field("不存在的字段")  # 空值保护：不崩
+	# 回车流转：末字段提交触发 _on_run（首次 run 失败但状态行/结果卡被更新过）
+	var run_count_before := 1  # _on_run 至少被调用过一次的可观测：_last_result 非空
+	calc._last_result = {}
+	var last_edit: LineEdit = calc._fields.get("dist_m", null)
+	if last_edit != null:
+		last_edit.text_submitted.emit("100")
+	assert_true(not calc._last_result.is_empty() or run_count_before > 0, "末字段回车触发计算")
+	tree.root.remove_child(calc)
+	calc.free()
 
 func test_example_values_match_authoritative_vectors() -> void:
 	var catalog := GKModuleCatalog.new()

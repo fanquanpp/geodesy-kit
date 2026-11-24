@@ -13,5 +13,9 @@ script = ExtResource("1")
 theme_type_variation = &"Header"
 text = "限差检核"
 
+[node name="Verdict" type="Label" parent="VBox"]
+theme_type_variation = &"Header"
+text = "检核结论："
+
 [node name="Detail" type="Label" parent="VBox"]
 autowrap_mode = 3

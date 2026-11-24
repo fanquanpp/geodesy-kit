@@ -23,7 +23,7 @@ func _build_rows() -> void:
 	add_input_row("已知点 B x（东，m）", "x_b_m", "1800")
 	add_input_row("已知点 B y（北，m）", "y_b_m", "1050")
 	add_input_row("B 点距离 D_B（m）", "d_b_m", "600")
-	add_input_row("交点侧别（P 在 A→B 的）", "side", "右（默认）/ 左")
+	add_input_row("交点侧别（P 在 A→B 的）", "side", "右（默认）/ 左", LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var bad: Array = []

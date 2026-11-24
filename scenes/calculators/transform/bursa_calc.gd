@@ -34,8 +34,8 @@ func _build_rows() -> void:
 		["PV", "PV 位置向量（EPSG:1033）"],
 		["CF", "CF 坐标框架（EPSG:1032）"],
 	])
-	for cfg: Array in [["tx_m", "平移 Tx (m)"], ["ty_m", "平移 Ty (m)"], ["tz_m", "平移 Tz (m)"],
-			["rx_as", "旋转 Rx (″)"], ["ry_as", "旋转 Ry (″)"], ["rz_as", "旋转 Rz (″)"],
+	for cfg: Array in [["tx_m", "平移 Tx（m）"], ["ty_m", "平移 Ty（m）"], ["tz_m", "平移 Tz（m）"],
+			["rx_as", "旋转 Rx（″）"], ["ry_as", "旋转 Ry（″）"], ["rz_as", "旋转 Rz（″）"],
 			["scale_ppm", "尺度 dS (ppm)"]]:
 		var edit := add_input_row(cfg[1], cfg[0], "0")
 		_rows[cfg[0]] = edit
@@ -108,6 +108,7 @@ func _on_reset() -> void:
 	super._on_reset()
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in inputs:
 		var v: Variant = inputs[key]
 		if _opts.has(key):
@@ -176,11 +177,11 @@ func _parse_points_text(text: String, ncols: int) -> Dictionary:
 			cleaned = cleaned.replace("  ", " ")
 		var parts := cleaned.strip_edges().split(" ", false)
 		if parts.size() != ncols:
-			return {"ok": false, "rows": [], "error": "第 %d 行应有 %d 个数字（逗号分隔），实际 %d 个：“%s”" % [li + 1, ncols, parts.size(), line]}
+			return {"ok": false, "rows": [], "error": "第 %d 行应有 %d 个数字（逗号分隔），实际 %d 个：「%s」" % [li + 1, ncols, parts.size(), line]}
 		var vals := []
 		for p: String in parts:
 			if not p.is_valid_float():
-				return {"ok": false, "rows": [], "error": "第 %d 行含非数字内容：“%s”" % [li + 1, p]}
+				return {"ok": false, "rows": [], "error": "第 %d 行含非数字内容：「%s」" % [li + 1, p]}
 			vals.append(p.to_float())
 		rows.append(vals)
 	if rows.is_empty():

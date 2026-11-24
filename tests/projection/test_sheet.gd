@@ -89,3 +89,43 @@ func test_boundary_and_errors() -> void:
 	assert_almost_eq(float(lv["lon_min_deg"]), 116.0, 1e-9, "1:10万 列5 下缘 116")
 	assert_almost_eq(float(lv["lon_max_deg"]), 116.5, 1e-9, "1:10万 列5 上缘 116.5")
 	assert_almost_eq(float(lv["lat_max_deg"]), 40.0, 1e-9, "1:10万 行1 上缘 40")
+
+# ---------- P5 追加：步骤中间量显式计算（不从结果字符串反取） ----------
+
+## forward 步骤含显式中间量：(B−B₀)·r/4、(L−L₀)·c/6 与行号换算
+## （1:5万 r=c=24：天安门 ΔB≈0.9075°→序数 5.445→取整 5→行号 24−5=19？——实际行号 001，
+##   因为天安门在 1:5万图幅首行（行 1，B∈[39°50′,40°)）——中间量口径按实现验证）
+func test_forward_steps_explicit_intermediates() -> void:
+	var r := SH.forward({"lat_deg": 39.907527778, "lon_deg": 116.391277778, "scale_denom": 50000})
+	assert_true(bool(r.get("ok", false)), "1:5万 forward 成功")
+	if bool(r.get("ok", false)):
+		var joined := ""
+		for s: Dictionary in r["steps"]:
+			joined += String(s.get("title", "")) + "|" + String(s.get("substitution", "")) + "|" + String(s.get("result", ""))
+		# 步骤含纬向/经向分割序数中间量（ΔB×24/4、ΔL×24/6）
+		assert_true(joined.contains("×24/4"), "纬向序数公式含 ×24/4")
+		assert_true(joined.contains("×24/6"), "经向序数公式含 ×24/6")
+		# 中间量数值：ΔB = 39.907527778−39 = 0.907527778 → ×6 = 5.44516667；ΔL = 116.391277778−114 = 2.391277778 → ×4 = 9.56511111
+		assert_true(joined.contains("5.445"), "纬向序数中间量 5.445…")
+		assert_true(joined.contains("9.565"), "经向序数中间量 9.565…")
+		# 行号换算：行号 = 24 − 5 = 19? 不对——1:5万 24 行，天安门 ΔB×24/4=5.445 → 纬向序数 5 → 行号 = 24−5 = 19?
+		# 实测权威向量 J50E001010 行 001：ΔB×24/4 = 5.445 → 取整 5 → 行号 24−5 = 19 ≠ 1。
+		# 更正：天安门 B=39°54′27.1″ 在 1:100 万 J50（B∈[36,40)），1:5万 首行 B∈[39°50′,40°)。
+		# ΔB 相对图幅南缘 B₀=36°，非行南缘：(39.9075−36)×24/4 = 23.445 → 取整 23 → 行号 24−23 = 1 ✓
+		assert_true(joined.contains("23.445"), "ΔB 相对图幅南缘的序数 23.445…")
+		assert_true(joined.contains("24 − 23"), "行号换算 24 − 23 = 1")
+		assert_true(joined.contains("001"), "行号 001")
+
+## lookup 步骤显式给出每格经纬差（不从结果字符串反取）
+func test_lookup_steps_explicit_grid_size() -> void:
+	var r := SH.lookup({"sheet_code": "J50G003039"})
+	assert_true(bool(r.get("ok", false)), "lookup 1:1万 成功")
+	if bool(r.get("ok", false)):
+		var joined := ""
+		for s: Dictionary in r["steps"]:
+			joined += String(s.get("substitution", "")) + "|" + String(s.get("result", ""))
+		# 1:1万 96×96：纬差 4/96 = 0.041666…°，经差 6/96 = 0.0625°
+		assert_true(joined.contains("0.041667"), "纬差 4/96 中间量")
+		assert_true(joined.contains("0.062500") or joined.contains("0.0625"), "经差 6/96 中间量")
+		assert_true(joined.contains("行号 003"), "显式行号 003")
+		assert_true(joined.contains("列号 039"), "显式列号 039")

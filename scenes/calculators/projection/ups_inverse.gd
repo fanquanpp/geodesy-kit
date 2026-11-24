@@ -13,8 +13,8 @@ func get_description() -> String:
 func _setup() -> void:
 	_add_row("东坐标 E（m）", "e_m", "如 2277728.6957", true)
 	_add_row("北坐标 N（m）", "n_m", "如 1518959.7883", true)
-	_add_row("半球", "hemisphere", "N / S，留空按北半球处理", false)
-	_add_row("基准", "datum", "WGS84", false)
+	_add_row("半球", "hemisphere", "N / S，留空按北半球处理", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
+	_add_row("基准", "datum", "WGS84", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var p := _fail_or(_params())

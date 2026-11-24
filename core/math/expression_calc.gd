@@ -1,27 +1,11 @@
 # core/math/expression_calc.gd —— GK-M1-7 叶子库：科学表达式求值（内置 Expression 包装）
 #
-# 服务对象：G7 统计与误差传播计算器的表达式输入、I-摄影测量自定义遥感指数公式
-# （ARCHITECTURE.md §4 GK-M1 M1-7 / §4 M8-7）。
-# 语法 = Godot Expression 子集：四则运算、比较、内置全局函数
-# （sin/cos/tan/asin/acos/atan/atan2/sqrt/pow/log/exp/abs/floor/ceil/round/min/max/clamp 等）、
-# 常量 PI/TAU/INF/NAN、自定义变量。三角函数一律弧度制 —— 度制换算由调用方先行完成，
-# 本层不做表达式语法改写（避免改写歧义）。
-# ⚠ 引擎语义（G7 提示文案需携带）：整型字面量相除为整除（GDScript 语义），
-#   10/4=2；浮点除必须写 10.0/4。本层忠实透传引擎行为，不改写。
-#
-# 设计约定：
-#   - 统一返回 §5 协议形状 {ok, value, steps, formula, error}（本类直接面向计算器透传，
-#     steps 恒为 []，formula 为表达式原文回显）；
-#   - 空表达式 / 语法错误 / 执行失败 / 结果非数值 / 结果非有限 → ok=false、value=NAN、
-#     error 必填中文（Expression 的解析消息保留在 error 末尾便于用户定位——那是
-#     用户输入的即时反馈，不是 GDScript 报错/堆栈文本）；
-#   - execute(show_error=false)：不污染日志（测试框架以 SCRIPT ERROR 行兜底）；
-#   - 变量名必须为合法标识符（字母/下划线开头，仅字母数字下划线），且不得遮蔽
-#     PI/TAU/INF/NAN；变量值必须是有限数值（int/float）；
-#   - 本类是 core 中经架构明确许可的引擎核心类型使用点（Expression：非 Node、
-#     无 I/O、无网络），与 errprop.gd 使用 Callable 同口径。
-#
-# 向量：tests/mathk/test_expression_calc.gd（构造向量，解析可验证）。
+# 服务 G7 统计与 I-摄影测量自定义遥感指数；语法为 Godot Expression 子集，三角函数弧度制，
+# 度制换算由调用方先行完成。⚠ 整型相除为整除（10/4=2），本层忠实透传不改写。
+# 统一返回 §5 协议形状（steps 恒 []，formula 回显原文）；失败 ok=false、value=NAN、error 中文。
+# 变量名须合法标识符且不遮蔽 PI/TAU/INF/NAN；值为有限数值；execute(show_error=false) 不污染日志。
+# 本类为架构明确许可的引擎核心类型使用点（Expression：非 Node、无 I/O、无网络）。
+# 向量：tests/mathk/test_expression_calc.gd。
 class_name GKExpressionCalc
 extends RefCounted
 
@@ -39,10 +23,10 @@ static func evaluate(expr_text: String, variables: Dictionary = {}) -> Dictionar
 	for key in variables.keys():
 		var k := String(key)
 		if not _valid_name(k):
-			return _result(false, NAN, text, "变量名“%s”不合法：须以字母或下划线开头，只含字母、数字、下划线，且不得使用保留名 PI/TAU/INF/NAN" % k)
+			return _result(false, NAN, text, "变量名「%s」不合法：须以字母或下划线开头，只含字母、数字、下划线，且不得使用保留名 PI/TAU/INF/NAN" % k)
 		var val = variables[key]
 		if not ((val is float) or (val is int)) or not is_finite(float(val)):
-			return _result(false, NAN, text, "变量“%s”的值必须是有限数值" % k)
+			return _result(false, NAN, text, "变量「%s」的值必须是有限数值" % k)
 		names.append(k)
 		inputs.append(float(val))
 	var e := Expression.new()
@@ -68,7 +52,7 @@ static func check(expr_text: String, variables: Dictionary = {}) -> Dictionary:
 	for key in variables.keys():
 		var k := String(key)
 		if not _valid_name(k):
-			return {"ok": false, "error": "变量名“%s”不合法：须以字母或下划线开头，只含字母、数字、下划线，且不得使用保留名 PI/TAU/INF/NAN" % k}
+			return {"ok": false, "error": "变量名「%s」不合法：须以字母或下划线开头，只含字母、数字、下划线，且不得使用保留名 PI/TAU/INF/NAN" % k}
 		names.append(k)
 	var e := Expression.new()
 	if e.parse(text, names) != OK:

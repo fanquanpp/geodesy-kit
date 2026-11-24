@@ -14,7 +14,7 @@ func _setup() -> void:
 	_add_row("纬度 B（°或度分秒）", "lat_deg", "如 32.5 或 32°30′00″", true)
 	_add_row("经度 L（°或度分秒）", "lon_deg", "如 118.25 或 118°15′00″", true)
 	_add_row("中央子午线 L0（°）", "l0_deg", "3°带 L0=3n，6°带 L0=6n−3", true)
-	_add_row("基准", "datum", "CGCS2000 / 北京54 / 西安80 / WGS84", false)
+	_add_row("基准", "datum", "CGCS2000 / 北京54 / 西安80 / WGS84", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var p := _fail_or(_params())

@@ -5,11 +5,11 @@ const TL := preload("res://core/adjustment/tolerance.gd")
 
 func _build_fields() -> void:
 	_add_section("标量检核（角度闭合差 fβ / 高差闭合差 fh 等）")
-	add_input_row("检核项名称", "name", "角度闭合差")
+	add_input_row("检核项名称", "name", "角度闭合差", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	add_input_row("实际值", "actual", "2.4")
 	add_input_row("限差（±双侧）", "limit", "8")
-	add_input_row("单位（仅展示，如 ″ / mm）", "unit", "″")
-	add_input_row("依据（如：用户输入限差·图根级）", "basis", "用户输入限差（图根级自定）")
+	add_input_row("单位（仅展示，如 ″ / mm）", "unit", "″", LineEdit.KEYBOARD_TYPE_DEFAULT)
+	add_input_row("依据（如：用户输入限差·图根级）", "basis", "用户输入限差（图根级自定）", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	_add_section("相对闭合差检核（可选，如导线 1/k）")
 	add_input_row("实际 1/k 的 k", "actual_k", "")
 	add_input_row("限差 1/k 的 k", "limit_k", "")
@@ -53,7 +53,7 @@ func get_title() -> String:
 	return "限差检核（C8）"
 
 func get_description() -> String:
-	return "超限提示含三要素（实际值/限差值/依据）。⚠ 规范限差表（GB 50026 等）未核读前 data/tolerance.json 为占位空表，本页按用户自输限差检核——请如实填写依据。"
+	return "超限提示含三要素（实际值/限差值/依据）。⚠ 规范限差表（GB 50026 等）未核读前限差数据表为占位空表，本页按用户自输限差检核——请如实填写依据。"
 
 func get_entry_id() -> String:
 	return "c8_tolerance"

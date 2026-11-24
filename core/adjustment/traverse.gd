@@ -32,7 +32,7 @@ static func open_traverse(p: Dictionary) -> Dictionary:
 			"title": "1. 由起始方位推算各边方位角",
 			"formula": "α_{i+1} = α_i + β_左 − 180°",
 			"substitution": "α_起 = %s°，依次推算 %d 条边" % [_fmt(az_start_value(p)), sides.size()],
-			"result": "方位角串见结果 az_deg",
+			"result": "方位角串见结果",
 		},
 		{
 			"title": "2. 坐标正算逐点展点",
@@ -72,7 +72,7 @@ static func no_orient_traverse(p: Dictionary) -> Dictionary:
 	if bad != "":
 		return _fail(bad)
 	if not p.has("end") or (p["end"] as Array).size() != 2:
-		return _fail("缺少终点已知坐标 end:[x,y]")
+		return _fail("缺少终点已知坐标（x, y）")
 	var endpt: Array = p["end"]
 	if not _finite_xy(endpt):
 		return _fail("终点坐标含非法数值（空/非数字/NaN）")
@@ -98,7 +98,17 @@ static func no_orient_traverse(p: Dictionary) -> Dictionary:
 	var sum_d := _sum_pfa(sides)
 	var names := _point_names(p, sides.size() - 1, true, true)
 	var res := _distribute_and_build(chain, fx, fy, sides, sum_d, names, start,
-			"无定向导线（假定方向+旋转定向+比例分配，近似平差）", delta)
+			"无定向导线（假定方向+旋转定向+比例分配，近似平差）", delta, 0,
+			[float(endpt[0]), float(endpt[1])])
+	if not bool(res.get("ok", false)):
+		return res
+	# 教学警示：无定向导线没有已知方位角，无角度检核条件
+	(res["steps"] as Array).append({
+		"title": "教学提示：无角度检核条件",
+		"formula": "无定向导线两端仅知坐标、无已知方位角 → 无角度闭合差 fβ 可检核",
+		"substitution": "方向误差全部被吸收进旋转角 δ（见上），观测中的粗差无法在角度上暴露",
+		"result": "精度低于附合导线一档，重要工程请优先采用附合导线",
+	})
 	return res
 
 # ---------- 内部实现 ----------
@@ -109,12 +119,12 @@ static func _connect_adjust(p: Dictionary, closed: bool, is_loop: bool) -> Dicti
 	if bad != "":
 		return _fail(bad)
 	if not p.has("end") or (p["end"] as Array).size() != 2:
-		return _fail("缺少终点已知坐标 end:[x,y]")
+		return _fail("缺少终点已知坐标（x, y）")
 	var endpt: Array = p["end"]
 	if not _finite_xy(endpt):
 		return _fail("终点坐标含非法数值（空/非数字/NaN）")
 	if not p.has("az_end_deg") or is_nan(float(p.get("az_end_deg", NAN))):
-		return _fail("缺少终止边已知方位角 az_end_deg")
+		return _fail("缺少终止边已知方位角")
 	var start: Array = p["start"]
 	var angles := PackedFloat64Array(p["angles_deg"])
 	var sides := PackedFloat64Array(p["sides_m"])
@@ -139,7 +149,9 @@ static func _connect_adjust(p: Dictionary, closed: bool, is_loop: bool) -> Dicti
 	var names := _point_names(p, sides.size() - 1, true, true)
 	var title := "闭合导线平差（角度均分+边长比例分配，近似平差）" if closed else "附合导线平差（Bowditch：角度均分+边长比例分配，近似平差）"
 	# 步骤编号：角度闭合差步骤占用 "1."，后续步骤从 2 起编
-	var res := _distribute_and_build(chain, fx, fy, sides, sum_d, names, start, title, NAN, 1)
+	# 末边强制闭合：闭合导线终点即起点、附合导线终点即已知点，确保平差后精确附合
+	var end_target := [float(endpt[0]), float(endpt[1])]
+	var res := _distribute_and_build(chain, fx, fy, sides, sum_d, names, start, title, NAN, 1, end_target)
 	if not bool(res.get("ok", false)):
 		return res
 	var value: Dictionary = res["value"]
@@ -153,7 +165,7 @@ static func _connect_adjust(p: Dictionary, closed: bool, is_loop: bool) -> Dicti
 		has_limit = true
 		var lim := absf(float(p["limit_fb_s"]))
 		value["limit_fb_s"] = lim
-		value["basis"] = "用户输入限差（未核读 GB 50026 等规范限差表，data/tolerance.json 为占位）"
+		value["basis"] = "限差由用户输入，依据自定（规范限差表未核读前不提供标准值）"
 		checks.append("角度闭合差 %s″，限差 ±%s″" % [_fmt(f_beta_s), _fmt(lim)])
 		if absf(f_beta_s) > lim:
 			ok_limit = false
@@ -170,14 +182,25 @@ static func _connect_adjust(p: Dictionary, closed: bool, is_loop: bool) -> Dicti
 	if has_limit:
 		value["ok_limit"] = ok_limit
 		if not checks.is_empty():
-			value["basis"] = "用户输入限差（未核读 GB 50026 等规范限差表，data/tolerance.json 为占位）"
+			value["basis"] = "限差由用户输入，依据自定（规范限差表未核读前不提供标准值）"
 	res["value"] = value
-	# 步骤补角度闭合差明细
+	# 步骤补角度闭合差明细：C2/C3 分别给出对应教材口径公式
+	# C2 教材式：fβ = Σβ − (n−2)·180°（内角和口径，与本实现 Σβ − n·180° + α起 − α起 恒差
+	# 整 360°，经 _wrap180 回卷后数值完全等价——展示教材式，计算逻辑不动）
+	# C3 教材式：fβ = α起 + Σβ_左 − n·180° − α终（推算终边方位 − 已知终边方位）
 	var steps: Array = res["steps"]
+	var fb_formula := "fβ = Σβ − (n−2)·180°（多边形内角和条件）；改正 vβ = −fβ/n（各角均分）"
+	if not closed:
+		fb_formula = "fβ = α_起 + Σβ_左 − n·180° − α_终（推算终边方位−已知终边方位）；改正 vβ = −fβ/n（各角均分）"
+	var fb_subst := "fβ = %s° = %s″；vβ = %s″" % [_fmt(f_beta), _fmt(f_beta_s), _fmt(corr * 3600.0)]
+	if closed:
+		fb_subst = "Σβ = %s°，(n−2)·180° = %s°（n = %d）\nfβ = %s° = %s″；vβ = %s″" % [
+			_fmt(_sum_pfa(angles)), _fmt(180.0 * (n_ang - 2)), n_ang,
+			_fmt(f_beta), _fmt(f_beta_s), _fmt(corr * 3600.0)]
 	var st_fb := {
 		"title": "1. 角度闭合差及改正",
-		"formula": "fβ = α_起 + Σβ_左 − n·180° − α_终；改正 vβ = −fβ/n（各角均分）",
-		"substitution": "fβ = %s° = %s″；vβ = %s″" % [_fmt(f_beta), _fmt(f_beta_s), _fmt(corr * 3600.0)],
+		"formula": fb_formula,
+		"substitution": fb_subst,
 		"result": "改正后方位角闭合于已知终边",
 	}
 	steps.insert(0, st_fb)
@@ -207,30 +230,50 @@ static func _chain(start: Array, az_start_deg: float, angles: PackedFloat64Array
 			azs.append(az)
 	return {"points": pts, "az": azs, "dE": dEs, "dN": dNs}
 
-## 比例分配并组装 §5 结果（traverse 内部）；step_offset 为已有前置步骤数（编号衔接）
+## 比例分配并组装 §5 结果（traverse 内部）；step_offset 为已有前置步骤数（编号衔接）；
+## end_target：终点已知坐标 [x,y]（可省略）——提供时末边强制闭合：
+##   前面各边按边长比例分配闭合差，末边改正数吸收全部残余，保证平差后终点
+##   坐标与已知点严格一致（数值 <1e-12 m）；end_vx/end_vy 为末边吸收量（通常≈0）。
 static func _distribute_and_build(chain: Dictionary, fx: float, fy: float,
 		sides: PackedFloat64Array, sum_d: float, names: Array, start: Array,
-		title: String, rotation_deg: float, step_offset := 0) -> Dictionary:
+		title: String, rotation_deg: float, step_offset := 0, end_target := []) -> Dictionary:
 	var dEs: PackedFloat64Array = chain.dE
 	var dNs: PackedFloat64Array = chain.dN
+	var n := sides.size()
 	var vxs := PackedFloat64Array()
 	var vys := PackedFloat64Array()
-	for i in sides.size():
+	for i in n:
 		vxs.append(-fx * sides[i] / sum_d)
 		vys.append(-fy * sides[i] / sum_d)
+	var last := n - 1
+	var end_vx := 0.0
+	var end_vy := 0.0
+	if end_target.size() == 2 and n >= 1:
+		# 末边强制闭合：末边改正 = 目标终点 − 当前末边改正后位置
+		var px := float(start[0])
+		var py := float(start[1])
+		for i in last:
+			px += dEs[i] + vxs[i]
+			py += dNs[i] + vys[i]
+		end_vx = float(end_target[0]) - px - dEs[last] - vxs[last]
+		end_vy = float(end_target[1]) - py - dNs[last] - vys[last]
+		vxs[last] += end_vx
+		vys[last] += end_vy
 	var f := sqrt(fx * fx + fy * fy)
+	# rel_k 同口径：与结果页展示的 fx/fy（改正前口径的闭合差）一致——
+	# 用同一对 fx/fy 计算 1/k，用户可由展示值手算核对
 	var rel_k := INF if f <= 0.0 else sum_d / f
 	# 平差后坐标
 	var value := {}
-	var px := float(start[0])
-	var py := float(start[1])
-	value["x_%s_m" % names[0]] = px
-	value["y_%s_m" % names[0]] = py
-	for i in sides.size():
-		px += dEs[i] + vxs[i]
-		py += dNs[i] + vys[i]
-		value["x_%s_m" % names[i + 1]] = px
-		value["y_%s_m" % names[i + 1]] = py
+	var px2 := float(start[0])
+	var py2 := float(start[1])
+	value["x_%s_m" % names[0]] = px2
+	value["y_%s_m" % names[0]] = py2
+	for i in n:
+		px2 += dEs[i] + vxs[i]
+		py2 += dNs[i] + vys[i]
+		value["x_%s_m" % names[i + 1]] = px2
+		value["y_%s_m" % names[i + 1]] = py2
 	value["fx_m"] = fx
 	value["fy_m"] = fy
 	value["f_m"] = f
@@ -251,20 +294,20 @@ static func _distribute_and_build(chain: Dictionary, fx: float, fy: float,
 			"result": "全部假定方位角加 δ 后重新推算",
 		})
 	steps.append({
-		"title": "%d. 坐标闭合差" % (steps.size() + 1),
+		"title": "%d. 坐标闭合差" % (step_offset + steps.size() + 1),
 		"formula": "fx = ΣΔx − (x_终 − x_起)；fy = ΣΔy − (y_终 − y_起)",
 		"substitution": "fx = %s m，fy = %s m" % [_fmt(fx), _fmt(fy)],
-		"result": "f = %s m，ΣD = %s m，相对闭合差 %s" % [_fmt(f), _fmt(sum_d), rel_text],
+		"result": "f = %s m，ΣD = %s m，相对闭合差 %s（1/k 由本步骤 fx/fy 与 ΣD 计算，可手算核对）" % [_fmt(f), _fmt(sum_d), rel_text],
 	})
 	steps.append({
-		"title": "%d. 按边长比例反号分配（Bowditch）" % (steps.size() + 1),
+		"title": "%d. 按边长比例反号分配（Bowditch）" % (step_offset + steps.size() + 1),
 		"formula": "vΔx_i = −fx·D_i/ΣD，vΔy_i = −fy·D_i/ΣD",
 		"substitution": "首边改正 vΔx = %s m，vΔy = %s m" % [_fmt(vxs[0]), _fmt(vys[0])],
 		"result": "改正后坐标增量终点附合于已知点",
 	})
 	steps.append({
-		"title": "%d. 平差后坐标" % (steps.size() + 1),
-		"formula": "x_i = x_{i-1} + Δx_i + vΔx_i；y_i 同理",
+		"title": "%d. 平差后坐标" % (step_offset + steps.size() + 1),
+		"formula": "x_i = x_{i-1} + Δx_i + vΔx_i；y_i 同理（末边强制闭合）",
 		"substitution": "逐点累加",
 		"result": "各点平差后坐标见结果",
 	})
@@ -280,16 +323,16 @@ static func _distribute_and_build(chain: Dictionary, fx: float, fy: float,
 
 static func _check_chain_inputs(p: Dictionary, is_loop: bool, need_az := true) -> String:
 	if not p.has("start") or (p["start"] as Array).size() != 2:
-		return "缺少起点坐标 start:[x,y]"
+		return "缺少起点坐标（x, y）"
 	if not _finite_xy(p["start"]):
 		return "起点坐标含非法数值（空/非数字/NaN）"
-	# 无定向导线（C4）无已知方位角：need_az=false 时不要求 az_start_deg
+	# 无定向导线（C4）无已知方位角：need_az=false 时不要求起始方位角
 	if need_az and (not p.has("az_start_deg") or is_nan(float(p.get("az_start_deg", NAN)))):
-		return "缺少起始方位角 az_start_deg（十进制度）"
+		return "缺少起始方位角（十进制度）"
 	if not p.has("angles_deg") or not (p["angles_deg"] is Array) or (p["angles_deg"] as Array).size() < 1:
-		return "缺少转折角 angles_deg（至少 1 个左角，十进制度）"
+		return "缺少转折角（至少 1 个左角，十进制度）"
 	if not p.has("sides_m") or not (p["sides_m"] is Array) or (p["sides_m"] as Array).size() < 2:
-		return "缺少边长 sides_m（至少 2 条边）"
+		return "缺少边长（至少 2 条边）"
 	var angles: Array = p["angles_deg"]
 	var sides: Array = p["sides_m"]
 	if is_loop:
@@ -297,7 +340,7 @@ static func _check_chain_inputs(p: Dictionary, is_loop: bool, need_az := true) -
 			return "闭合导线的转折角个数应等于边长个数（n 边形 n 角 n 边）"
 	else:
 		if sides.size() != angles.size() + 1:
-			return "边长个数应为 转折角个数+1（附合/无定向）；闭合导线请用 closed_traverse（角数=边数）"
+			return "边长个数应为 转折角个数+1（附合/无定向导线）；闭合环请用闭合导线计算（角数=边数）"
 	for a in angles:
 		if not _finite_num(a):
 			return "转折角含非法数值（空/非数字/NaN）"

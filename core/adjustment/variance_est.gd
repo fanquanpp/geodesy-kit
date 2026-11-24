@@ -1,18 +1,10 @@
 # core/adjustment/variance_est.gd —— GK-M6-8 方差分量估计（C12：Helmert 法）与秩亏自由网平差（最小范数解）
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M6 / §5 协议）：
-#   - Helmert 方差分量估计（严格无偏形式，含组间交叉项）：
-#       E[v_iᵀP_i v_i] = Σ_j σ0j²·a_ij，a_ij = tr(P_i·M_ij·P_j⁻¹·M_ijᵀ)，M = I − B·Qxx·Bᵀ·P；
-#       解线性方程组得各组 σ̂0j²（对角近似忽略交叉项的教科书简化式不采用——本实现为严格式，
-#       已与本会话 numpy 互检：单次估计无偏、迭代 4 次收敛、恢复 σ 比 4.3% 内小样本波动）；
-#       迭代：P_i ← P_i/σ̂0i²，直至 max|σ̂0i²−1| < tol；
-#   - 组内约定：每组观测须带同一 sigma（或 w）作为初权，输出"累计因子"与原生单位 σ 估值
-#     （σ_native = σ_init·√factor_cum，测边 m、角度 rad→另给 ″）；
-#   - 设计矩阵复用 GKAdjustNetwork.build_design（同域内部复用，C5↔C12，不跨域）；
-#   - 秩亏自由网（无已知点）：N 奇异（亏 3：2 平移+1 旋转；纯测角网亏 4 需尺度观测，见校验），
-#       附加基准条件 Gᵀ·δx = 0（Σδx=0、Σδy=0、Σ(−y⁰δx+x⁰δy)=0）加边求解 → 最小范数解；
-#       行 dof = n − rank(N) = n − (t − 3)；
-#   - 全部静态函数、零引擎依赖；非法输入返回 {"ok":false,"error":中文}。
+# Helmert 严格无偏式（含组间交叉项）：E[v_iᵀP_i v_i]=Σ_j σ0j²·a_ij；迭代 P_i←P_i/σ̂0i² 至收敛
+# （已与 numpy 互检：单次无偏、迭代 4 次收敛）。每组观测须带同一 sigma/w 初权，
+# 输出累计因子与原生单位 σ 估值。设计矩阵复用 GKAdjustNetwork.build_design（同域内复用，不跨域）。
+# 秩亏自由网（亏 3：2 平移+1 旋转）附加基准条件 Gᵀδx=0 加边求解→最小范数解，dof=n−(t−3)。
+# 全部静态、零引擎依赖；非法输入返回 {ok:false, error:中文}。
 class_name GKAdjustVariance
 extends RefCounted
 

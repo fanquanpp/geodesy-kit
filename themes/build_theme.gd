@@ -32,6 +32,17 @@ const DARK := {
 const FONT_REG := "res://assets/fonts/NotoSansSC-Regular.otf"
 const FONT_BOLD := "res://assets/fonts/NotoSansSC-Bold.otf"
 
+# ---------- 布局常量（全应用唯一出处；运行时代码统一引用 themes/theme_constants.gd） ----------
+# 触控目标：720×1280 设计基准下 ≥96 设计 px（Material 3 ≥48dp 口径在 2× 缩放下的等值）。
+const TOUCH_TARGET := 96
+# 触控控件最小间距：Material 3 相邻触控目标 ≥8dp，本应用取 16 设计 px 保证误触余量。
+const MIN_TOUCH_SPACING := 16
+# 结果值字号（≈48 设计 px，结果卡主值）与次级说明字号（≈22 设计 px，Caption）。
+const FONT_RESULT := 48
+const FONT_CAPTION := 22
+# 多行中文说明行距（Label theme constant line_spacing，30px 字号下试定 4px）
+const FONT_LABEL_SPACING := 4
+
 func _initialize() -> void:
 	var problems := PackedStringArray()
 	if not _build("res://themes/main.tres", LIGHT, problems):
@@ -73,6 +84,29 @@ func _build(save_path: String, pal: Dictionary, problems: PackedStringArray) -> 
 	th.set_type_variation("Muted", "Label")
 	th.set_font_size("font_size", "Muted", 26)
 	th.set_color("font_color", "Muted", pal.text_muted)
+
+	# type variation：Caption（次级信息/注记小字，≈22 设计 px）
+	th.set_type_variation("Caption", "Label")
+	th.set_font_size("font_size", "Caption", FONT_CAPTION)
+	th.set_color("font_color", "Caption", pal.text_muted)
+
+	# type variation：ResultValue（结果卡主值，≈48 设计 px）
+	th.set_type_variation("ResultValue", "Label")
+	th.set_font("font", "ResultValue", font_bold)
+	th.set_font_size("font_size", "ResultValue", FONT_RESULT)
+	th.set_color("font_color", "ResultValue", pal.text)
+
+	# type variation：ResultAccent（结果/结论强调行：加粗 + 主题色，区别于 Header 区块标题）
+	th.set_type_variation("ResultAccent", "Label")
+	th.set_font("font", "ResultAccent", font_bold)
+	th.set_font_size("font_size", "ResultAccent", 30)
+	th.set_color("font_color", "ResultAccent", pal.primary)
+
+	# 多行中文说明行距：Noto Sans SC 全角字形默认行距偏挤（多行公式/说明观感），
+	# 试加 4px——30px 字号下 ≈13% 行高，中文阅读舒适区 1.4~1.6 倍的补差量。
+	# 实测观感（720×1280 设计稿）：4px 时多行说明不再贴行、公式上下标可读；
+	# 6px 过松（说明区与数值行疏密不齐），故取 4px。
+	th.set_constant("line_spacing", "Label", FONT_LABEL_SPACING)
 
 	# ---------- Button ----------
 	th.set_color("font_color", "Button", pal.text)
@@ -118,6 +152,12 @@ func _build(save_path: String, pal: Dictionary, problems: PackedStringArray) -> 
 	var card := _panel_box(pal.surface, pal.border, 16, 24)
 	th.set_stylebox("panel", "Card", card)
 
+	# type variation：ErrorCard（失败态卡片：错误红描边语言，与 limits_panel 超限一致；
+	# 供 calculator_base 失败分支按同名变体切换，变体缺失回退默认不报错）
+	th.set_type_variation("ErrorCard", "PanelContainer")
+	var err_card := _panel_box(pal.surface, pal.error, 16, 24)
+	th.set_stylebox("panel", "ErrorCard", err_card)
+
 	# type variation：DrawerPanel（抽屉/浮层，更强投影感的描边）
 	th.set_type_variation("DrawerPanel", "PanelContainer")
 	var drawer := _panel_box(pal.surface, pal.primary, 16, 20)
@@ -156,7 +196,7 @@ func _build(save_path: String, pal: Dictionary, problems: PackedStringArray) -> 
 	th.set_color("font_selected_color", "TabBar", pal.primary)
 	th.set_color("font_unselected_color", "TabBar", pal.text_muted)
 	th.set_color("font_hovered_color", "TabBar", pal.text)
-	th.set_constant("h_separation", "TabBar", 8)  # Material 3：目标间距 ≥8
+	th.set_constant("h_separation", "TabBar", MIN_TOUCH_SPACING)  # Material 3：触控目标间距 ≥16 设计 px
 	th.set_stylebox("tab_selected", "TabBar", _tab_box(Color(pal.primary, 0.16)))
 	th.set_stylebox("tab_hovered", "TabBar", _tab_box(pal.btn_hover))
 	th.set_stylebox("tab_unselected", "TabBar", StyleBoxEmpty.new())
@@ -194,6 +234,22 @@ func _build(save_path: String, pal: Dictionary, problems: PackedStringArray) -> 
 		problems.append(save_path + " Card variation 基类错误")
 	if back.get_type_variation_base("PrimaryButton") != &"Button":
 		problems.append(save_path + " PrimaryButton variation 基类错误")
+	if back.get_type_variation_base("ResultValue") != &"Label":
+		problems.append(save_path + " ResultValue variation 基类错误")
+	if back.get_type_variation_base("ResultAccent") != &"Label":
+		problems.append(save_path + " ResultAccent variation 基类错误")
+	if back.get_type_variation_base("ErrorCard") != &"PanelContainer":
+		problems.append(save_path + " ErrorCard variation 基类错误")
+	if back.get_type_variation_base("Caption") != &"Label":
+		problems.append(save_path + " Caption variation 基类错误")
+	if back.get_font_size("font_size", "ResultValue") != FONT_RESULT:
+		problems.append(save_path + " ResultValue 字号缺失/不符")
+	if back.get_font_size("font_size", "Caption") != FONT_CAPTION:
+		problems.append(save_path + " Caption 字号缺失/不符")
+	if back.get_constant("line_spacing", "Label") != FONT_LABEL_SPACING:
+		problems.append(save_path + " Label line_spacing 缺失/不符")
+	if back.get_constant("h_separation", "TabBar") < MIN_TOUCH_SPACING:
+		problems.append(save_path + " TabBar h_separation 低于触控间距下限")
 	if not back.has_color("font_color", "ErrorLabel"):
 		problems.append(save_path + " ErrorLabel 色缺失")
 	if back.get_stylebox("title_panel", "FoldableContainer") == null:

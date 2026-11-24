@@ -1,16 +1,9 @@
 # core/transform/itrf.gd —— GK-M4-4（F7）：ITRF 历元传播 / 14 参数框架转换
 #
-# 公式（官方口径，Altamimi et al. 2023《ITRF2020》式(6)；ITRF 系列论文同式）：
-#   X_to(t) = X_from(t) + T(t) + D(t)·X_from(t) + R(t)·X_from(t)
-#   Ẋ_to(t) = Ẋ_from(t) + Ṫ + Ḋ·X_from(t) + Ṙ·X_from(t)
-# 其中 T(t) = T + Ṫ·(t − t0)，D(t) = D + Ḋ·(t − t0)（无量纲），R(t) = R + Ṙ·(t − t0)；
-# R·X 按右手叉积展开（论文定义的斜对称矩阵 [0,−Rz,Ry; Rz,0,−Rx; −Ry,Rx,0]），
-# 与 PROJ/EPSG 的 position_vector 约定一致（EPSG:9991/10587 已交叉核读）。
-# 反方向转换按官方说明"互换框架并对全部参数反号"（值与速率都反号）。
-# 参数来源：data/itrf_params.json（core 不读盘，由调用方装载后经 p["params_row"] 传入）。
-# 官方参数表（落地补）：ITRF2020→ITRF2014（历元 2015.0）取自论文 Table 6，并经
-# PROJ 注册表（pyproj 实查 EPSG:9991）逐项互证；无速率参数时自动退化为普通七参数。
-# 纯 GDScript、零引擎依赖；失败一律 {ok:false, value:{}, error:中文}。
+# 公式（官方口径，Altamimi et al. 2023《ITRF2020》式(6)）：X_to(t)=X_from(t)+T(t)+D(t)X+R(t)X，
+# 速度方程同形加 Ṫ/Ḋ/Ṙ；参数线性内插 T(t)=T+Ṫ(t−t0)。R·X 按右手叉积展开，与 PROJ/EPSG
+# position_vector 约定一致（EPSG:9991/10587 已交叉核读）。
+# 反方向转换按官方说明「互换框架并对全部参数反号」（值与速率都反号）。
 class_name GKITRF
 extends RefCounted
 
@@ -145,6 +138,16 @@ static func transform(p: Dictionary) -> Dictionary:
 			"result": "输出点 (%.4f, %.4f, %.4f) m" % [r0[0], r0[1], r0[2]],
 		},
 	]
+	# 历元链路警示：若输入坐标不在参数基准历元（Δt≠0），正确流程是
+	# 「先把坐标从其当前历元传播到参数基准历元 → 做框架转换 →（如需）再传播到用户历元」；
+	# 直接把非基准历元坐标代入 14 参数公式会混入速率项的系统性偏差。
+	if absf(dt) > 1e-9:
+		steps.append({
+			"title": "历元链路警示",
+			"formula": "先传播到参数基准历元 → 框架转换 →（如需）再传播到用户历元",
+			"substitution": "当前求值历元 t=%.4f 与参数基准历元 t0=%.1f 不同（Δt=%.4f 年）" % [epoch, t_epoch, dt],
+			"result": "若输入坐标历元既非 t0 也非 t，请先做历元传播把坐标归算到 t0，完成框架转换后再传播到 t；直接代入会引入速率项系统性偏差，请确认输入坐标历元",
+		})
 	if n > 1:
 		steps.append({"title": "3. 其余各点同式计算", "formula": "", "substitution": "", "result": "共 %d 点，见结果表" % n})
 	var value := {
@@ -223,7 +226,7 @@ static func propagate(p: Dictionary) -> Dictionary:
 ## 校验参数行：t_mm 必需，速率/旋转/尺度缺省按 0（无速率 → 自动退化为七参数）
 static func _read_row(row: Variant) -> Dictionary:
 	if not (row is Dictionary) or (row as Dictionary).is_empty():
-		return {"ok": false, "error": "缺少 ITRF 转换参数行（params_row）：请先经 GKITRF.lookup() 从 data/itrf_params.json 取参"}
+		return {"ok": false, "error": "缺少框架转换参数行：请先从官方参数表（参数库）按框架方向取参"}
 	var r: Dictionary = row
 	var t_epoch_v: Variant = r.get("t_epoch", null)
 	if t_epoch_v == null:
@@ -310,7 +313,7 @@ static func _parse_points(v: Variant, dim: int) -> Dictionary:
 				if s.is_empty():
 					return {"ok": false, "points": [], "error": "第 %d 个点第 %d 分量为空" % [i + 1, j + 1]}
 				if not s.is_valid_float():
-					return {"ok": false, "points": [], "error": "第 %d 个点第 %d 分量不是有效数字：“%s”" % [i + 1, j + 1, s]}
+					return {"ok": false, "points": [], "error": "第 %d 个点第 %d 分量不是有效数字：「%s」" % [i + 1, j + 1, s]}
 				f = s.to_float()
 			else:
 				f = float(rv)

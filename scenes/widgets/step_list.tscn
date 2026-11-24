@@ -2,6 +2,6 @@
 
 [ext_resource type="Script" path="res://scenes/widgets/step_list.gd" id="1"]
 
-[node name="StepList" type="ScrollContainer"]
-size_flags_vertical = 3
+[node name="StepList" type="VBoxContainer"]
+size_flags_vertical = 1
 script = ExtResource("1")

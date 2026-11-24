@@ -116,6 +116,7 @@ func _on_reset() -> void:
 	super._on_reset()
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in inputs:
 		var v: Variant = inputs[key]
 		if _opts.has(key):
@@ -182,11 +183,11 @@ func _parse_fit_points(text: String) -> Dictionary:
 			cleaned = cleaned.replace("  ", " ")
 		var parts := cleaned.strip_edges().split(" ", false)
 		if parts.size() != 3:
-			return {"ok": false, "xy": [], "h": [], "error": "第 %d 行应为 3 个数字（x, y, h），实际 %d 个：“%s”" % [li + 1, parts.size(), line]}
+			return {"ok": false, "xy": [], "h": [], "error": "第 %d 行应为 3 个数字（x, y, h），实际 %d 个：「%s」" % [li + 1, parts.size(), line]}
 		var vals := []
 		for p: String in parts:
 			if not p.is_valid_float():
-				return {"ok": false, "xy": [], "h": [], "error": "第 %d 行含非数字内容：“%s”" % [li + 1, p]}
+				return {"ok": false, "xy": [], "h": [], "error": "第 %d 行含非数字内容：「%s」" % [li + 1, p]}
 			vals.append(p.to_float())
 		xy.append([vals[0], vals[1]])
 		h.append(vals[2])
@@ -199,7 +200,7 @@ func _parse_one(text: String, what: String) -> Dictionary:
 	if s.is_empty():
 		return {"ok": false, "val": NAN, "error": "%s 为空，请填写数值" % what}
 	if not s.is_valid_float():
-		return {"ok": false, "val": NAN, "error": "%s 不是有效数字：“%s”" % [what, s]}
+		return {"ok": false, "val": NAN, "error": "%s 不是有效数字：「%s」" % [what, s]}
 	return {"ok": true, "val": s.to_float(), "error": ""}
 
 func _fail(msg: String) -> Dictionary:

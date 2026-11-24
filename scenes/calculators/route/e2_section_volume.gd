@@ -6,16 +6,16 @@ const Ui := preload("res://scenes/calculators/route/ui_common.gd")
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("断面桩号 (m)", "chains_m", "空格分隔，如 0 50 100")
-	add_input_row("填方面积 (m²)", "fill_areas_m2", "与桩号对应，无填填 0")
-	add_input_row("挖方面积 (m²)", "cut_areas_m2", "可选，与桩号对应")
+	add_input_row("断面桩号（m）", "chains_m", "空格分隔，如 0 50 100", LineEdit.KEYBOARD_TYPE_DEFAULT)
+	add_input_row("填方面积（m²）", "fill_areas_m2", "与桩号对应，无填填 0", LineEdit.KEYBOARD_TYPE_DEFAULT)
+	add_input_row("挖方面积（m²）", "cut_areas_m2", "可选，与桩号对应", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
 	return "断面法土方（E2）"
 
 func get_description() -> String:
-	return "V = Σ(A_i + A_{i+1})/2 × d_i，填挖分列累计，净值 = 填 − 挖"
+	return "V = Σ(A_i + A_{i+1})/2 × d_i，填挖分列累计；双口径：净量 = 填 − 挖、挖减填 = 挖 − 填；可选棱台公式 V = L/6·(A₁+4A_m+A₂)（结果附棱台与端面平均对照）"
 
 func get_entry_id() -> String:
 	return "e2_section_volume"
@@ -34,6 +34,7 @@ func run() -> Dictionary:
 	return Core.forward(p)
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

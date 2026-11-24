@@ -6,10 +6,10 @@ const Ui := preload("res://scenes/calculators/route/ui_common.gd")
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("设计高程 (m)", "design_elev_m", "平面设计面，如 0")
+	add_input_row("设计高程（m）", "design_elev_m", "平面设计面，如 0")
 	add_input_row("斜面 ix（z=z0+ix·x+iy·y）", "ix", "可选，平面 X 向坡")
 	add_input_row("斜面 iy", "iy", "可选")
-	add_input_row("三角形 x,y,z ×3（分号分行）", "triangles", "如 0,0,1; 100,0,2; 0,100,3")
+	add_input_row("三角形 x,y,z ×3（分号分行）", "triangles", "如 0,0,1; 100,0,2; 0,100,3", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
@@ -51,6 +51,7 @@ func run() -> Dictionary:
 	return Core.forward(p)
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

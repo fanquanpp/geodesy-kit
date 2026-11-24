@@ -1,16 +1,9 @@
 # core/projection/gauss_kruger.gd —— GK-M3-1 高斯-克吕格投影正反算（A3，EPSG 9807 同族，k0/FE/FN 可配）
 #
-# 算法来源（本会话已用 pyproj 3.8.0 复核，正算最大偏差 0.0147mm、反算 0.0147mm，样点 1051 个）：
-#   - 正算：经典高斯-克吕格级数（大地测量学基础教材形式，B、l 展开至 l^6/l^7），
-#     与 Krüger n 级数代数等价；子午线弧长 X 用含 e^8 项的八项级数
-#     （系数经数值积分拟合确认：-175e8/16384、-105e8/4096、+525e8/16384、-175e8/12288、+315e8/131072，
-#     全纬域偏差 ≤5μm）；
-#   - 反算：μ1（弧长反演）迭代求底点纬度 Bf（Newton 法，8 次），再以级数求 B、l，
-#     最后用正算残差做 2 次 Newton 精化（保证 |l|≤3.5° 内 ≤0.02mm）。
-# 精度声明：±6° 带内 x/y 与 pyproj 差 ≤0.02mm；3° 带常用域 |l|≤3.5°，更远时结果仍可用但精度渐降。
-#
-# §5 协议：forward()/inverse() 返回 {ok, value, steps, formula, error}；
-# value 键带单位后缀（x_m 北坐标含 FN、y_m 东坐标含 FE）。
+# 正算：经典级数（l 展开至 l^6/l^7），子午线弧长 X 用含 e^8 项八项级数（全纬域偏差 ≤5μm）；
+# 反算：迭代求底点纬度 Bf（Newton 8 次）后以级数求 B、l，再用正算残差 2 次 Newton 精化。
+# 精度：±6° 带内与 pyproj 3.8.0 差 ≤0.02mm（样点 1051 个）；常用域 |l|≤3.5°，更远精度渐降。
+# §5 协议：forward()/inverse() 返回 {ok,value,steps,formula,error}；value 键带单位后缀。
 class_name GKGaussKruger
 extends RefCounted
 const _EL := preload("res://core/ellipsoid/ellipsoid.gd")
@@ -18,6 +11,12 @@ const _AN := preload("res://core/math/angles.gd")
 
 const MAX_LON_OFF_DEG := 6.0     # 级数适用域 |l| ≤ 6°（3° 带常用域为 ±3.5°）
 const MAX_INV_Y_M := 900000.0    # 反算 y 偏离中央子午线上限（约 8°）
+const BAND3_LIMIT_DEG := 3.5     # 3° 带常用域限界（距中央子午线）；超出仍可算，steps 声明精度渐降
+# 带号口径说明（与 zones.gd 一致，勿混淆）：
+#   中国 3°/6° 带：带号 n 自 0° 经线（6° 带）/1.5°E（3° 带等效）起东向编号，
+#   y 前缀口径 y_通用 = n×10⁶ + (500 km + 自然 y)；EPSG 码表见 zones.gd EPSG_ROWS。
+#   UTM 带：带号 1..60 自 180°W 起东向编号（6° 带），k0=0.9996、FE=500000、FN=0（北半球）
+#   —— 与中国 6° 带的中央子午线（6n−3）不同，本文件不实现 UTM 带号（A7 由 utm.gd 承担）。
 const _A8 := [175.0/16384.0, 105.0/4096.0, 525.0/16384.0, 175.0/12288.0, 315.0/131072.0]
 
 # ---------- 椭球参数获取 ----------
@@ -51,7 +50,7 @@ static func resolve_datum(datum: String) -> String:
 ## 椭球参数解析失败时的统一中文错误
 static func _ell_error(datum: String) -> Dictionary:
 	return {"ok": false, "value": {}, "steps": [], "formula": "",
-			"error": "未知的椭球/基准“%s”。可用：%s" % [datum, ", ".join(_EL.list_builtin())]}
+			"error": "未知的椭球/基准「%s」。可用：%s" % [datum, ", ".join(_EL.list_builtin())]}
 
 # ---------- 子午线弧长（e^8 级数，全纬域 ≤5μm） ----------
 
@@ -77,6 +76,23 @@ static func meridian_radius(b_rad: float, a: float, e2v: float) -> float:
 static func prime_vertical_radius(b_rad: float, a: float, e2v: float) -> float:
 	var s := sin(b_rad)
 	return a / sqrt(1.0 - e2v * s * s)
+
+## 子午线收敛角 γ（度）。l_rad 为经差（弧度，东正西负），b_rad 为纬度（弧度）。
+## 级数（教材形式，与正算同源，CGCS2000 下 |l|≤6° 全域复核）：
+##   γ = l·sinB + l³/3·sinB·cos²B·(1 + 3η² + 2η⁴) + l⁵/5·sinB·cos⁴B·(2 − t²)
+## 符号约定：点位在中央子午线以东（l>0）γ 为正（真北偏于网格北之东），
+## 以西（l<0）γ 为负；中央子午线上 γ=0。
+static func meridian_convergence(b_rad: float, l_rad: float, ep2: float) -> float:
+	var sb := sin(b_rad)
+	var cb := cos(b_rad)
+	var tb := tan(b_rad)
+	var c2 := cb * cb
+	var eta2 := ep2 * c2
+	var l2 := l_rad * l_rad
+	var g := l_rad * sb \
+		+ l_rad * l2 / 3.0 * sb * c2 * (1.0 + 3.0 * eta2 + 2.0 * eta2 * eta2) \
+		+ l_rad * l2 * l2 / 5.0 * sb * c2 * c2 * (2.0 - tb * tb)
+	return rad_to_deg(g)
 
 # ---------- 低层正反算（供 zones/utm/mgrs 复用） ----------
 
@@ -156,7 +172,8 @@ static func inv(x_m: float, y_m: float, l0_deg: float, ell: Dictionary, k0: floa
 		- (1.0 + 2.0 * tfb * tfb + eta2f) / (6.0 * nf * nf * nf * cfb) * yp * y2 \
 		+ (5.0 + 28.0 * tfb * tfb + 24.0 * tfb * tfb * tfb * tfb + 6.0 * eta2f + 8.0 * eta2f * tfb * tfb) \
 			/ (120.0 * nf * nf * nf * nf * nf * cfb) * yp * y2 * y2
-	# Newton 精化：正算残差回代校正
+	# Newton 精化：正算残差回代校正；末轮残差即估算精度
+	var resid_m := 0.0
 	for _i in range(2):
 		var res := fwd(rad_to_deg(b_rad), l0_deg + rad_to_deg(l), l0_deg, ell, k0, fe, fn)
 		if res.is_empty():
@@ -166,11 +183,13 @@ static func inv(x_m: float, y_m: float, l0_deg: float, ell: Dictionary, k0: floa
 		var cb2 := cos(b_rad)
 		b_rad += (x_m - res["x_m"]) / (k0 * mb)
 		l += (y_m - res["y_m"]) / (k0 * nb * cb2)
+		resid_m = sqrt(pow(x_m - res["x_m"], 2.0) + pow(y_m - res["y_m"], 2.0))
 	var lat := rad_to_deg(b_rad)
 	var lon := l0_deg + rad_to_deg(l)
 	if absf(lat) > 90.0 or absf(lon) > 540.0:
 		return {}
-	return {"lat_deg": lat, "lon_deg": lon, "b_rad": b_rad, "l_rad": l, "bf_rad": bf}
+	return {"lat_deg": lat, "lon_deg": lon, "b_rad": b_rad, "l_rad": l, "bf_rad": bf,
+			"resid_m": resid_m}
 
 # ---------- §5 协议封装 ----------
 
@@ -193,13 +212,16 @@ static func forward(p: Dictionary) -> Dictionary:
 	var r := fwd(lat, lon, l0, ell, k0, fe, fn)
 	if r.is_empty():
 		return _err("输入超出高斯投影适用范围（|B|<90°，且距中央子午线 %.1f° 以内）" % MAX_LON_OFF_DEG)
+	var l_deg := rad_to_deg(r["l_rad"])
+	var gamma_deg := GKGaussKruger.meridian_convergence(r["b_rad"], r["l_rad"], float(ell["ep2"]))
 	var value := {
 		"x_m": r["x_m"], "y_m": r["y_m"],
 		"lat_deg": lat, "lon_deg": lon, "l0_deg": l0,
 		"datum": String(p.get("datum", "CGCS2000")),
-		"l_rad": rad_to_deg(r["l_rad"]),
+		"l_rad": l_deg,
+		# 子午线收敛角（度）：中央子午线以西为负（l<0），以东为正（l>0）
+		"gamma_deg": gamma_deg,
 	}
-	var l_deg := rad_to_deg(r["l_rad"])
 	var steps := [
 		{"title": "1. 基本参数", "formula": "N = a/√(1-e²sin²B)，η² = e'²cos²B，t = tanB",
 			"substitution": "a=%.3f m，1/f=%s，B=%.6f°，l=%.6f°" % [ell["a"], _num_str(ell["inv_f"]), lat, l_deg],
@@ -213,7 +235,13 @@ static func forward(p: Dictionary) -> Dictionary:
 		{"title": "4. 横坐标 y（东）", "formula": "y = N·cosB·l + N/6·cos³B·(1-t²+η²)·l³ + N/120·cos⁵B·(5-18t²+t⁴+14η²-58t²η²)·l⁵ + N/5040·cos⁷B·(61-479t²+179t⁴-t⁶)·l⁷",
 			"substitution": "k0=%.6f，FE=%.1f m" % [k0, fe],
 			"result": "y = %.4f m" % r["y_m"]},
+		{"title": "5. 子午线收敛角 γ", "formula": "γ = l·sinB + l³/3·sinB·cos²B·(1+3η²+2η⁴) + l⁵/5·sinB·cos⁴B·(2-t²)（真北相对网格北的偏角）",
+			"substitution": "l=%.10f rad，B=%.8f°" % [r["l_rad"], lat],
+			"result": "γ = %.7f°（%s）" % [gamma_deg, "中央子午线以东，γ 为正" if l_deg >= 0.0 else "中央子午线以西，γ 为负"]},
 	]
+	if absf(l_deg) > 3.5:
+		steps.append({"title": "6. 精度声明", "formula": "", "substitution": "",
+			"result": "本点距中央子午线 %.2f°，超出 3° 带常用域（|l|≤3.5°）：级数结果仍可用，但精度渐降，建议换用邻近带。" % absf(l_deg)})
 	return {"ok": true, "value": value, "steps": steps,
 			"formula": "高斯-克吕格正算（教材级数至 l⁶/l⁷ + e⁸ 弧长；k0=%.3f，FE=%.0f m，FN=%.0f m）" % [k0, fe, fn],
 			"error": ""}
@@ -236,6 +264,7 @@ static func inverse(p: Dictionary) -> Dictionary:
 	var r := inv(x, y, l0, ell, k0, fe, fn)
 	if r.is_empty():
 		return _err("反算失败：坐标超出适用范围（y 距中央子午线 %d km 以内）或参数非法" % int(MAX_INV_Y_M / 1000.0))
+	var l_deg := rad_to_deg(r["l_rad"])
 	var value := {
 		"lat_deg": r["lat_deg"], "lon_deg": r["lon_deg"],
 		"lat_dms": _AN.deg_to_dms_str(r["lat_deg"], 3),
@@ -243,6 +272,8 @@ static func inverse(p: Dictionary) -> Dictionary:
 		"bf_deg": rad_to_deg(r["bf_rad"]),
 		"datum": String(p.get("datum", "CGCS2000")),
 		"l0_deg": l0,
+		# 末轮 Newton 精化的正算残差（米）：往返闭合差，即本解的估算精度
+		"resid": float(r["resid_m"]),
 	}
 	var steps := [
 		{"title": "1. 底点纬度 Bf（μ1 迭代）", "formula": "μ1 = (x-FN)/k0/[a(1-e²/4-3e⁴/64-5e⁶/256)]，Bf ← Bf + (X(Bf)-(x-FN)/k0)/M(Bf)",
@@ -256,8 +287,11 @@ static func inverse(p: Dictionary) -> Dictionary:
 			"result": "l = %.8f°，L = %.8f°" % [rad_to_deg(r["l_rad"]), r["lon_deg"]]},
 		{"title": "4. Newton 精化", "formula": "用正算残差校正：B ← B + Δx/M(B)，l ← l + Δy/(N(B)cosB)（2 轮）",
 			"substitution": "目标 x=%.4f m，y=%.4f m" % [x, y],
-			"result": "B=%.8f°，L=%.8f°" % [r["lat_deg"], r["lon_deg"]]},
+			"result": "B=%.8f°，L=%.8f°；末轮残差（估算精度）=%.3f mm" % [r["lat_deg"], r["lon_deg"], r["resid_m"] * 1000.0]},
 	]
+	if absf(rad_to_deg(r["l_rad"])) > 3.5:
+		steps.append({"title": "5. 精度声明", "formula": "", "substitution": "",
+			"result": "本点距中央子午线 %.2f°，超出 3° 带常用域（|l|≤3.5°）：结果可用但精度渐降，建议换用邻近带。" % absf(rad_to_deg(r["l_rad"]))})
 	return {"ok": true, "value": value, "steps": steps,
 			"formula": "高斯-克吕格反算（μ1 迭代底点纬度 + 级数 + Newton 精化；与 pyproj 复核 ≤0.02mm）",
 			"error": ""}

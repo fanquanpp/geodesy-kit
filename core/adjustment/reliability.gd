@@ -23,28 +23,31 @@ static func data_snooping(p: Dictionary) -> Dictionary:
 	var pw_v: Variant = p.get("p_w")
 	var qxx: Variant = p.get("qxx")
 	if not (B is Array) or (B as Array).is_empty():
-		return _fail("缺少设计矩阵 B（间接平差误差方程系数，Array of PackedFloat64Array）")
+		return _fail("缺少设计矩阵 B（间接平差误差方程系数矩阵）")
 	if not (v_v is PackedFloat64Array):
-		return _fail("缺少改正数 v（PackedFloat64Array，与观测同序）")
+		return _fail("缺少改正数 v（与观测同序的数值数组）")
 	if not (pw_v is PackedFloat64Array):
-		return _fail("缺少对角权 p_w（PackedFloat64Array）")
+		return _fail("缺少对角权阵（与观测同序的权数组）")
 	if not (qxx is Array) or (qxx as Array).is_empty():
-		return _fail("缺少协因数阵 qxx（法方程逆 N⁻¹，t×t）")
+		return _fail("缺少协因数阵 Qxx（法方程逆，t×t）")
 	var Bm: Array = B
 	var v: PackedFloat64Array = v_v
 	var pw: PackedFloat64Array = pw_v
 	var n := Bm.size()
 	var t: int = (qxx as Array).size()
 	if v.size() != n or pw.size() != n:
-		return _fail("v/p_w 长度（%d/%d）与 B 行数（%d）不一致" % [v.size(), pw.size(), n])
+		return _fail("改正数/权的个数（%d/%d）与观测个数（%d）不一致" % [v.size(), pw.size(), n])
 	if t != (Bm[0] as PackedFloat64Array).size():
-		return _fail("qxx 阶数（%d）与 B 列数不一致" % t)
+		return _fail("协因数阵阶数（%d）与设计矩阵列数不一致" % t)
 	for i in n:
 		if not is_finite(v[i]) or not is_finite(pw[i]) or pw[i] <= 0.0:
-			return _fail("v/p_w 含非法数值或非正权（观测 %d）" % (i + 1))
+			return _fail("改正数/权含非法数值或非正权（观测 %d）" % (i + 1))
 	var sigma0 := float(p.get("sigma0", NAN))
 	if not is_finite(sigma0) or sigma0 <= 0.0:
-		return _fail("缺少正的 sigma0（单位权中误差）")
+		return _fail("缺少正的单位权中误差 σ0")
+	# 无多余观测（n ≤ t）：数据探测法失效——q_v 全为 0、w 无法定义，明确中文报错
+	if n <= t:
+		return _fail("无多余观测，无法做数据探测（观测数 n=%d ≤ 必要观测数 t=%d，请增加检核条件或改用严密平差复核）" % [n, t])
 	var k_warn := 2.0
 	var k_gross := 3.0
 	if p.has("k_warn") and is_finite(float(p["k_warn"])) and float(p["k_warn"]) > 0.0:
@@ -112,6 +115,9 @@ static func data_snooping(p: Dictionary) -> Dictionary:
 		"gross_indices": gross_idx,
 		"warn_indices": warn_idx,
 	}
+	# 逐点输出 r_i（value["r_i_%d"]，观测序号从 1 起）——UI 结果卡可直接展示每点冗余度
+	for i in n:
+		value["r_%d" % (i + 1)] = r[i]
 	var steps := [
 		{
 			"title": "1. 改正数协因数对角元",
@@ -123,7 +129,7 @@ static func data_snooping(p: Dictionary) -> Dictionary:
 			"title": "2. 可靠性总量检核",
 			"formula": "Σr_i = n − t",
 			"substitution": "Σr = %s，n − t = %d" % [_fmt(sum_r), n - t],
-			"result": ("一致" if absf(sum_r - (n - t)) < 1e-6 * maxf(1.0, absf(sum_r)) else "数值上不一致（qxx 或权输入有误，请核查）"),
+			"result": ("一致" if absf(sum_r - (n - t)) < 1e-6 * maxf(1.0, absf(sum_r)) else "数值上不一致（协因数阵或权输入有误，请核查）"),
 		},
 		{
 			"title": "3. 学生化残差与粗差判定",

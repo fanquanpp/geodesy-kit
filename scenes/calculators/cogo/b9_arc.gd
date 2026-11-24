@@ -22,7 +22,7 @@ func _build_rows() -> void:
 	add_input_row("半径 R（m）", "r_m", "100")
 	add_input_row("起始方位角 α₁", "az1_deg", "0（或 0 00 00）")
 	add_input_row("终止方位角 α₂", "az2_deg", "90（或 90 00 00）")
-	add_input_row("弧方向", "dir", "顺时针（默认）/ 逆时针")
+	add_input_row("弧方向", "dir", "顺时针（默认）/ 逆时针", LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var bad: Array = []

@@ -1,19 +1,11 @@
 # core/route/spiral.gd —— GK-M7-2 缓和曲线（回旋线 / clothoid）B4
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M7 / §5）：
-#   - 纯静态函数、零引擎依赖（extends RefCounted）；
-#   - 坐标系：全局 x=东(E)、y=北(N)，方位角自北起顺时针（与 GKAngles.azimuth 一致）；
-#   - 回旋线局部坐标系：x' 沿起点切线方向，y' 指向曲线弯曲一侧（右转曲线 y'>0）；
-#     转向符号 dir：+1 右转（顺时针）/ −1 左转（逆时针）；
-#   - 双路径互检（架构 §4 GK-M7 要求）：
-#       路径A 公式链：布告式级数 x=l−l⁵/(40R²l0²)+l⁹/(3456R⁴l0⁴)−…、
-#                     y=l³/(6Rl0)−l⁷/(336R³l0³)+l¹¹/(42240R⁵l0⁵)−…（l=l0 时退化为 x0/y0 式）
-#       路径B 数值积分：θ(t)=t²/(2Rl0) 的 Fresnel 型积分，自适应辛普森；
-#     两路径在测试中互检（tests/route/test_spiral.gd）；
-#   - 校验失败返回空容器 PackedFloat64Array() / {}，协议入口返回 ok=false + 中文 error。
-#
-# 与 D2 线元法（alignment_el.gd）的关系：本文件自包含（自带小型积分器），
-# D2 的广义线元积分器独立实现于 alignment_el.gd（M7 域内文件互不跨域调用）。
+# 纯静态、零引擎依赖；全局 x=东、y=北、方位自北起顺时针；转向 dir：+1 右转 / −1 左转；
+# 回旋线局部系 x' 沿起点切线、y' 指向弯曲一侧（右转曲线 y'>0）。
+# 双路径互检（tests/route/test_spiral.gd）：A 布告式级数（x=l−l⁵/(40R²l0²)+…，y=l³/(6Rl0)−…）；
+# B 数值积分 θ(t)=t²/(2Rl0) 的 Fresnel 型自适应辛普森。
+# 本文件自包含（自带小型积分器）；D2 的广义线元积分器独立实现于 alignment_el.gd。
+# 校验失败返回空容器 PackedFloat64Array() / {}，协议入口 ok=false + 中文 error。
 class_name GKSpiral
 extends RefCounted
 

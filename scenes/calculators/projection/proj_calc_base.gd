@@ -13,15 +13,18 @@ func _build_ui() -> void:
 	super._build_ui()
 	_setup()
 
-## 登记一行输入并记录标签；required=true 时为必填
-func _add_row(label_text: String, key: String, placeholder: String, required := false) -> void:
-	add_input_row(label_text, key, placeholder)
+## 登记一行输入并记录标签；required=true 时为必填；
+## 文本枚举键（基准名/半球/图幅号/MGRS 串/名称等）由调用方传 keyboard_type=KEYBOARD_TYPE_DEFAULT
+func _add_row(label_text: String, key: String, placeholder: String, required := false,
+		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER) -> void:
+	add_input_row(label_text, key, placeholder, keyboard_type)
 	_labels[key] = label_text
 	if required:
 		_required.append(key)
 
 ## 历史回放/示例填充
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			(_fields[key] as LineEdit).text = str(inputs[key])

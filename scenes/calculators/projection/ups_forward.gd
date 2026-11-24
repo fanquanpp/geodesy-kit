@@ -13,8 +13,8 @@ func get_description() -> String:
 func _setup() -> void:
 	_add_row("纬度 B（°或度分秒）", "lat_deg", "如 85（北域）或 -85（南域）", true)
 	_add_row("经度 L（°）", "lon_deg", "如 30", true)
-	_add_row("半球（可空自动）", "hemisphere", "N / S，留空按纬度判定", false)
-	_add_row("基准", "datum", "WGS84", false)
+	_add_row("半球（可空自动）", "hemisphere", "N / S，留空按纬度判定", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
+	_add_row("基准", "datum", "WGS84", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var p := _fail_or(_params())

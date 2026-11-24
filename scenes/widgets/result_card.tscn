@@ -15,3 +15,8 @@ text = "结果"
 [node name="Value" type="Label" parent="VBox"]
 text = "（尚未计算）"
 autowrap_mode = 3
+
+[node name="Rows" type="VBoxContainer" parent="VBox"]
+
+[node name="CopyAll" type="Button" parent="VBox"]
+text = "复制全部"

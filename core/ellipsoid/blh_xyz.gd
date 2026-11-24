@@ -1,17 +1,10 @@
 # core/ellipsoid/blh_xyz.gd —— A6 大地坐标(B,L,h) ↔ 空间直角坐标(X,Y,Z)
 #
-# 算法（EPSG Guidance Note 7-2 §4.1.1 同族闭式）：
-#   正算（EPSG 9602）：N = a/√(1−e²sin²B)；
-#     X=(N+h)cosB·cosL，Y=(N+h)cosB·sinL，Z=(N(1−e²)+h)·sinB。
-#   反算（Bowring ε 闭式）：p=√(X²+Y²)，L=atan2(Y,X)，θ=atan2(Z·a, p·b)，
-#     B=atan2(Z+e′²b·sin³θ, p−e²a·cos³θ)，h=p/cosB−N。
-# 验收（ARCHITECTURE.md §4 GK-M2）：
-#   GN7-2：B=53°48′33.820″N, L=2°07′46.380″E, h=73（WGS84）
-#     → (3771793.968, 140253.342, 5124304.349)（pyproj EPSG:4937 复核逐位一致）
-#   CGCS2000 天安门：B=39.9075276°, L=116.3912757°, h=43.5
-#     → (−2177748.227, 4388723.160, 4070142.752)（pyproj EPSG:4490 复核）
-# 协议：static func forward/inverse(p: Dictionary) -> {ok, value, steps, formula, error}。
-# core 禁引擎 API：只存几何常数计算，无 FileAccess/Node。
+# 算法（EPSG GN7-2 §4.1.1 同族闭式）：正算 N=a/√(1−e²sin²B)，X=(N+h)cosB·cosL、Y=(N+h)cosB·sinL、
+# Z=(N(1−e²)+h)sinB；反算 Bowring ε 闭式（θ 迭代变量，B/h 一次还原）。
+# 验收（ARCHITECTURE.md §4 GK-M2）：GN7-2 算例 → (3771793.968, 140253.342, 5124304.349)（pyproj 逐位一致）；
+# CGCS2000 天安门 → (−2177748.227, 4388723.160, 4070142.752)（pyproj EPSG:4490 复核）。
+# 协议：forward/inverse(p) -> {ok, value, steps, formula, error}；core 禁引擎 API。
 class_name GKBlhXYZ
 extends RefCounted
 
@@ -31,6 +24,17 @@ static func _ellipsoid_of(p: Dictionary) -> Dictionary:
 	if a > 0.0 and inv_f > 0.0:
 		return GKEllipsoid.derived(a, inv_f)
 	return {}
+
+## 协议数值键取值：GDScript float("x") 会静默得 0.0，非数值字符串须显式归为 NAN
+static func _numf(v: Variant, default_v := NAN) -> float:
+	if v is String:
+		var t := String(v).strip_edges().replace("−", "-")
+		if not t.is_valid_float():
+			return NAN
+		return t.to_float()
+	if v == null:
+		return default_v
+	return float(v)
 
 ## 纯数值正算：B/L/h（度）+ 椭球派生量 → {x, y, z}。输入非法返回 {}。
 static func blh_to_xyz(lat_deg: float, lon_deg: float, h_m: float, el: Dictionary) -> Dictionary:
@@ -88,9 +92,9 @@ static func forward(p: Dictionary) -> Dictionary:
 	if el.is_empty():
 		return {"ok": false, "value": {}, "steps": [], "formula": SRC_NOTE,
 				"error": "椭球参数缺失或不合法（需 datum 名或 a>0、1/f>0）"}
-	var lat := float(p.get("lat_deg", NAN))
-	var lon := float(p.get("lon_deg", NAN))
-	var h := float(p.get("h_m", NAN))
+	var lat := _numf(p.get("lat_deg", NAN))
+	var lon := _numf(p.get("lon_deg", NAN))
+	var h := _numf(p.get("h_m", NAN))
 	if not (is_finite(lat) and is_finite(lon) and is_finite(h)):
 		return {"ok": false, "value": {}, "steps": [], "formula": SRC_NOTE,
 				"error": "输入不是有效数值（纬度/经度/高程需为数字）"}
@@ -125,9 +129,9 @@ static func inverse(p: Dictionary) -> Dictionary:
 	if el.is_empty():
 		return {"ok": false, "value": {}, "steps": [], "formula": SRC_NOTE,
 				"error": "椭球参数缺失或不合法（需 datum 名或 a>0、1/f>0）"}
-	var x := float(p.get("x_m", NAN))
-	var y := float(p.get("y_m", NAN))
-	var z := float(p.get("z_m", NAN))
+	var x := _numf(p.get("x_m", NAN))
+	var y := _numf(p.get("y_m", NAN))
+	var z := _numf(p.get("z_m", NAN))
 	if not (is_finite(x) and is_finite(y) and is_finite(z)):
 		return {"ok": false, "value": {}, "steps": [], "formula": SRC_NOTE,
 				"error": "输入不是有效数值（X/Y/Z 需为数字）"}

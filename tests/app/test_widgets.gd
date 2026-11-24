@@ -1,6 +1,7 @@
 # tests/app/test_widgets.gd —— scenes/widgets 独立控件场景回归（组件化封装验收）
-# 覆盖：input_row / result_card / step_list / formula_card / limits_panel 五个
-# 控件场景可实例化、API 可用，且 calculator_base 组装后别名指向正确。
+# 覆盖：input_row / result_card / step_list / formula_card / limits_panel /
+# sketch_panel 六个控件场景可实例化、API 可用，主题变体定义，以及
+# calculator_base 组装后别名指向正确。
 extends "res://tests/test_case_base.gd"
 
 func _tree() -> SceneTree:
@@ -34,6 +35,21 @@ func test_result_card_widget() -> void:
 	assert_eq(card.get_text(), "（尚未计算）", "初始占位")
 	card.set_result(PackedStringArray(["x_m = 100", "y_m = 200"]))
 	assert_eq(card.get_text(), "x_m = 100\ny_m = 200", "多行结果渲染")
+	# 行级复制按钮：行数 ≤ 5 才渲染；卡头「复制全部」独立存在（不受行数影响）
+	var rows_node: Node = card.get_node("VBox/Rows")
+	assert_int_eq(rows_node.get_child_count(), 2, "两行两行级复制按钮（行数 ≤ 5）")
+	var copy_all: Button = card.get_node("VBox/CopyAll")
+	assert_true(copy_all.visible, "卡头「复制全部」按钮存在")
+	copy_all.pressed.emit()
+	card.set_result(PackedStringArray())
+	assert_int_eq((card.get_node("VBox/Rows") as Node).get_child_count(), 0, "空结果行区清空")
+	# 行数超阈值：行级按钮不渲染，仅卡头「复制全部」
+	var many := PackedStringArray()
+	for i in 8:
+		many.append("第 %d 行 = %d" % [i, i])
+	card.set_result(many)
+	assert_int_eq((card.get_node("VBox/Rows") as Node).get_child_count(), 0, "行数 > 5 不渲染行级按钮")
+	assert_true((card.get_node("VBox/Rows") as Node).visible, "行文本行区仍可见（无按钮行）")
 	card.set_result(PackedStringArray())
 	assert_eq(card.get_text(), "（尚未计算）", "空数组回落占位")
 	_unmount(w)
@@ -42,13 +58,43 @@ func test_step_list_widget() -> void:
 	var w := _mount("res://scenes/widgets/step_list.tscn")
 	var sl: Node = w
 	assert_true(sl.has_method("set_steps"), "step_list 根脚本挂 step_list.gd")
+	# 越界接口已删：step_list 不再提供 set_visible_by_steps（改由组装方控制 visible）
+	assert_false(sl.has_method("set_visible_by_steps"), "set_visible_by_steps 已删除")
 	sl.set_steps([
 		{"title": "1. 弧长", "formula": "X=…", "substitution": "B=…", "result": "3320113 m"},
 		{"title": "2. 纵坐标", "formula": "", "substitution": "", "result": "3597986 m"},
 	])
 	assert_int_eq(sl.step_count(), 2, "两步两卡")
+	# 折叠默认态：全部 FoldableContainer 卡默认折叠，仅最后一步展开
+	var last_card: FoldableContainer = sl.get_child(1)
+	var first_card: FoldableContainer = sl.get_child(0)
+	assert_true(last_card is FoldableContainer, "步骤卡为 FoldableContainer")
+	assert_false(first_card.folded == false and last_card.folded == false, "非全部展开（默认折叠）")
+	assert_true(first_card.folded, "第一步默认折叠")
+	assert_false(last_card.folded, "最后一步默认展开")
+	assert_true(String(last_card.title).contains("步骤 2/2"), "折叠头含「步骤 i/n」编号")
+	assert_true(String(last_card.title).contains("纵坐标"), "折叠头含原标题（去旧序号）")
+	# ResultAccent 结果行：展开的最后一步内结果行使用强调变体
+	var res_lab: Label = last_card.get_child(0).get_child(last_card.get_child(0).get_child_count() - 1)
+	assert_eq(res_lab.theme_type_variation, &"ResultAccent", "结果行 ResultAccent 强调变体")
+	assert_eq(res_lab.text, "3597986 m", "结果行文本")
 	sl.clear()
 	assert_int_eq(sl.step_count(), 0, "清空")
+	_unmount(w)
+
+func test_sketch_panel_widget() -> void:
+	var w := _mount("res://scenes/widgets/sketch_panel.tscn")
+	var sk: Control = w
+	assert_true(sk.has_method("set_points"), "sketch_panel 根脚本挂 sketch_panel.gd")
+	assert_int_eq(sk.get_points().size(), 0, "初始无点位")
+	# 验收探针：数据 setter 触发 queue_redraw 至少一次（挂钩计数）
+	var redraws := [0]
+	sk.draw.connect(func() -> void: redraws[0] += 1)
+	sk.set_points(PackedVector2Array([Vector2(0, 100), Vector2(100, 102), Vector2(200, 101)]))
+	assert_int_eq(sk.get_points().size(), 3, "点位写入")
+	assert_true(redraws[0] >= 1, "set_points 触发 _draw 至少一次")
+	sk.clear()
+	assert_int_eq(sk.get_points().size(), 0, "清空点位")
 	_unmount(w)
 
 func test_formula_card_widget() -> void:
@@ -73,8 +119,16 @@ func test_limits_panel_widget() -> void:
 	assert_false(lp.visible, "初始隐藏")
 	lp.set_limits(false, PackedStringArray(["检核结论：超限", "f_beta_s = 12.5"]))
 	assert_true(lp.visible, "渲染后可见")
-	assert_true(lp.limits_label.text.contains("超限"), "超限文案")
+	# 结论唯一归属 Verdict（由 ok 参数生成）；detail[0] 结论行剥离后不再出现于明细
+	assert_eq(lp.verdict_label.text, "检核结论：超限", "Verdict 独立结论行")
+	assert_eq(lp.verdict_label.theme_type_variation, &"ResultAccent", "Verdict 强调变体")
+	assert_false(lp.limits_label.text.contains("检核结论：超限"), "明细行不再逐字重复结论")
+	assert_true(lp.limits_label.text.contains("f_beta_s = 12.5"), "明细行保留")
 	assert_eq(lp.limits_label.theme_type_variation, &"ErrorLabel", "超限红色语义")
+	# 兼容组装方新口径：结论不进 detail，Verdict 仍由 ok 生成
+	lp.set_limits(true, PackedStringArray(["f_beta_s = 8.2"]))
+	assert_eq(lp.verdict_label.text, "检核结论：通过", "ok 参数独立生成结论")
+	assert_eq(lp.limits_label.theme_type_variation, &"OkLabel", "通过绿色语义")
 	lp.clear()
 	assert_false(lp.visible, "clear 隐藏")
 	_unmount(w)
@@ -100,3 +154,10 @@ func test_calculator_base_assembles_widgets() -> void:
 	assert_eq(base._steps_root.get_child_count(), 1, "步骤卡经组件渲染")
 	_tree().root.remove_child(base)
 	base.free()
+
+func test_theme_variants_defined() -> void:
+	var th: Theme = load("res://themes/main.tres")
+	assert_eq(th.get_type_variation_base("ResultAccent"), &"Label", "ResultAccent 变体已定义")
+	assert_eq(th.get_type_variation_base("ErrorCard"), &"PanelContainer", "失败态卡片变体已定义")
+	assert_true(th.has_constant("line_spacing", "Label"), "Label 行距常量已定义")
+	assert_int_eq(th.get_constant("line_spacing", "Label"), 4, "行距 4px")

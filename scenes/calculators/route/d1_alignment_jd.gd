@@ -8,12 +8,12 @@ var _mode_opt: OptionButton
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("起点 X 东 (m)", "x_m", "如 1000")
-	add_input_row("起点 Y 北 (m)", "y_m", "如 2000")
-	add_input_row("起点里程 (m)", "chain_m", "默认 0")
-	add_input_row("起始切线方位 (°)", "bearing_deg", "留空则取 起点→JD1 方向")
-	add_input_row("交点表 x,y,R,l0（分号分行）", "jds", "如 1200,2346.41,300,60; 1691.49,2690.56,300,60")
-	add_input_row("末交点切线方位 (°)", "end_bearing_deg", "可选；留空则末交点不设曲线")
+	add_input_row("起点 X 东（m）", "x_m", "如 1000")
+	add_input_row("起点 Y 北（m）", "y_m", "如 2000")
+	add_input_row("起点里程（m）", "chain_m", "默认 0")
+	add_input_row("起始切线方位（°）", "bearing_deg", "留空则取 起点→JD1 方向")
+	add_input_row("交点表 x,y,R,l0（分号分行）", "jds", "如 1200,2346.41,300,60; 1691.49,2690.56,300,60", LineEdit.KEYBOARD_TYPE_DEFAULT)
+	add_input_row("末交点切线方位（°）", "end_bearing_deg", "可选；留空则末交点不设曲线")
 	var row := HBoxContainer.new()
 	var lab := Label.new()
 	lab.text = "计算模式"
@@ -26,9 +26,9 @@ func _ready() -> void:
 	_mode_opt.custom_minimum_size = Vector2(0, 96)
 	row.add_child(_mode_opt)
 	_inputs_root.add_child(row)
-	add_input_row("查询里程桩号 (m)", "chain_m_q", "正算用，如 450")
-	add_input_row("查询 X 东 (m)", "x_m_q", "反算用")
-	add_input_row("查询 Y 北 (m)", "y_m_q", "反算用")
+	add_input_row("查询里程桩号（m）", "chain_m_q", "正算用，如 450")
+	add_input_row("查询 X 东（m）", "x_m_q", "反算用")
+	add_input_row("查询 Y 北（m）", "y_m_q", "反算用")
 	set_inputs(_example_inputs)
 
 func get_title() -> String:
@@ -79,6 +79,7 @@ func get_inputs() -> Dictionary:
 	return out
 
 func set_inputs(inputs: Dictionary) -> void:
+	super.set_inputs(inputs)
 	for key: String in _fields:
 		if inputs.has(key):
 			_fields[key].text = str(inputs[key])

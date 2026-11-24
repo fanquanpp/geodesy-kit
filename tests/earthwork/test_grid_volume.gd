@@ -63,3 +63,66 @@ func test_error_paths() -> void:
 	var e4: Dictionary = Gv.forward({"design_elev_m": 0.0, "cell_size_m": 20.0,
 		"grid": [[1.0, "abc"], [1.5, 0.5]]})
 	assert_false(bool(e4.get("ok", true)), "非数字高程拒绝")
+
+# ---------- P5 追加：混合格零线分割（棋盘格权威向量）与 steps 中间量 ----------
+
+## 权威向量（验收）：棋盘格 a=20、四角 h=(0.25,−0.25,−0.25,0.25) → 挖=填=12.5 m³（容差 1e-9）
+## 双线性场 h=0.25·(2x−a)(2y−a)/a²，零线为格心十字；四个象限子格同号、
+## 每象限精确积分 a²/64=6.25 m³ → 挖 12.5 / 填 12.5（Python 复核一致）
+func test_checkerboard_zero_line_split() -> void:
+	var res: Dictionary = Gv.forward({"design_elev_m": 0.0, "cell_size_m": 20.0,
+		"grid": [[0.25, -0.25], [-0.25, 0.25]]})
+	assert_true(bool(res.get("ok", false)), "棋盘格应成功：" + String(res.get("error", "")))
+	if not bool(res.get("ok", false)):
+		return
+	var v: Dictionary = res["value"]
+	assert_almost_eq(v["cut_m3"], 12.5, 1e-9, "棋盘格挖方 12.5 m³（零线分割精确）")
+	assert_almost_eq(v["fill_m3"], 12.5, 1e-9, "棋盘格填方 12.5 m³（零线分割精确）")
+	assert_almost_eq(v["net_m3"], 0.0, 1e-9, "净值 0")
+	assert_int_eq(int(v["mixed_cells"]), 1, "1 个混合格")
+	assert_almost_eq(v["mixed_cells_area_m2"], 400.0, 1e-12, "混合格面积 400 m²")
+	# steps 补零线分割中间量
+	var joined := ""
+	for s: Dictionary in res["steps"]:
+		joined += String(s.get("title", "")) + String(s.get("substitution", "")) + String(s.get("result", ""))
+	assert_true(joined.contains("零线分割"), "steps 含零线分割中间量")
+	assert_true(joined.contains("精确子格"), "steps 含精确子格计数")
+
+## 纯核 split_cell_volume：同号格返回空（走旧公式），棋盘格 12.5/12.5
+func test_split_cell_volume_core() -> void:
+	assert_true(Gv.split_cell_volume(20.0, 1.0, 2.0, 1.5, 0.5).is_empty(), "同号格返回空（旧公式口径）")
+	var sv: PackedFloat64Array = Gv.split_cell_volume(20.0, 0.25, -0.25, -0.25, 0.25)
+	assert_false(sv.is_empty(), "棋盘格分割非空")
+	assert_almost_eq(sv[0], 12.5, 1e-9, "核：填 12.5")
+	assert_almost_eq(sv[1], 12.5, 1e-9, "核：挖 12.5")
+
+## 既有算例期望值不变：全正格/全负格/含零角点格走同号公式
+func test_same_sign_cells_unchanged() -> void:
+	var res: Dictionary = Gv.forward({"design_elev_m": 0.0, "cell_size_m": 20.0,
+		"grid": [[1.0, 2.0], [1.5, 0.5]]})
+	assert_true(bool(res.get("ok", false)), "同号格成功")
+	if bool(res.get("ok", false)):
+		assert_almost_eq(res["value"]["cut_m3"], 500.0, 1e-9, "同号格 V=500 不变")
+	# 2×2 混合布局（含零角点）：旧算例挖=填=200 保持
+	var grid := [
+		[6.0, 5.0, 4.0],
+		[7.0, 5.0, 3.0],
+		[8.0, 5.0, 2.0],
+	]
+	var res2: Dictionary = Gv.forward({"design_elev_m": 5.0, "cell_size_m": 10.0, "grid": grid})
+	assert_true(bool(res2.get("ok", false)), "多格成功")
+	if bool(res2.get("ok", false)):
+		assert_almost_eq(res2["value"]["cut_m3"], 200.0, 1e-9, "既有挖方 200 不变")
+		assert_almost_eq(res2["value"]["fill_m3"], 200.0, 1e-9, "既有填方 200 不变")
+
+## 对角 1+3 型混合格：零线分割与数值积分一致（Python 复核 (1,2,-1,-2) a=10 → 填=挖=37.5）
+func test_one_vs_three_split() -> void:
+	var res: Dictionary = Gv.forward({"design_elev_m": 0.0, "cell_size_m": 10.0,
+		"grid": [[1.0, 2.0], [-1.0, -2.0]]})
+	assert_true(bool(res.get("ok", false)), "1+3 混合格成功")
+	if bool(res.get("ok", false)):
+		var v: Dictionary = res["value"]
+		# 四象限递归后全部单号 → 精确
+		assert_almost_eq(v["cut_m3"], 37.5, 1e-9, "挖方 37.5（Python 数值积分复核）")
+		assert_almost_eq(v["fill_m3"], 37.5, 1e-9, "填方 37.5（Python 数值积分复核）")
+		assert_almost_eq(v["net_m3"], 0.0, 1e-9, "净值 0（四角代数和为 0）")

@@ -15,6 +15,17 @@ const _EL := preload("res://core/ellipsoid/ellipsoid.gd")
 
 const BAND_LIMIT_DEG := 3.5  # 3° 带换带限界（距中央子午线）
 
+# 带号口径区分（易混淆点，两套编号体系并存）：
+#   中国 3°/6° 带（本文件主口径）：
+#     6° 带号 n 自 0° 经线起东向编号（中国境内 13..23），L0 = 6n−3；
+#     3° 带号 n 自 1.5°E 起东向编号（中国境内 25..45），L0 = 3n；
+#     y 前缀口径 y_通用 = n×10⁶ + (500 km + 自然 y)，n 直接冠于 y 前（如 39617474.9）。
+#   UTM 带（UTM 1..60，见 utm.gd）：6° 带号 1..60 自 180°W 起东向编号，
+#     L0 = 6n−183，k0=0.9996；南半球 FN=10000000。UTM 带号与中国 6° 带号
+#     数值上差 12（如 UTM 50 CM=117°E 对应中国 6° 带 20），两口径不可混写。
+#   EPSG 码表两套系列并存："zone N" 系列横坐标含带号前缀（FE=N×10⁶+500000），
+#     "CM xx°E" 系列为自然 y（FE=500000），见下方 EPSG_ROWS 的 y_prefix_zone 标志。
+
 # ---------- 带号与中央子午线（A5） ----------
 
 ## 经度 → 6° 带号（中国惯例 n=floor(L/6)+1，西经为 0/负带号，数学上自洽）
@@ -75,7 +86,7 @@ static func switch_zone(p: Dictionary) -> Dictionary:
 	var ell := _GK.resolve_datum(datum)
 	var ellp := _EL.params(ell)
 	if ellp.is_empty():
-		return _err("未知的椭球/基准“%s”。可用：%s" % [datum, ", ".join(_EL.list_builtin())])
+		return _err("未知的椭球/基准「%s」。可用：%s" % [datum, ", ".join(_EL.list_builtin())])
 	var k0 := _f(p, "k0", 1.0)
 	var fe := _f(p, "fe_m", 500000.0)
 	var fn := _f(p, "fn_m", 0.0)

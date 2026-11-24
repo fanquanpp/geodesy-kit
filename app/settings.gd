@@ -68,11 +68,13 @@ func apply_ui_scale(win: Window) -> void:
 
 ## 应用主题到窗口：light → 恢复项目设置主题（main.tres）；dark → 热切换 dark.tres。
 ## 返回当前生效主题资源（light 返回 null 表示回落项目设置）。
+## 主题热切换：light/dark 两套主题均显式赋给窗口（不依赖 null 回落项目主题——
+## 该回落机制在真机上出现控件已切而清屏色/部分控件滞后的竞态，显式赋值根治）。
 func apply_theme(win: Window) -> Theme:
 	var t := String(get_value("theme"))
-	if t == "dark":
-		var dark := load("res://themes/dark.tres") as Theme
-		win.theme = dark
-		return dark
-	win.theme = null
-	return null
+	var th := load("res://themes/dark.tres") as Theme if t == "dark" \
+			else load("res://themes/main.tres") as Theme
+	if th != null:
+		win.theme = th
+	# 返回值供调用方同步清屏色（main.gd _apply_clear_color 读 bg_color meta）
+	return th

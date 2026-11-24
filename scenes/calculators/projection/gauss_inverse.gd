@@ -14,7 +14,7 @@ func _setup() -> void:
 	_add_row("北坐标 x（m）", "x_m", "如 3597986.6234", true)
 	_add_row("东坐标 y（m，含 500km 假东）", "y_m", "如 617474.9201", true)
 	_add_row("中央子午线 L0（°）", "l0_deg", "如 117", true)
-	_add_row("基准", "datum", "CGCS2000 / 北京54 / 西安80 / WGS84", false)
+	_add_row("基准", "datum", "CGCS2000 / 北京54 / 西安80 / WGS84", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var p := _fail_or(_params())

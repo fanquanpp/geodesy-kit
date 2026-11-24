@@ -94,3 +94,35 @@ func test_c10_error_paths() -> void:
 	var r3 := RL.data_snooping({"B": B, "v": PackedFloat64Array([0.1, 0.2]),
 		"p_w": PackedFloat64Array([1.0, 1.0]), "sigma0": 1.0})
 	assert_false(bool(r3.get("ok", true)), "缺 qxx 应失败")
+	# P4 文案口径：缺权提示用中文量名，不含裸键名 p_w
+	var r4 := RL.data_snooping({"B": B, "v": PackedFloat64Array([0.1, 0.2]),
+		"qxx": MK.identity(2), "sigma0": 1.0})
+	assert_false(bool(r4.get("ok", true)), "缺权应失败")
+	assert_true(String(r4.get("error", "")).contains("缺少对角权"), "缺权提示：" + String(r4.get("error", "")))
+	assert_false(String(r4.get("error", "")).contains("p_w"), "提示不应含裸键名 p_w")
+
+# ---------- P2 补充：dof≤0 中文报错与逐点 r_i 输出 ----------
+
+## P2：无多余观测（n=t）时 data_snooping 应返回明确中文错误
+func test_c10_dof_zero_clear_error() -> void:
+	# 2 观测 + 2 参数（直线拟合两观测恰好唯一确定）：n=t=2，无多余观测
+	var B := [PackedFloat64Array([1.0, 0.0]), PackedFloat64Array([1.0, 1.0])]
+	var qxx := MK.identity(2)
+	var res := RL.data_snooping({"B": B, "v": PackedFloat64Array([0.0, 0.0]),
+		"p_w": PackedFloat64Array([1.0, 1.0]), "qxx": qxx, "sigma0": 1.0})
+	assert_false(bool(res.get("ok", true)), "n=t 无多余观测应失败")
+	assert_true("无多余观测" in String(res.get("error", "")), "错误信息应含「无多余观测」")
+	assert_true("数据探测" in String(res.get("error", "")), "错误信息应含「无法做数据探测」")
+
+## P2：value 应逐点输出 r_i（键 r_1..r_n，观测序号从 1 起）
+func test_c10_r_i_per_point_keys() -> void:
+	var res := _snooping_line([1.02, 2.01, 2.94, 4.80, 5.02, 5.96])
+	assert_true(bool(res.get("ok", false)), "数据探测应成功")
+	if not bool(res.get("ok", false)):
+		return
+	var v: Dictionary = res["value"]
+	var r_arr: PackedFloat64Array = v["r"]
+	for i in r_arr.size():
+		var key := "r_%d" % (i + 1)
+		assert_true(v.has(key), "value 应含逐点键 %s" % key)
+		assert_almost_eq(float(v[key]), r_arr[i], 1e-15, "%s 与 r 数组第 %d 项一致" % [key, i + 1])

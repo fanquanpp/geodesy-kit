@@ -138,3 +138,39 @@ func _bt_pv(known: Dictionary, approx: Dictionary, dist_obs: Array, angle_obs: A
 		for j in t:
 			out[j] += p[i] * bi[j] * float(v[i])
 	return Array(out)
+
+# ---------- P2 补充：场景层最小输入解析（4 列 D 行无 σ / 5 列 L 行无 σ 不被误拒）----------
+# 复审确认 bug：c5_network.gd 原 D 行要求 row.size()≥5、L 行要求 ≥6，缺省 σ 的
+# 最小输入被误拒，且 σ 取错下标（D 行取 row[3] 边长列、L 行取 row[4] 角度列）。
+# 场景层 _parse_network 为私有方法，此处经由脚本加载实例化后直接调用（仅解析路径，不跑平差）。
+
+func test_c5_panel_minimal_sigma_parsing() -> void:
+	var panel: Node = load("res://scenes/calculators/adjustment/c5_network.gd").new()
+	var errors := PackedStringArray()
+	# 4 列 D 行（无 σ）+ 5 列 L 行（无 σ）——修复前均被误拒
+	var net: Dictionary = panel._parse_network(
+		"K A 0 0\nK B 1000 0\nU P 500 100\nD A P 500.00\nL A B P 30.5", errors)
+	assert_true(errors.size() == 0, "4 列 D 行与 5 列 L 行（缺省 σ）不应被误拒，错误：%s"
+			% ["；".join(errors)])
+	if errors.size() == 0:
+		assert_eq((net["dist_obs"] as Array).size(), 1, "应解析出 1 条测边观测")
+		assert_eq((net["angle_obs"] as Array).size(), 1, "应解析出 1 条角度观测")
+		if (net["dist_obs"] as Array).size() == 1:
+			var d: Dictionary = net["dist_obs"][0]
+			assert_almost_eq(float(d["sigma"]), 0.01, 1e-15, "D 行缺省 σ 默认 0.01 m")
+			assert_almost_eq(float(d["value"]), 500.00, 1e-12, "D 行边长取下标 3（不受 σ 列影响）")
+		if (net["angle_obs"] as Array).size() == 1:
+			var l: Dictionary = net["angle_obs"][0]
+			assert_almost_eq(float(l["sigma_s"]), 2.0, 1e-15, "L 行缺省 σ″ 默认 2″")
+			assert_almost_eq(float(l["value_deg"]), 30.5, 1e-12, "L 行角度取下标 4（不受 σ 列影响）")
+	# 5 列 D 行（自定 σ）+ 6 列 L 行（自定 σ）——原合法路径回归
+	var errors2 := PackedStringArray()
+	var net2: Dictionary = panel._parse_network(
+		"K A 0 0\nK B 1000 0\nU P 500 100\nD A P 500.00 0.02\nL A B P 30.5 3.5", errors2)
+	assert_true(errors2.size() == 0, "5 列 D 行与 6 列 L 行（自定 σ）应正常解析")
+	if errors2.size() == 0:
+		assert_almost_eq(float(net2["dist_obs"][0]["sigma"]), 0.02, 1e-15, "自定 σ 透传")
+		assert_almost_eq(float(net2["angle_obs"][0]["sigma_s"]), 3.5, 1e-15, "自定 σ″ 透传")
+	# FMT_HINT 文案与实现一致：方括号标注 σ 可选
+	var hint: String = panel.FMT_HINT
+	assert_true("[σ_m]" in hint and "[σ_″]" in hint, "FMT_HINT 应以方括号标注 σ 列可选")

@@ -16,7 +16,7 @@ func get_description() -> String:
 func _build_rows() -> void:
 	add_input_row("前一边方位角 α_前", "az_prev_deg", "95.5（或 95 30 00）")
 	add_input_row("转折角 β", "angle_deg", "178.250556（或 178 15 02）")
-	add_input_row("转折角类型", "turn", "左（默认）/ 右")
+	add_input_row("转折角类型", "turn", "左（默认）/ 右", LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:
 	var bad: Array = []

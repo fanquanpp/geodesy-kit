@@ -1,22 +1,9 @@
-# core/route/curve_elements.gd —— GK-M7-1 圆曲线要素 B3（含缓和曲线的对称基本型）
+# core/route/curve_elements.gd —— 缓和曲线要素（切线长 T、曲线全长 L、外距 E、切曲差 q、主点里程）
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M7 / §5）：
-#   - 纯静态、零引擎依赖；向量来源【权威·教材通用公式，两公式路径复算一致】：
-#       (R=500,l0=60,α=30°)→β0=3.4377468°/m=29.9964/p=0.3000/T=164.0514/
-#       L=321.7994/E=17.9486/q=6.3034/x0=59.9784/y0=1.1997 等三组（tests/route/）；
-#   - 要素定义（对称基本型：直—缓—圆—缓—直）：
-#       β0 = l0/(2R)                       缓和曲线角（切线角终值）
-#       p  = l0²/(24R) − l0⁴/(2688R³)      圆曲线内移值
-#       m  = l0/2 − l0³/(240R²)            切线增长值（切垂距）
-#       T  = (R+p)·tan(α/2) + m            切线长
-#       L  = R·α(rad) + l0                 曲线全长（= 圆曲线段 R(α−2β0) + 2l0）
-#       E  = (R+p)/cos(α/2) − R            外距
-#       q  = 2T − L                        切曲差（超距）
-#       x0/y0                              缓和曲线终点切线坐标（见 spiral.gd 级数）
-#     l0=0 时退化为纯圆曲线：T=R·tan(α/2)、L=R·α、E=R(sec(α/2)−1)、q=2T−L；
-#   - 主点里程（给 jd_chain 时输出）：ZH(ZY)→HY→QZ→YZ→HZ；
-#   - 校验失败返回 ok=false + 中文 error；α 须 ∈(0°,180°)（α≥180° 交点法切线长
-#     公式失效，回头曲线请用线元法 alignment_el / interchange 模块）。
+# 要素式：β0=l0/(2R)、p=l0²/(24R)−l0⁴/(2688R³)、m=l0/2−l0³/(240R²)；
+# T=(R+p)tan(α/2)+m、L=R·αrad+l0、E=(R+p)/cos(α/2)−R、q=2T−L；l0=0 退化为纯圆曲线。
+# 主点里程：ZH(ZY)→HY→QZ→YZ→HZ；α 须 ∈(0°,180°)（回头曲线用线元法 D2/D6）。
+# 校验失败 ok=false + 中文 error。
 class_name GKCurveElements
 extends RefCounted
 

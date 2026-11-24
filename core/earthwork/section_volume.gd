@@ -1,11 +1,10 @@
 # core/earthwork/section_volume.gd —— GK-M7-11 断面法土方 E2（平均断面法）
 #
-# 设计约定（docs/ARCHITECTURE.md §4 GK-M7 / §5）：
-#   - 平均断面法：V = Σ (A_i + A_{i+1})/2 × d_i（d_i 为相邻断面间距）；
-#     填、挖面积分列累计；相邻两断面一填一挖时，按代数和计入净量
-#     （生产中另有棱台/棱柱体公式可选，教学口径以平均断面法为准并尾注声明）；
-#   - 构造向量（自洽检核）：断面积 [10, 20, 30] m²、间距 [50, 50] m → V=2000.0 m³；
-#   - 校验失败 ok=false + 中文 error（桩号严格递增、面积非负、数组等长）。
+# V=Σ(A_i+A_{i+1})/2·d_i；填挖分列累计，一填一挖按代数和计入净量；
+# 双口径输出：net_m3=填−挖、cut_minus_fill_m3=挖−填（互为相反数，供不同习惯核对）。
+# 可选棱台式（use_prismoidal）：V=L/6(A₁+4A_m+A₂)，A_m 取相邻断面算术平均（工程近似口径）。
+# 权威算例（Python 复核）：A₁=100、A_m=144、A₂=100、L=100 → 棱台 12933.333 m³ vs 平均 10000 m³。
+# 构造向量：[10,20,30] m²、间距 [50,50] → V=2000.0 m³；权威向量见 tests/earthwork/。
 class_name GKSectionVolume
 extends RefCounted
 
@@ -22,8 +21,15 @@ static func seg_volumes(areas: PackedFloat64Array, dists: PackedFloat64Array) ->
 		out.append((areas[i] + areas[i + 1]) * 0.5 * dists[i])
 	return out
 
-## E2 协议入口。p = { chains_m:[...], fill_areas_m2:[...], cut_areas_m2:[]? }
-## value = { fill_m3, cut_m3, net_m3, segments, total_dist_m }
+## 纯核：棱台公式单段体积 V = L/6·(A1 + 4·Am + A2)。非法返回 NAN。
+static func frustum_volume(a1: float, am: float, a2: float, l: float) -> float:
+	if not (is_finite(a1) and is_finite(am) and is_finite(a2) and is_finite(l)) or l <= 0.0:
+		return NAN
+	return l / 6.0 * (a1 + 4.0 * am + a2)
+
+## E2 协议入口。p = { chains_m:[...], fill_areas_m2:[...], cut_areas_m2:[]?,
+##                     use_prismoidal?: bool（默认 false；true 时启用棱台公式口径） }
+## value = { fill_m3, cut_m3, net_m3, cut_minus_fill_m3, frustum_m3?(棱台口径), segments, total_dist_m }
 static func forward(p: Dictionary) -> Dictionary:
 	var chains_in: Variant = p.get("chains_m", [])
 	var fill_in: Variant = p.get("fill_areas_m2", [])
@@ -78,13 +84,58 @@ static func forward(p: Dictionary) -> Dictionary:
 	var seg_rows := PackedStringArray()
 	for i in vf.size():
 		seg_rows.append("%s~%s：填 %.4f / 挖 %.4f m³" % [String.num(chains[i], 2), String.num(chains[i + 1], 2), vf[i], vc[i]])
-	return {"ok": true, "value": {
+	# 可选棱台公式口径（use_prismoidal=true）：A_m 取相邻断面算术平均（口径演示；此时与端面平均一致）
+	var use_prismoidal := bool(p.get("use_prismoidal", false))
+	var frustum_sum := NAN
+	var prism_row := ""
+	var prism_note := ""
+	var value := {
 				"fill_m3": fill_sum,
 				"cut_m3": cut_sum,
 				"net_m3": fill_sum - cut_sum,
+				"cut_minus_fill_m3": cut_sum - fill_sum,
 				"segments": vf.size(),
 				"total_dist_m": total_d,
-			},
+			}
+	if use_prismoidal:
+		var fs := 0.0
+		for i in range(chains.size() - 1):
+			var v := frustum_volume(fills[i], (fills[i] + fills[i + 1]) / 2.0, fills[i + 1], dists[i])
+			v += frustum_volume(cuts[i], (cuts[i] + cuts[i + 1]) / 2.0, cuts[i + 1], dists[i])
+			if is_nan(v):
+				return _err("棱台公式分段计算失败（内部错误）")
+			fs += v
+		frustum_sum = fs
+		value["frustum_m3"] = frustum_sum
+		value["mean_section_m3"] = fill_sum + cut_sum
+		prism_row = "棱台口径 %.4f m³ vs 平均断面法 %.4f m³" % [frustum_sum, fill_sum + cut_sum]
+		prism_note = "此口径 A_m 取相邻断面算术平均，棱台公式退化为端面平均（两者一致）；" \
+			+ "要获得独立估计，请另行提供 1/2 桩号处的实际断面面积"
+	# 可选棱台公式口径：显式给出各段 {a1_m2, am_m2, a2_m2, l_m}（A_m 为 1/2 桩号处实际断面面积）
+	var pr_in: Variant = p.get("prismoidal_segments", [])
+	if pr_in is Array and not (pr_in as Array).is_empty():
+		frustum_sum = 0.0
+		var frustum_rows := PackedStringArray()
+		for i in range((pr_in as Array).size()):
+			var seg: Variant = (pr_in as Array)[i]
+			if not (seg is Dictionary):
+				return _err("棱台分段须为对象 {a1_m2, am_m2, a2_m2, l_m}")
+			var a1v := _num((seg as Dictionary).get("a1_m2", NAN))
+			var amv := _num((seg as Dictionary).get("am_m2", NAN))
+			var a2v := _num((seg as Dictionary).get("a2_m2", NAN))
+			var lv := _num((seg as Dictionary).get("l_m", NAN))
+			var v2 := frustum_volume(a1v, amv, a2v, lv)
+			if is_nan(v2):
+				return _err("棱台分段 %d 输入非法：a1_m2/am_m2/a2_m2 须为数字面积，l_m 须为正数段长" % (i + 1))
+			var v_mean2 := (a1v + a2v) / 2.0 * lv
+			frustum_sum += v2
+			frustum_rows.append("段%d：棱台 %.4f vs 端面平均 %.4f m³" % [i + 1, v2, v_mean2])
+		value["frustum_m3"] = frustum_sum
+		prism_row = "；".join(frustum_rows)
+		prism_note = "棱台公式 V=L/6·(A₁+4A_m+A₂)，A_m 为 1/2 桩号处实际断面面积；与端面平均 V=L·(A₁+A₂)/2 之差反映断面沿程变化的凸性"
+	if prism_row != "":
+		value["prismoidal_note"] = prism_note
+	return {"ok": true, "value": value,
 			"steps": [
 				{"title": "1. 相邻断面间距",
 					"formula": "d_i = 桩号_{i+1} − 桩号_i",
@@ -94,8 +145,13 @@ static func forward(p: Dictionary) -> Dictionary:
 					"formula": "V = (A_i + A_{i+1})/2 × d_i（填挖分列）",
 					"substitution": "；".join(seg_rows.slice(0, 3)) + ("（…共 %d 段）" % vf.size() if vf.size() > 3 else ""),
 					"result": "填方 %.4f m³，挖方 %.4f m³，净填 %.4f m³" % [fill_sum, cut_sum, fill_sum - cut_sum]},
+				{"title": "3. 双口径与棱台公式（可选）",
+					"formula": "净量（代数） = 填方 − 挖方；挖减填 = 挖方 − 填方；棱台 V = L/6·(A₁+4A_m+A₂)",
+					"substitution": "挖方 − 填方 = %.4f − %.4f" % [cut_sum, fill_sum],
+					"result": (prism_row if prism_row != "" else "挖减填 %.4f m³（与净量互为相反数）" % (cut_sum - fill_sum))},
 			],
-			"formula": "平均断面法：V=Σ(A_i+A_{i+1})/2·d_i；填挖分列、净值=填−挖；相邻断面一填一挖时近似以平均断面计（生产可选用棱台公式，教学口径已注明）",
+			"formula": "平均断面法：V=Σ(A_i+A_{i+1})/2·d_i；双口径：净量=填−挖（net_m3）、挖减填=挖−填（cut_minus_fill_m3）互为相反数；"
+				+ "可选棱台公式 V=L/6·(A₁+4A_m+A₂)（prismoidal_segments 给出各段 A₁/A_m/A₂/L；A_m 为 1/2 桩号处实际断面面积）" + prism_note,
 			"error": ""}
 
 # ---------- 内部工具 ----------
