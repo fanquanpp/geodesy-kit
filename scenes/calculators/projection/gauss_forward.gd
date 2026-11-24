@@ -11,9 +11,9 @@ func get_description() -> String:
 	return "B/L → 高斯平面坐标（x 北、y 东，含 500km 假东）。支持十进制度或度分秒输入。"
 
 func _setup() -> void:
-	_add_row("纬度 B（°或度分秒）", "lat_deg", "如 32.5 或 32°30′00″", true)
-	_add_row("经度 L（°或度分秒）", "lon_deg", "如 118.25 或 118°15′00″", true)
-	_add_row("中央子午线 L0（°）", "l0_deg", "3°带 L0=3n，6°带 L0=6n−3", true)
+	# P9.4 坐标输入形式：B|L 坐标对双列（stacked 标签 + ° 后缀）
+	_add_coord_pair("纬度 B", "lat_deg", "经度 L", "lon_deg", true, "°", "°")
+	_add_row("中央子午线 L0", "l0_deg", "3°带 L0=3n，6°带 L0=6n−3", true, LineEdit.KEYBOARD_TYPE_NUMBER, "°")
 	_add_row("基准", "datum", "CGCS2000 / 北京54 / 西安80 / WGS84", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:

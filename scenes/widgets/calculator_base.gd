@@ -184,14 +184,32 @@ func focus_field(key: String) -> void:
 ## keyboard_type：虚拟键盘类型，默认数字键盘（数值行）；多行/含分隔符的文本字段
 ## 应显式传 LineEdit.KEYBOARD_TYPE_DEFAULT（Android 数字键盘无「;」「,」与换行）。
 func add_input_row(label_text: String, key: String, placeholder := "",
-		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER) -> LineEdit:
+		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER,
+		suffix := "", mode := "row") -> LineEdit:
 	var row: HBoxContainer = preload("res://scenes/widgets/input_row.tscn").instantiate()
 	_inputs_root.add_child(row)
 	# setup 必须在入树后调用：input_row 的 label/edit 是 @onready 变量，
 	# 入树前为 null，setup 返回的 edit 才是有效的 LineEdit（供 register_field 登记）
-	var edit: LineEdit = row.call("setup", label_text, key, placeholder, keyboard_type)
+	var edit: LineEdit = row.call("setup", label_text, key, placeholder, keyboard_type, suffix, mode)
 	register_field(key, edit)
 	return edit
+
+## 坐标对双列行（P9.4 坐标输入形式）：一行内左右两个 stacked 字段
+## （如 BLH 的 B|L、xy 的 x|y），形成"坐标对"视觉分组。
+## label_l/label_r 为左右字段标签，suffix_l/r 为单位后缀（°/m 等）。
+func add_coord_pair_row(label_l: String, key_l: String, label_r: String, key_r: String,
+		suffix_l := "", suffix_r := "") -> void:
+	var pair := HBoxContainer.new()
+	pair.add_theme_constant_override("separation", GKThemeConstants.MIN_TOUCH_SPACING / 2)
+	_inputs_root.add_child(pair)
+	for spec: Array in [[label_l, key_l, suffix_l], [label_r, key_r, suffix_r]]:
+		var row: HBoxContainer = preload("res://scenes/widgets/input_row.tscn").instantiate()
+		pair.add_child(row)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.size_flags_stretch_ratio = 1.0
+		var edit: LineEdit = row.call("setup", spec[0], spec[1], "",
+			LineEdit.KEYBOARD_TYPE_NUMBER, spec[2], "stacked")
+		register_field(spec[1], edit)
 
 func _on_field_submitted(_text: String, idx: int) -> void:
 	# 回车流转：末字段提交触发计算，否则聚焦下一字段

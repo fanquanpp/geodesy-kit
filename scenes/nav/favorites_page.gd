@@ -1,4 +1,5 @@
 # scenes/nav/favorites_page.gd —— 收藏页（favorites 表按 entry id 关联，ARCHITECTURE.md §3.3）
+# P9.4：条目卡片化（Card 面板包裹方块网格，与首页视觉一致），触屏拖滚原生路径。
 class_name GKFavoritesPage
 extends Control
 
@@ -29,16 +30,20 @@ func refresh() -> void:
 	if ids.is_empty():
 		var hint := Label.new()
 		hint.theme_type_variation = &"Muted"
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		hint.text = "尚未收藏任何计算器。在计算器页点「收藏」后出现在这里。"
 		v.add_child(hint)
-	# P9：收藏条目方块网格化（与首页一致，触屏 128px 高、2–3 列自适应）
-	var cell_h := 128.0 if DisplayServer.is_touchscreen_available() else 96.0
-	var cols := 3 if get_viewport().get_visible_rect().size.x >= 700.0 else 2
+		return
+	# 卡片化：单张 Card 面板承载网格（条目多时整卡随页滚动，卡内不再嵌滚动）
+	var card := PanelContainer.new()
+	card.theme_type_variation = &"Card"
+	v.add_child(card)
 	var grid := GridContainer.new()
-	grid.columns = cols
+	grid.columns = 3 if get_viewport().get_visible_rect().size.x >= 700.0 else 2
 	grid.add_theme_constant_override("h_separation", GKThemeConstants.MIN_TOUCH_SPACING / 2)
 	grid.add_theme_constant_override("v_separation", GKThemeConstants.MIN_TOUCH_SPACING / 2)
-	v.add_child(grid)
+	card.add_child(grid)
+	var cell_h := 128.0 if DisplayServer.is_touchscreen_available() else 96.0
 	for id: String in ids:
 		var e: Dictionary = GKServices.catalog.entry(id)
 		var b := Button.new()

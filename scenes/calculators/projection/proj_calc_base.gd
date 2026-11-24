@@ -14,13 +14,25 @@ func _build_ui() -> void:
 	_setup()
 
 ## 登记一行输入并记录标签；required=true 时为必填；
-## 文本枚举键（基准名/半球/图幅号/MGRS 串/名称等）由调用方传 keyboard_type=KEYBOARD_TYPE_DEFAULT
+## 文本枚举键（基准名/半球/图幅号/MGRS 串/名称等）由调用方传 keyboard_type=KEYBOARD_TYPE_DEFAULT；
+## suffix：单位（并入标签展示，如 "°"/"m"）
 func _add_row(label_text: String, key: String, placeholder: String, required := false,
-		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER) -> void:
-	add_input_row(label_text, key, placeholder, keyboard_type)
+		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER, suffix := "") -> void:
+	add_input_row(label_text, key, placeholder, keyboard_type, suffix)
 	_labels[key] = label_text
 	if required:
 		_required.append(key)
+
+## 坐标对双列行（P9.4）：左右两个 stacked 字段一行排布（B|L、x|y 等），
+## 两键各自登记标签/必填——坐标输入形式（用户要求）。
+func _add_coord_pair(label_l: String, key_l: String, label_r: String, key_r: String,
+		required := false, suffix_l := "", suffix_r := "") -> void:
+	add_coord_pair_row(label_l, key_l, label_r, key_r, suffix_l, suffix_r)
+	_labels[key_l] = label_l
+	_labels[key_r] = label_r
+	if required:
+		_required.append(key_l)
+		_required.append(key_r)
 
 ## 历史回放/示例填充
 func set_inputs(inputs: Dictionary) -> void:

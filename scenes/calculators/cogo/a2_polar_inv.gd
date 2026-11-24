@@ -14,10 +14,9 @@ func get_description() -> String:
 	return "由两点坐标反算边长与坐标方位角（含反方位角）。约定：x=东、y=北，方位角北起顺时针；两点重合无解。"
 
 func _build_rows() -> void:
-	add_input_row("起点 x（东，m）", "x0_m", "1000")
-	add_input_row("起点 y（北，m）", "y0_m", "1000")
-	add_input_row("待定点 x（东，m）", "x_m", "1353.553390593")
-	add_input_row("待定点 y（北，m）", "y_m", "1353.553390593")
+	# P9.4 坐标输入形式：起点/待定点 xy 各成坐标对双列
+	add_coord_pair_row("起点 x（东）", "x0_m", "起点 y（北）", "y0_m", "m", "m")
+	add_coord_pair_row("待定点 x（东）", "x_m", "待定点 y（北）", "y_m", "m", "m")
 
 func run() -> Dictionary:
 	var bad: Array = []

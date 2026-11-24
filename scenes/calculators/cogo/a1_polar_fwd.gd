@@ -14,10 +14,10 @@ func get_description() -> String:
 	return "由已知点坐标、坐标方位角与水平距离推算待定点坐标。约定：x=东（横）、y=北（纵），方位角北起顺时针；方位角可输 45.5 或 45 30 00。"
 
 func _build_rows() -> void:
-	add_input_row("起点 x（东，m）", "x0_m", "1000")
-	add_input_row("起点 y（北，m）", "y0_m", "1000")
-	add_input_row("坐标方位角 α", "az_deg", "45（或 45 30 00）")
-	add_input_row("水平距离 D（m）", "dist_m", "500")
+	# P9.4 坐标输入形式：起点 x|y 坐标对双列（stacked 标签在上 + 单位后缀）
+	add_coord_pair_row("起点 x（东）", "x0_m", "起点 y（北）", "y0_m", "m", "m")
+	add_input_row("坐标方位角 α", "az_deg", "45（或 45 30 00）", LineEdit.KEYBOARD_TYPE_NUMBER, "°")
+	add_input_row("水平距离 D", "dist_m", "500", LineEdit.KEYBOARD_TYPE_NUMBER, "m")
 
 func run() -> Dictionary:
 	var bad: Array = []

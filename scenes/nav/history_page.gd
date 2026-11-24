@@ -44,27 +44,28 @@ func refresh() -> void:
 	if rows.is_empty():
 		var hint := Label.new()
 		hint.theme_type_variation = &"Muted"
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		hint.text = "暂无历史记录。任意计算器点击「计算」后自动记录（含输入快照，可回放）。"
 		v.add_child(hint)
+	# P9.4 卡片化：每条历史一张 Card——计算器名（可点回放）为主体，时间戳弱化为 Caption
 	for row: Dictionary in rows:
 		var card := PanelContainer.new()
 		card.theme_type_variation = &"Card"
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		v.add_child(card)
 		var cv := VBoxContainer.new()
 		card.add_child(cv)
-		var meta := Label.new()
-		meta.theme_type_variation = &"Muted"
 		var eid := String(row.get("entry_id", ""))
 		var e: Dictionary = GKServices.catalog.entry(eid) if not eid.is_empty() else {}
 		var missing := e.is_empty() and not eid.is_empty()  # 原计算器已随域移除（历史只读展示）
 		var name := String(e.get("name", eid)) if not e.is_empty() else (eid if not eid.is_empty() else "未知条目")
-		meta.text = "%s · %s%s" % [String(row.get("ts_text", "")), name,
-			"（原计算器已移除，仅存历史记录）" if missing else ""]
-		cv.add_child(meta)
 		var go := Button.new()
-		go.text = "打开该计算器并回放输入"
-		go.custom_minimum_size = Vector2(0, 96)
-		go.visible = not missing  # 计算器已下线：无场景可打开，按钮留死链不如隐藏
+		go.text = name
+		go.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		go.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		go.custom_minimum_size = Vector2(0, 72)
+		go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		go.disabled = missing  # 计算器已下线：无场景可打开，按钮留死链不如禁用
 		go.pressed.connect(func() -> void:
 			if e.is_empty():
 				return
@@ -72,6 +73,11 @@ func refresh() -> void:
 			replay_entry.emit(eid, row.get("inputs", {}))
 		)
 		cv.add_child(go)
+		var meta := Label.new()
+		meta.theme_type_variation = &"Caption"
+		meta.text = "%s%s" % [String(row.get("ts_text", "")),
+			" · 原计算器已移除，仅存历史记录" if missing else ""]
+		cv.add_child(meta)
 
 ## 清空前二次确认（ConfirmationDialog 挂根窗口；历史含输入快照是回放功能的原料，
 ## 冷审问题⑨：一点即全部清空无确认，误触不可恢复）。
