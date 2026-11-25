@@ -6,8 +6,8 @@ extends "res://tests/test_case_base.gd"
 const MANIFEST_PATH := "res://scenes/calculators/cogo/manifest.json"
 const EXPECTED_IDS := [
 	"a1_polar_fwd", "a2_polar_inv", "a1_fwd_3d", "a2_inv_3d",
-	"b1_fwd_az", "b1_fwd_ang", "b1_side", "b1_resection",
-	"b2_az_az", "b2_az_dist", "b2_dist_dist",
+	"b1_fwd_ang", "b1_side", "b1_resection",
+	"b2_az_dist",
 	"b5_convert", "b5_propagate", "b6_area", "b7_affine",
 	"b8_point_line", "b9_circle_3p", "b9_arc", "b9_arc_3p",
 ]
@@ -15,7 +15,7 @@ const EXPECTED_IDS := [
 func test_manifest_contract() -> void:
 	var catalog := GKModuleCatalog.new()
 	var entries := catalog.load_manifest_file(MANIFEST_PATH)
-	assert_int_eq(entries.size(), EXPECTED_IDS.size(), "manifest 条目数 = 19")
+	assert_int_eq(entries.size(), EXPECTED_IDS.size(), "manifest 条目数 = 16")
 	var seen := {}
 	for e: Dictionary in entries:
 		var id := String(e["id"])
@@ -40,7 +40,7 @@ func test_catalog_load_all_mounts_cogo_domain() -> void:
 		var cogo: Dictionary = by_domain["cogo"]
 		assert_eq(String(cogo["title"]), "坐标几何与交会", "域标题来自 manifest")
 		var list: Array = cogo["entries"]
-		assert_int_eq(list.size(), EXPECTED_IDS.size(), "cogo 域条目数 = 19")
+		assert_int_eq(list.size(), EXPECTED_IDS.size(), "cogo 域条目数 = 16")
 	# 搜索冒烟：中文关键词命中
 	var hits := catalog.search("后方交会")
 	var found := false

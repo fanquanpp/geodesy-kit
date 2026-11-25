@@ -33,31 +33,22 @@ const ENTRY_GROUPS := {
 	"a3_gauss_fwd": "proj", "a3_gauss_inv": "proj",
 	"a4_zone_switch": "proj", "a5_zone_query": "proj",
 	"a7_utm_fwd": "proj", "a7_utm_inv": "proj",
-	"ups_fwd": "proj", "ups_inv": "proj",
-	"a14_web_mercator_fwd": "proj", "a14_web_mercator_inv": "proj",
-	"a14_lambert_fwd": "proj", "a14_lambert_inv": "proj",
-	"a13_mgrs_fwd": "proj", "a13_mgrs_inv": "proj",
 	"sheet_gbt13989": "proj", "sheet_gbt13989_lookup": "proj",
 	# —— 基准转换（七参/四参/高程拟合/ITRF/RTK/BLH-XYZ）——
 	"a6_blh_xyz": "datum", "a9_bursa": "datum", "a8_four_param": "datum",
-	"a10_height_fit": "datum", "f7_itrf": "datum", "a11_rtk_params": "datum",
-	"g2_batch_convert": "datum",
-	# —— 交会定点（前方/侧方/后方/方位距离）——
-	"b1_fwd_az": "intersect", "b1_fwd_ang": "intersect",
+	"a10_height_fit": "datum", # —— 交会定点（前方/侧方/后方/方位距离）——
+	"b1_fwd_ang": "intersect",
 	"b1_side": "intersect", "b1_resection": "intersect",
-	"b2_az_az": "intersect", "b2_az_dist": "intersect", "b2_dist_dist": "intersect",
-	"b9_circle_3p": "intersect", "b9_arc": "intersect", "b9_arc_3p": "intersect",
+	"b2_az_dist": "intersect", "b9_circle_3p": "intersect", "b9_arc": "intersect", "b9_arc_3p": "intersect",
 	# —— 控制平差（导线/水准/网平差/精度/限差）——
 	"c1_open_traverse": "control", "c2_closed_traverse": "control",
 	"c3_connect_traverse": "control", "c4_no_orient_traverse": "control",
-	"c5_network": "control", "c6_level_route": "control", "c7_level_net": "control",
-	"c8_tolerance": "control", "c9_accuracy": "control", "c10_reliability": "control",
-	"c11_gnss_net": "control", "c12_variance": "control", "c13_trig_height": "control",
+	"c6_level_route": "control", "c7_level_net": "control",
+	"c8_tolerance": "control", "c9_accuracy": "control", "c13_trig_height": "control",
 	# —— 路线曲线（要素/缓和/中线/竖曲/放样/超高）——
 	"b3_curve_elements": "route", "b4_spiral": "route",
 	"d1_alignment_jd": "route", "d2_alignment_el": "route",
 	"d3_vertical_curve": "route", "d4_stakeout": "route",
-	"d5_segment_link": "route", "d6_interchange": "route", "d7_roadbed": "route",
 	# —— 土方断面 ——
 	"e1_grid_volume": "earthwork", "e2_section_volume": "earthwork",
 	"e3_dtm_volume": "earthwork", "e4_dist_slope": "earthwork",

@@ -73,17 +73,6 @@
       "favorite_default": false
     },
     {
-      "id": "c5_network",
-      "name": "平面控制网严密平差（C5）",
-      "keywords": "导线网 测边网 边角网 间接平差 严密平差 法方程 误差方程 C5 network",
-      "scene": "res://scenes/calculators/adjustment/c5_network.tscn",
-      "formula_ref": "adjust_indirect_2d",
-      "example": {
-        "data": "K A 0 0\nK B 1000 0\nK C 500 866.025403784439\nU P 499.97 400.03\nD A P 640.320423743 0.01\nD B P 640.306423743 0.01\nD C P 466.029403784 0.01"
-      },
-      "favorite_default": false
-    },
-    {
       "id": "c6_level_route",
       "name": "单一水准路线（C6）",
       "keywords": "水准 闭合差 高差改正 附合 闭合环 单一路线 C6 leveling",
@@ -138,46 +127,6 @@
         "qyy": "0.0000561621",
         "qxy": "-0.0000000035566",
         "sigma0": "0.371017784"
-      },
-      "favorite_default": false
-    },
-    {
-      "id": "c10_reliability",
-      "name": "粗差探测与可靠性（C10）",
-      "keywords": "粗差探测 数据探测 学生化残差 多余观测分量 可靠性 C10 reliability",
-      "scene": "res://scenes/calculators/adjustment/c10_reliability.tscn",
-      "formula_ref": "adjust_data_snooping",
-      "example": {
-        "data": "K A 0 0\nK B 1000 0\nK C 500 866.025403784439\nU P 499.97 400.03\nD A P 640.320423743 0.01\nD B P 640.306423743 0.01\nD C P 466.029403784 0.01",
-        "k_warn": "2.0",
-        "k_gross": "3.0"
-      },
-      "favorite_default": false
-    },
-    {
-      "id": "c11_gnss_net",
-      "name": "GNSS 向量网平差（C11）",
-      "keywords": "GNSS 基线 向量网 三维平差 XYZ 固定基准 自由网 C11",
-      "scene": "res://scenes/calculators/adjustment/c11_gnss_net.tscn",
-      "formula_ref": "adjust_gnss_vector",
-      "example": {
-        "data": "K G1 0 0 0\nU G2 999.95 0.02 0.01\nU G3 1000.02 1499.97 50.03\nB G1 G2 1000.004 -0.003 0.002 0.01\nB G1 G3 1000.002 1500.004 49.997 0.01\nB G2 G3 -0.003 1500.002 50.004 0.01",
-        "datum": "fixed"
-      },
-      "favorite_default": false
-    },
-    {
-      "id": "c12_variance",
-      "name": "方差分量估计与秩亏自由网（C12）",
-      "keywords": "Helmert 方差分量 秩亏 自由网 最小范数 最小二乘 C12 variance",
-      "scene": "res://scenes/calculators/adjustment/c12_variance.tscn",
-      "formula_ref": "adjust_helmert_free",
-      "example": {
-        "mode": "free",
-        "known": "K A 0 0\nK B 1000 0\nK C 500 866.0254",
-        "approx": "U A 0 0\nU B 1000 0\nU C 500 866.0254",
-        "group1": "D A B 1000.004 0.005\nD B C 999.997 0.005\nD C A 1000.002 0.005",
-        "group2": "L A B C -60 2\nL B C A -60 2\nL C A B -60 2"
       },
       "favorite_default": false
     },

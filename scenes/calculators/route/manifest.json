@@ -101,55 +101,6 @@
       "favorite_default": false
     },
     {
-      "id": "d5_segment_link",
-      "name": "超高/加宽/断链（D5）",
-      "keywords": "断链 长链 短链 里程换算 超高 加宽 线性过渡 D5",
-      "scene": "res://scenes/calculators/route/d5_segment_link.tscn",
-      "formula_ref": "d5_segment_link",
-      "example": {
-        "breaks": "5000=5200",
-        "chains": "1000 4000 6000 8000",
-        "mode": "0",
-        "dir": "0"
-      },
-      "favorite_default": false
-    },
-    {
-      "id": "d6_interchange",
-      "name": "匝道复杂线型（D6）",
-      "keywords": "匝道 互通 线型 S型 卵型 C型 回头曲线 基本型 线元组合 D6",
-      "scene": "res://scenes/calculators/route/d6_interchange.tscn",
-      "formula_ref": "d6_interchange",
-      "example": {
-        "x_m": "1000",
-        "y_m": "2000",
-        "bearing_deg": "10",
-        "type": "2",
-        "r_m": "500",
-        "r2_m": "200",
-        "l0_m": "100",
-        "arc1_turn_deg": "30",
-        "arc2_turn_deg": "40"
-      },
-      "favorite_default": false
-    },
-    {
-      "id": "d7_roadbed",
-      "name": "路基开挖口/坡脚放样（D7）",
-      "keywords": "路基 横断面 开挖口 坡脚 路堤 路堑 边坡 坡率 路拱 D7",
-      "scene": "res://scenes/calculators/route/d7_roadbed.tscn",
-      "formula_ref": "d7_roadbed",
-      "example": {
-        "design_elev_m": "55",
-        "half_width_m": "10",
-        "cross_slope_pct": "0",
-        "fill_slope_ratio": "1.5",
-        "cut_slope_ratio": "0.75",
-        "ground": "-40,47; 0,49; 40,51; 80,53"
-      },
-      "favorite_default": false
-    },
-    {
       "id": "e1_grid_volume",
       "name": "方格网法土方（E1）",
       "keywords": "土方 方格网 填方 挖方 施工高度 零线分割 体积 E1",

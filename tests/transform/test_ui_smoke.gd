@@ -49,14 +49,14 @@ func _open(entry: Dictionary) -> GKCalculatorBase:
 
 func test_manifest_entries() -> void:
 	var entries := _load_entries()
-	assert_eq(entries.size(), 5, "transform 域 5 条目（含新增 RTK 参数计算）")
+	assert_eq(entries.size(), 3, "transform 域 3 条目（P11 教学收敛）")
 	var ids := {}
 	for e: Dictionary in entries:
 		ids[String(e["id"])] = e
 		assert_true(String(e["scene"]).ends_with(".tscn"), "条目场景为 .tscn")
 		assert_true((e.get("keywords", "") as String).length() > 0, "条目有关键词")
 		assert_true((e.get("example", {}) as Dictionary).size() > 0, "条目有示例输入")
-	for want: String in ["a9_bursa", "a8_four_param", "a10_height_fit", "f7_itrf", "a11_rtk_params"]:
+	for want: String in ["a9_bursa", "a8_four_param", "a10_height_fit"]:
 		assert_true(ids.has(want), "条目 id：%s" % want)
 
 func test_bursa_calculator_scene() -> void:
@@ -155,78 +155,5 @@ func test_height_fit_calculator_scene() -> void:
 	var res_bad := calc.run()
 	assert_false(bool(res_bad.get("ok", true)), "非法点行应失败")
 	assert_true(String(res_bad.get("error", "")).contains("3 个数字"), "中文错误：行格式")
-	calc.set_inputs(entry.get("example", {}))
-	calc.queue_free()
-
-func test_itrf_calculator_scene() -> void:
-	var entries := _load_entries()
-	var entry := {}
-	for e: Dictionary in entries:
-		if String(e["id"]) == "f7_itrf":
-			entry = e
-	var calc := _open(entry)
-	if calc == null:
-		return
-	var res := calc.run()
-	assert_true(bool(res.get("ok", false)), "示例转换应成功：" + String(res.get("error", "")))
-	var v: Dictionary = res.get("value", {})
-	assert_almost_eq(float(v["points_m"][0][0]), 3999999.99692, 1e-6, "ITRF2020→ITRF2014 示例输出 x")
-	# 未收录方向 → 中文提示
-	calc.set_inputs({"frame_from": "ITRF1996", "frame_to": "ITRF2020"})
-	var res_bad := calc.run()
-	assert_false(bool(res_bad.get("ok", true)), "未收录方向应失败")
-	assert_true(String(res_bad.get("error", "")).contains("参数表"), "中文错误：参数表未收录")
-	# 历元传播模式
-	calc.set_inputs({
-		"mode": "propagate",
-		"points": "1000, 2000, 3000, 0.01, 0.02, 0.03",
-		"epoch_from": "2015.0", "epoch_to": "2023.0",
-	})
-	var res_p := calc.run()
-	assert_true(bool(res_p.get("ok", false)), "历元传播应成功：" + String(res_p.get("error", "")))
-	assert_almost_eq(float(res_p["value"]["points_m"][0][2]), 3000.24, 1e-12, "传播 z(t2)")
-	# 非法数字 → 中文错误
-	calc.set_inputs({"mode": "transform", "points": "abc"})
-	var res_bad2 := calc.run()
-	assert_false(bool(res_bad2.get("ok", true)), "非法数字应失败")
-	assert_true(String(res_bad2.get("error", "")).contains("数字"), "中文错误：数字格式：%s" % String(res_bad2.get("error", "")))
-	calc.set_inputs(entry.get("example", {}))
-	calc.queue_free()
-
-func test_rtk_calculator_scene() -> void:
-	var entries := _load_entries()
-	var entry := {}
-	for e: Dictionary in entries:
-		if String(e["id"]) == "a11_rtk_params":
-			entry = e
-	var calc := _open(entry)
-	if calc == null:
-		return
-	# 示例（EPSG:1314 七参数场景：4 公共点 + 1 检核点，限差 0.05 m）应一次运行成功且判合格
-	var res := calc.run()
-	assert_true(bool(res.get("ok", false)), "示例运行应成功：" + String(res.get("error", "")))
-	var v: Dictionary = res.get("value", {})
-	assert_true((v as Dictionary).has("params"), "value 应含求参参数")
-	assert_almost_eq(float(v.get("max_check_res_m", NAN)), 0.0, 1e-3, "示例检核较差≈0")
-	assert_true(bool(v.get("ok_limit", false)), "示例应判合格")
-	assert_true(String(v.get("conclusion", "")).contains("合格"), "结论含合格")
-	# 输入回放
-	var inputs := calc.get_inputs()
-	assert_eq(String(inputs.get("mode", "")), "space", "get_inputs 回显 mode")
-	# 未填限差 → 中文错误（限差必须由用户输入）
-	calc.set_inputs({"limit_m": ""})
-	var res_nolim := calc.run()
-	assert_false(bool(res_nolim.get("ok", true)), "未填限差应失败")
-	assert_true(String(res_nolim.get("error", "")).contains("限差"), "中文错误：限差")
-	# 检核点不成对 → 中文错误
-	calc.set_inputs({"limit_m": "0.05", "check_src": "4050000, 550000, 4980000", "check_dst": ""})
-	var res_pair := calc.run()
-	assert_false(bool(res_pair.get("ok", true)), "检核点不成对应失败")
-	assert_true(String(res_pair.get("error", "")).contains("成对"), "中文错误：成对")
-	# 非法数字 → 中文错误
-	calc.set_inputs({"mode": "plane", "common_src": "abc", "limit_m": "0.05"})
-	var res_bad := calc.run()
-	assert_false(bool(res_bad.get("ok", true)), "非法数字应失败")
-	assert_true(String(res_bad.get("error", "")).contains("数字"), "中文错误：数字")
 	calc.set_inputs(entry.get("example", {}))
 	calc.queue_free()

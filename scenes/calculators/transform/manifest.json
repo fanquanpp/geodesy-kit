@@ -48,38 +48,6 @@
         "points": "0, 0, 10.0\n1000, 0, 12.0\n2000, 0, 14.0\n3000, 0, 16.0\n0, 1000, 9.0\n1000, 1000, 11.0\n2000, 1000, 13.0\n3000, 1000, 15.0"
       },
       "favorite_default": false
-    },
-    {
-      "id": "f7_itrf",
-      "name": "ITRF 历元传播与 14 参数转换（F7）",
-      "keywords": "ITRF ITRF2020 ITRF2014 历元 传播 速度 14参数 七参数 框架 转换 速率 位置向量 高程框架 基准",
-      "scene": "res://scenes/calculators/transform/itrf.tscn",
-      "formula_ref": "f7_itrf",
-      "example": {
-        "mode": "transform",
-        "frame_from": "ITRF2020",
-        "frame_to": "ITRF2014",
-        "epoch": "2015.0",
-        "points": "4000000, 500000, 4933000"
-      },
-      "favorite_default": false
-    },
-    {
-      "id": "a11_rtk_params",
-      "name": "RTK 参数计算（公共点求参与检核）",
-      "keywords": "RTK 参数计算 公共点 检核点 求参 回代 残差 较差 限差 合格 超限 四参数 七参数 转换参数 控制点 校准 参数配准",
-      "scene": "res://scenes/calculators/transform/rtk.tscn",
-      "formula_ref": "a11_rtk_params",
-      "example": {
-        "mode": "space",
-        "convention": "PV",
-        "limit_m": "0.05",
-        "common_src": "4000000, 500000, 4933000\n4200000, 300000, 4800000\n3800000, 700000, 5100000\n4100000, 600000, 4950000",
-        "common_dst": "4000368.358051, 499877.339405, 4933436.561500\n4200364.917395, 299882.350334, 4800438.901603\n3800371.839421, 699872.303751, 5100433.524771\n4100365.921303, 599875.686346, 4950436.166161",
-        "check_src": "4050000, 550000, 4980000",
-        "check_dst": "4050367.185779, 549876.484878, 4980435.575004"
-      },
-      "favorite_default": false
     }
   ],
   "icon": "res://assets/icons/gk-m4-coordinate-transform.png"

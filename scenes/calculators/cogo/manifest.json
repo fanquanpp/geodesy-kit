@@ -68,22 +68,6 @@
       "favorite_default": false
     },
     {
-      "id": "b1_fwd_az",
-      "name": "前方交会（方位式）（B1）",
-      "keywords": "前方交会 方位 交会 定点 两已知点 B1",
-      "scene": "res://scenes/calculators/cogo/b1_fwd_az.tscn",
-      "formula_ref": "intersection_az_az",
-      "example": {
-        "x_a_m": "1000",
-        "y_a_m": "1000",
-        "az1_deg": "30",
-        "x_b_m": "2000",
-        "y_b_m": "1200",
-        "az2_deg": "309.3986"
-      },
-      "favorite_default": true
-    },
-    {
       "id": "b1_fwd_ang",
       "name": "前方交会（角度式）（B1）",
       "keywords": "前方交会 角度 水平角 交会 定点 B1 三角形",
@@ -136,22 +120,6 @@
       "favorite_default": false
     },
     {
-      "id": "b2_az_az",
-      "name": "方位-方位交会（B2）",
-      "keywords": "方位交会 方位-方位 两线求交 交会角 B2",
-      "scene": "res://scenes/calculators/cogo/b2_az_az.tscn",
-      "formula_ref": "intersection_az_az",
-      "example": {
-        "x_a_m": "1000",
-        "y_a_m": "1000",
-        "az1_deg": "30",
-        "x_b_m": "2000",
-        "y_b_m": "1200",
-        "az2_deg": "309.3986"
-      },
-      "favorite_default": false
-    },
-    {
       "id": "b2_az_dist",
       "name": "方位-距离交会（B2）",
       "keywords": "方位-距离 射线 圆 求交 双解 近端 远端 B2",
@@ -167,23 +135,6 @@
         "branch": "近端"
       },
       "favorite_default": false
-    },
-    {
-      "id": "b2_dist_dist",
-      "name": "距离-距离交会（B2）",
-      "keywords": "距离交会 两圆求交 双解 侧别 距离-距离 B2",
-      "scene": "res://scenes/calculators/cogo/b2_dist_dist.tscn",
-      "formula_ref": "intersection_dist_dist",
-      "example": {
-        "x_a_m": "1000",
-        "y_a_m": "1000",
-        "d_a_m": "700",
-        "x_b_m": "1800",
-        "y_b_m": "1050",
-        "d_b_m": "600",
-        "side": "右"
-      },
-      "favorite_default": true
     },
     {
       "id": "b5_convert",
