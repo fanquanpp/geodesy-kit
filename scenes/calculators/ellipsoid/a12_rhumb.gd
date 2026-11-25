@@ -16,11 +16,12 @@ func _ready() -> void:
 	super._ready()
 	add_input_row("平均半径 R（米，可留空）", "radius_m", "留空用 WGS84 R₁")
 	add_input_row("椭球（datum 名）", "datum", "CGCS2000 / WGS84", LineEdit.KEYBOARD_TYPE_DEFAULT)
-	add_input_row("B₁（度/度分秒）", "lat1_deg", "起点纬度")
-	add_input_row("L₁（度/度分秒）", "lon1_deg", "起点经度")
-	add_input_row("B₂（度/度分秒）", "lat2_deg", "正解：终点纬度")
-	add_input_row("L₂（度/度分秒）", "lon2_deg", "正解：终点经度")
-	add_input_row("α 恒向线方位（度/度分秒）", "az_deg", "反解：恒向方位角")
+	add_input_row("B₁（度/度分秒）", "lat1_deg", "起点纬度", LineEdit.KEYBOARD_TYPE_DEFAULT, "", "row", true)
+	add_input_row("L₁（度/度分秒）", "lon1_deg", "起点经度", LineEdit.KEYBOARD_TYPE_DEFAULT, "", "row", true)
+	add_input_row("B₂（度/度分秒）", "lat2_deg", "正解：终点纬度", LineEdit.KEYBOARD_TYPE_DEFAULT, "", "row", true)
+	add_input_row("L₂（度/度分秒）", "lon2_deg", "正解：终点经度", LineEdit.KEYBOARD_TYPE_DEFAULT, "", "row", true)
+	add_input_row("α 恒向线方位（度/度分秒）", "az_deg", "反解：恒向方位角",
+			LineEdit.KEYBOARD_TYPE_DEFAULT, "", "row", true)  # 角度档：度分秒含空格
 	add_input_row("s 航程（米）", "distance_m", "反解：航程")
 	set_inputs(_example_inputs)
 

@@ -6,11 +6,13 @@ const LV := preload("res://core/adjustment/leveling.gd")
 func _build_fields() -> void:
 	_add_section("往测（A→B）")
 	add_input_row("水平距离 D（m）", "d_m", "2000")
-	add_input_row("竖直角 α（°/′/″ 或度，仰角正）", "v_angle", "2")
+	add_input_row("竖直角 α（°/′/″ 或度，仰角正）", "v_angle", "2",
+			LineEdit.KEYBOARD_TYPE_DEFAULT, "", "row", true)  # 角度档 + ±（仰俯角）
 	add_input_row("A 站仪器高 i_A（m）", "i_m", "1.5")
 	add_input_row("B 站目标高 v_B（m）", "v_m", "1.5")
 	_add_section("返测（B→A，对向观测可选）")
-	add_input_row("竖直角 α返（度，仰角正）", "v_angle_back", "-2")
+	add_input_row("竖直角 α返（度，仰角正）", "v_angle_back", "-2",
+			LineEdit.KEYBOARD_TYPE_DEFAULT, "", "row", false, true)  # 角度档 + ±
 	add_input_row("B 站仪器高 i_B（m）", "i_back", "1.5")
 	add_input_row("A 站目标高 v_A（m）", "v_back", "1.5")
 	_add_section("常数（可自定）")

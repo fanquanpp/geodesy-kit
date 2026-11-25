@@ -20,13 +20,59 @@ const _TC := preload("res://themes/theme_constants.gd")  # GKThemeConstants
 const COPY_ROW_MAX := 5
 ## 复制反馈中的行摘要长度（状态行过长会换行挤压版面）
 const COPY_FEEDBACK_CHARS := 24
+## 状态色条宽度（设计 px）；高度 = 面板左描边宽（2px）级别的细条，置于内容之前
+const STATUS_BAR_WIDTH := 6.0
+## 状态色条 Tween 展开时长（秒）
+const STATUS_BAR_TWEEN := 0.2
 
 @onready var value_label: Label = get_node("VBox/Value")
+
+var _status_bar: ColorRect = null  # 状态色条（成功绿/注意黄/失败红；主题 OkLabel/WarnLabel/ErrorLabel 字色）
 
 func _ready() -> void:
 	(get_node("VBox/CopyAll") as Button).pressed.connect(_on_copy_all)
 
 var _lines: PackedStringArray = PackedStringArray()
+
+## 状态色条：三色取主题语义 Label 字色（缺项回退中性色，主题未构建时不崩）；
+## 画在 PanelContainer 内部专属 ColorRect（VBox 之前的兄弟节点），不被 panel StyleBox 覆盖。
+func _bar_color(kind: String) -> Color:
+	var c := get_theme_color("font_color", kind)
+	return c if c != Color() else Color(0.6, 0.6, 0.6)
+
+func _show_status_bar(kind: String) -> void:
+	var target := _bar_color(kind)
+	if _status_bar == null or not is_instance_valid(_status_bar):
+		_status_bar = ColorRect.new()
+		_status_bar.name = "StatusBar"
+		_status_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_status_bar.color = target
+		# 色条锚在卡左侧竖条：宽度从 0 展开到 STATUS_BAR_WIDTH（0.2s Tween）
+		_status_bar.anchor_left = 0.0
+		_status_bar.anchor_top = 0.0
+		_status_bar.anchor_bottom = 1.0
+		_status_bar.offset_left = 0.0
+		_status_bar.offset_top = 4.0
+		_status_bar.offset_bottom = -4.0
+		_status_bar.offset_right = 0.0
+		add_child(_status_bar)
+		move_child(_status_bar, 0)  # 置于内容 VBox 之前
+	var tw := create_tween()
+	tw.tween_property(_status_bar, "custom_minimum_size:x", STATUS_BAR_WIDTH, STATUS_BAR_TWEEN) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.parallel().tween_property(_status_bar, "offset_right", STATUS_BAR_WIDTH, STATUS_BAR_TWEEN) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_status_bar.color = target
+
+## 隐藏状态色条：宽度收回到 0（PanelContainer 布局对 0 宽子节点不占位）
+func _hide_status_bar() -> void:
+	if _status_bar == null or not is_instance_valid(_status_bar):
+		return
+	var tw := create_tween()
+	tw.tween_property(_status_bar, "custom_minimum_size:x", 0.0, STATUS_BAR_TWEEN) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(_status_bar, "offset_right", 0.0, STATUS_BAR_TWEEN) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 
 ## 结果行渲染：每行一条（行文本 + 行数 ≤ 阈值时的 96px 复制按钮）；空数组显示占位。
 ## P9.4 修复渲染死区：行数 > COPY_ROW_MAX 时此前既不渲染行（直接 return）又
@@ -39,6 +85,18 @@ func set_result(lines: PackedStringArray) -> void:
 	# 全文展示（行区只有按钮不渲染，空白卡 bug 根因）；≤阈值时行文本在行区。
 	value_label.visible = lines.is_empty() or lines.size() > COPY_ROW_MAX
 	_rebuild_rows()
+	_hide_status_bar()  # 正常态：色条收回，变体回落 Card
+
+## 失败态：卡体换 ErrorCard 变体（错误红描边，主题缺失回退默认不报错），
+## 左缘展开红色状态条——与 batch_convert 失败行卡同一视觉语言。
+func set_failed() -> void:
+	theme_type_variation = &"ErrorCard"
+	_show_status_bar("ErrorLabel")
+
+## 成功态：恢复 Card 变体并展开绿色状态条（成功后显式调用）。
+func set_succeeded() -> void:
+	theme_type_variation = &"Card"
+	_show_status_bar("OkLabel")
 
 ## 卡头「复制全部」按钮：行多时唯一复制入口；行少时与行级按钮并存
 func _on_copy_all() -> void:

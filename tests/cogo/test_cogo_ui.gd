@@ -181,11 +181,11 @@ func test_focus_field_and_enter_flow() -> void:
 		return
 	var calc: GKCalculatorBase = load("res://scenes/calculators/cogo/a1_polar_fwd.tscn").instantiate()
 	tree.root.add_child(calc)
-	# 数值行数字键盘
+	# 数值行数字键盘（P9.4 勘误：缺省改 KEYBOARD_TYPE_NUMBER_DECIMAL，可输入小数点）
 	var edit0: LineEdit = calc._fields.get("x0_m", null)
 	assert_true(edit0 != null, "字段已登记")
 	if edit0 != null:
-		assert_int_eq(edit0.virtual_keyboard_type, LineEdit.KEYBOARD_TYPE_NUMBER, "数值行数字键盘")
+		assert_int_eq(edit0.virtual_keyboard_type, LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL, "数值行带小数点数字键盘")
 	# focus_field：grab_focus 生效、未知 key 安全不崩
 	calc.focus_field("az_deg")
 	assert_true((calc._fields["az_deg"] as LineEdit).has_focus(), "focus_field 聚焦出错字段")

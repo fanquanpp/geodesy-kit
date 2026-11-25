@@ -29,16 +29,16 @@ func _build_rows() -> void:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var x := num_field(_fields["x_m"], "点位 x", bad)
-	var y := num_field(_fields["y_m"], "点位 y", bad)
-	var px := num_field(_fields["x_pivot_m"], "枢轴 x", bad)
-	var py := num_field(_fields["y_pivot_m"], "枢轴 y", bad)
+	var x := num_field(_fields["x_m"], "点位 x", bad, "x_m")
+	var y := num_field(_fields["y_m"], "点位 y", bad, "y_m")
+	var px := num_field(_fields["x_pivot_m"], "枢轴 x", bad, "x_pivot_m")
+	var py := num_field(_fields["y_pivot_m"], "枢轴 y", bad, "y_pivot_m")
 	if not bad.is_empty():
 		return fail_input(bad)
-	var rot := ang_field(_fields["rot_deg"], "旋转角", bad)
-	var scale := opt_num_field(_fields["scale"], 1.0, "缩放系数", bad)
-	var tx := opt_num_field(_fields["dx_m"], 0.0, "平移 dx", bad)
-	var ty := opt_num_field(_fields["dy_m"], 0.0, "平移 dy", bad)
+	var rot := ang_field(_fields["rot_deg"], "旋转角", bad, "rot_deg")
+	var scale := opt_num_field(_fields["scale"], 1.0, "缩放系数", bad, "scale")
+	var tx := opt_num_field(_fields["dx_m"], 0.0, "平移 dx", bad, "dx_m")
+	var ty := opt_num_field(_fields["dy_m"], 0.0, "平移 dy", bad, "dy_m")
 	if not bad.is_empty():
 		return fail_input(bad)
 	if String(_fields["scale"].text).strip_edges() != "" and scale == 0.0:

@@ -16,15 +16,17 @@ func get_description() -> String:
 func _build_rows() -> void:
 	# P9.4 坐标输入形式：起点 x|y 坐标对双列（stacked 标签在上 + 单位后缀）
 	add_coord_pair_row("起点 x（东）", "x0_m", "起点 y（北）", "y0_m", "m", "m")
-	add_input_row("坐标方位角 α", "az_deg", "45（或 45 30 00）", LineEdit.KEYBOARD_TYPE_NUMBER, "°")
-	add_input_row("水平距离 D", "dist_m", "500", LineEdit.KEYBOARD_TYPE_NUMBER, "m")
+	# 角度档 keyboard_angle=true：az 可输 45 30 00 度分秒（键盘须含空格 → DEFAULT）
+	add_input_row("坐标方位角 α", "az_deg", "45（或 45 30 00）",
+			LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL, "°", "row", true)
+	add_input_row("水平距离 D", "dist_m", "500", LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL, "m")
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var x0 := num_field(_fields["x0_m"], "起点 x", bad)
-	var y0 := num_field(_fields["y0_m"], "起点 y", bad)
-	var az := ang_field(_fields["az_deg"], "坐标方位角", bad)
-	var dist := num_field(_fields["dist_m"], "水平距离", bad)
+	var x0 := num_field(_fields["x0_m"], "起点 x", bad, "x0_m")
+	var y0 := num_field(_fields["y0_m"], "起点 y", bad, "y0_m")
+	var az := ang_field(_fields["az_deg"], "坐标方位角", bad, "az_deg")
+	var dist := num_field(_fields["dist_m"], "水平距离", bad, "dist_m")
 	if not bad.is_empty():
 		return fail_input(bad)
 	return CORE.forward({"x0_m": x0, "y0_m": y0, "az_deg": az, "dist_m": dist})

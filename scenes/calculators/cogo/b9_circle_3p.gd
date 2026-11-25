@@ -27,12 +27,12 @@ func _build_rows() -> void:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var x1 := num_field(_fields["x1_m"], "点 1 x", bad)
-	var y1 := num_field(_fields["y1_m"], "点 1 y", bad)
-	var x2 := num_field(_fields["x2_m"], "点 2 x", bad)
-	var y2 := num_field(_fields["y2_m"], "点 2 y", bad)
-	var x3 := num_field(_fields["x3_m"], "点 3 x", bad)
-	var y3 := num_field(_fields["y3_m"], "点 3 y", bad)
+	var x1 := num_field(_fields["x1_m"], "点 1 x", bad, "x1_m")
+	var y1 := num_field(_fields["y1_m"], "点 1 y", bad, "y1_m")
+	var x2 := num_field(_fields["x2_m"], "点 2 x", bad, "x2_m")
+	var y2 := num_field(_fields["y2_m"], "点 2 y", bad, "y2_m")
+	var x3 := num_field(_fields["x3_m"], "点 3 x", bad, "x3_m")
+	var y3 := num_field(_fields["y3_m"], "点 3 y", bad, "y3_m")
 	if not bad.is_empty():
 		return fail_input(bad)
 	return CORE.three_point_circle({

@@ -20,10 +20,10 @@ func _build_rows() -> void:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var x0 := num_field(_fields["x0_m"], "起点 x", bad)
-	var y0 := num_field(_fields["y0_m"], "起点 y", bad)
-	var x := num_field(_fields["x_m"], "待定点 x", bad)
-	var y := num_field(_fields["y_m"], "待定点 y", bad)
+	var x0 := num_field(_fields["x0_m"], "起点 x", bad, "x0_m")
+	var y0 := num_field(_fields["y0_m"], "起点 y", bad, "y0_m")
+	var x := num_field(_fields["x_m"], "待定点 x", bad, "x_m")
+	var y := num_field(_fields["y_m"], "待定点 y", bad, "y_m")
 	if not bad.is_empty():
 		return fail_input(bad)
 	return CORE.inverse({"x0_m": x0, "y0_m": y0, "x_m": x, "y_m": y})

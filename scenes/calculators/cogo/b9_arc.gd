@@ -26,11 +26,11 @@ func _build_rows() -> void:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var cx := num_field(_fields["cx_m"], "圆心 x", bad)
-	var cy := num_field(_fields["cy_m"], "圆心 y", bad)
-	var r := num_field(_fields["r_m"], "半径", bad)
-	var az1 := ang_field(_fields["az1_deg"], "起始方位角", bad)
-	var az2 := ang_field(_fields["az2_deg"], "终止方位角", bad)
+	var cx := num_field(_fields["cx_m"], "圆心 x", bad, "cx_m")
+	var cy := num_field(_fields["cy_m"], "圆心 y", bad, "cy_m")
+	var r := num_field(_fields["r_m"], "半径", bad, "r_m")
+	var az1 := ang_field(_fields["az1_deg"], "起始方位角", bad, "az1_deg")
+	var az2 := ang_field(_fields["az2_deg"], "终止方位角", bad, "az2_deg")
 	if not bad.is_empty():
 		return fail_input(bad)
 	return CORE.arc_by_azimuth({

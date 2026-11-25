@@ -16,6 +16,8 @@ config/version="0.2"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://assets/icons/app_icon.png"
+; Android 返回键不退出应用——回退逻辑由 main.gd 接管（go_back_requested 栈回退）
+config/quit_on_go_back=false
 
 [debug]
 
@@ -38,6 +40,18 @@ window/size/min_window_size=Vector2i(720, 960)
 theme/custom="res://themes/main.tres"
 theme/custom_font="res://assets/fonts/NotoSansSC-Regular.otf"
 
+[input]
+
+; 触屏不仿真鼠标：Android 默认 emulate_mouse_from_touch=true 会把手指事件变成
+; mouse 事件，触屏拖滚保持引擎原生路径生效（桌面端 emulate_touch_from_mouse
+; 保留默认 false，键鼠走原生 mouse 路径）。
+input_devices/pointing/emulate_mouse_from_touch=true
+; Android 触屏滚动死区：显式关掉引擎侧死区防漂移，deadzone 由
+; GKTouchScroll.scroll_deadzone=24 统一口径（裸 ScrollContainer 另行设置）。
+input_devices/pointing/android/disable_scroll_deadzone=false
+; 长按不映射右键：长按是触屏常见手势，映射会干扰拖滚判定。
+input_devices/pointing/android/enable_long_press_as_right_click=false
+
 [internationalization]
 
 locale/text_server_data_presets=true
@@ -45,13 +59,6 @@ locale/text_server_data_presets=true
 [physics]
 
 3d/physics_engine="Jolt Physics"
-
-[input]
-
-# 触屏不仿真鼠标（Android 默认 emulate_mouse_from_touch=true 会把手指事件变成
-# mouse 事件，ScrollContainer 收不到 ScreenDrag，真机只能拖滚动条——用户反馈根因）；
-# 桌面端 emulate_touch_from_mouse 保留默认 false（键鼠走原生 mouse 路径）。
-devices/pointing/emulate_mouse_from_touch=false
 
 [rendering]
 

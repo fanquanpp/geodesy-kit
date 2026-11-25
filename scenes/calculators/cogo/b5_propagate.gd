@@ -20,8 +20,8 @@ func _build_rows() -> void:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var az_prev := ang_field(_fields["az_prev_deg"], "前一边方位角", bad)
-	var angle := ang_field(_fields["angle_deg"], "转折角", bad)
+	var az_prev := ang_field(_fields["az_prev_deg"], "前一边方位角", bad, "az_prev_deg")
+	var angle := ang_field(_fields["angle_deg"], "转折角", bad, "angle_deg")
 	if not bad.is_empty():
 		return fail_input(bad)
 	return CORE.propagate({

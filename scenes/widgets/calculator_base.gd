@@ -48,9 +48,29 @@ var _formula_text: Label            # 兼容别名 = _formula_widget 的文本 L
 var _limits_widget: Control         # limits_panel.tscn（GKLimitsPanel）
 var _limits_card: PanelContainer    # 兼容别名 = _limits_widget
 var _limits_label: Label            # 兼容别名 = _limits_widget 的结论 Label
+# —— 折叠契约（本施工项①）：结果/步骤/公式三区块各包 FoldableContainer，
+#    共用 FoldableGroup（探针确认 4.7.2 存在该类与 allow_folding_all 属性）——
+#    组内互斥（同一时刻至多展开一块），allow_folding_all=true 允许全折；
+#    默认全折（结果卡有兜底高度 148，占位态不空白）；展开/收起动画自写 Tween
+#    （4.7.2 FoldableContainer 无内建展开时长属性，折叠态切换经 folding_changed
+#    信号接管 min 高度过渡，0.18s）。
+var _fold_group: FoldableGroup      # 三折叠块共用组
+var _result_fold: FoldableContainer # 「结果」折叠块（内装 result_card + 限差面板）
+var _steps_fold: FoldableContainer  # 「计算步骤」折叠块（内装 step_list）
+var _formula_fold: FoldableContainer  # 「公式与依据」折叠块（内装 formula_card）
+var _result_fold_ever_expanded := false  # 结果块是否被自动展开过（成功一次即置真；用户收起后不再强翻）
 var _scroll: ScrollContainer        # 左列滚动容器（输入区；结果定位/回车流转用）
 var _result_scroll: ScrollContainer  # 右列滚动容器（结果区；宽视口左右布局）
+var _body: HBoxContainer            # 主体分栏（断点切换时左右布局重排）
+var _left_v: VBoxContainer          # 左列内容容器（重排时结果构件回挂目标）
+var _right_v: VBoxContainer         # 右列内容容器（单列态整列并入左列滚动流）
 var _fav_button: Button
+var _run_btn: Button  # 「计算」主按钮引用（busy 态禁用/恢复直接持有，不走节点路径）
+# 软键盘避让等待态（_on_field_focus_entered → _process 逐帧检查）
+var _scroll_wait_row: Control = null  # 待定位的输入行（键盘 inset 生效后滚到可视区）
+var _scroll_wait_frames := 0  # 兜底超时帧数（键盘不弹时也能完成定位）
+var _scroll_wait_active := false
+var _bp_handle: GKResponsive.WatchHandle  # 断点连接句柄（退出/PREDELETE 时 unwatch）
 
 func _ready() -> void:
 	_build_ui()
@@ -62,6 +82,8 @@ func _ready() -> void:
 	var id := get_entry_id()
 	if not id.is_empty() and GKServices.ready_state() and GKServices.favorites.is_favorite(id):
 		_fav_button.text = "已收藏"
+	# 断点钩：视口尺寸变化时左右布局重排（单列↔双列）；退出/PREDELETE 时 unwatch
+	_bp_handle = GKResponsive.watch(self, _apply_result_layout)
 
 # ---------- 供子类覆写的契约方法 ----------
 
@@ -155,16 +177,33 @@ func register_field(key: String, edit: LineEdit) -> void:
 	# ensure_control_visible 把该字段带到可视区上半段）
 	edit.focus_entered.connect(_on_field_focus_entered.bind(edit))
 
-## 虚拟键盘弹出避让：字段获焦时延迟一帧滚动定位——Android 键盘弹出后窗口
-## 可视高度变化（viewport size_changed）晚于 focus 事件，直接滚会被键盘再遮住；
-## call_deferred 让滚动发生在本帧布局与键盘 inset 生效之后。
+## 虚拟键盘弹出避让：滚动定位延迟到键盘高度 > 0 那帧——call_deferred 只晚一帧，
+## Android 键盘弹出动画期间窗口尚未平移/resize，iOS 窗口根本不 resize，均会把
+## 字段滚到仍被键盘遮住的位置。改用逐帧等待：_process 每帧查
+## virtual_keyboard_get_height()，> 0（或超时兜底）才执行定位；高度恒 0 的
+## 桌面/iOS 无效场景走超时路径，行为退化为稍晚的一次普通定位。
 func _on_field_focus_entered(edit: LineEdit) -> void:
 	if _scroll == null or not is_instance_valid(_scroll):
 		return
 	var row := edit.get_parent() as Control
 	if row == null:
 		return
-	_scroll.call_deferred("ensure_control_visible", row)
+	_scroll_wait_row = row
+	_scroll_wait_frames = 30  # 兜底超时：键盘不弹（对已聚焦内容再点击）也能定位
+	_scroll_wait_active = true
+
+func _process(_delta: float) -> void:
+	if not _scroll_wait_active:
+		return
+	var kb := DisplayServer.virtual_keyboard_get_height()
+	if kb <= 0 and _scroll_wait_frames > 0:
+		_scroll_wait_frames -= 1
+		return
+	_scroll_wait_active = false
+	if _scroll != null and is_instance_valid(_scroll) \
+			and _scroll_wait_row != null and is_instance_valid(_scroll_wait_row):
+		_scroll.ensure_control_visible(_scroll_wait_row)
+	_scroll_wait_row = null
 
 func _on_field_text_changed(_new_text: String, edit: LineEdit) -> void:
 	if _focused_field == edit:
@@ -181,34 +220,47 @@ func focus_field(key: String) -> void:
 	edit.grab_focus()
 
 ## 便捷建行：标签 + LineEdit（组装 input_row.tscn 独立控件；触控目标 96px 由控件保证）
-## keyboard_type：虚拟键盘类型，默认数字键盘（数值行）；多行/含分隔符的文本字段
-## 应显式传 LineEdit.KEYBOARD_TYPE_DEFAULT（Android 数字键盘无「;」「,」与换行）。
+## keyboard_type：虚拟键盘类型，默认带小数点数字键盘 KEYBOARD_TYPE_NUMBER_DECIMAL
+## （数值行；旧默认 NUMBER 无「.」输不了小数）。多行/含分隔符的文本字段应显式传
+## LineEdit.KEYBOARD_TYPE_DEFAULT（Android 数字键盘无「;」「,」与换行）。
+## 角度/度分秒行（可输 30 30 00 空格分隔）同样须 DEFAULT——数字键盘无空格。
+## 约定传法：keyboard_angle=true（角度档，一处兜住全部角度行，免逐行散写）。
+## pm_button：负值字段 opt-in 的「±」快捷按钮（透传 input_row.setup）。
 func add_input_row(label_text: String, key: String, placeholder := "",
-		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER,
-		suffix := "", mode := "row") -> LineEdit:
+		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL,
+		suffix := "", mode := "row", keyboard_angle := false, pm_button := false) -> LineEdit:
+	if keyboard_angle:
+		keyboard_type = LineEdit.KEYBOARD_TYPE_DEFAULT
 	var row: HBoxContainer = preload("res://scenes/widgets/input_row.tscn").instantiate()
 	_inputs_root.add_child(row)
 	# setup 必须在入树后调用：input_row 的 label/edit 是 @onready 变量，
 	# 入树前为 null，setup 返回的 edit 才是有效的 LineEdit（供 register_field 登记）
-	var edit: LineEdit = row.call("setup", label_text, key, placeholder, keyboard_type, suffix, mode)
+	var edit: LineEdit = row.call("setup", label_text, key, placeholder,
+			keyboard_type, suffix, mode, pm_button)
 	register_field(key, edit)
 	return edit
 
 ## 坐标对双列行（P9.4 坐标输入形式）：一行内左右两个 stacked 字段
 ## （如 BLH 的 B|L、xy 的 x|y），形成"坐标对"视觉分组。
 ## label_l/label_r 为左右字段标签，suffix_l/r 为单位后缀（°/m 等）。
+## 角度档约定：suffix 含 °/′/″ 的坐标行是经纬度（可输度分秒，含空格），
+## 该字段键盘自动回落 DEFAULT，免逐文件散改。
 func add_coord_pair_row(label_l: String, key_l: String, label_r: String, key_r: String,
 		suffix_l := "", suffix_r := "") -> void:
 	var pair := HBoxContainer.new()
 	pair.add_theme_constant_override("separation", GKThemeConstants.MIN_TOUCH_SPACING / 2)
 	_inputs_root.add_child(pair)
 	for spec: Array in [[label_l, key_l, suffix_l], [label_r, key_r, suffix_r]]:
+		var sfx := String(spec[2])
+		var kb := LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL
+		if sfx.contains("°") or sfx.contains("′") or sfx.contains("″"):
+			kb = LineEdit.KEYBOARD_TYPE_DEFAULT
 		var row: HBoxContainer = preload("res://scenes/widgets/input_row.tscn").instantiate()
 		pair.add_child(row)
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.size_flags_stretch_ratio = 1.0
 		var edit: LineEdit = row.call("setup", spec[0], spec[1], "",
-			LineEdit.KEYBOARD_TYPE_NUMBER, spec[2], "stacked")
+			kb, sfx, "stacked")
 		register_field(spec[1], edit)
 
 func _on_field_submitted(_text: String, idx: int) -> void:
@@ -224,7 +276,9 @@ func _error_field_style() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(1.0, 0.92, 0.92, 1.0)
 	sb.set_border_width_all(3)
-	sb.border_color = Color("#C62828")
+	# 错误描边取主题 ErrorLabel 字色（main.tres / dark.tres 各自的语义红），
+	# 不再硬编码浅色主题色值——深色主题下描边同步变亮红。
+	sb.border_color = get_theme_color("font_color", "ErrorLabel")
 	sb.set_corner_radius_all(10)
 	sb.content_margin_left = 24
 	sb.content_margin_right = 24
@@ -238,6 +292,48 @@ func _clear_field_highlight() -> void:
 	_focused_field = null
 
 # ---------- UI 骨架 ----------
+
+## 折叠块展开/收起动画时长（秒）——自写 Tween 的统一节奏
+const _FOLD_TWEEN_S := 0.18
+
+## 建一个折叠块（折叠契约①）：标题即区块标题，入指定 FoldableGroup（互斥、
+## 允许全折），默认折叠（folded=true，展开由计算成功后的定位逻辑按需驱动）。
+## 展开动画自写 Tween：4.7.2 FoldableContainer 折叠态切换是瞬时裁剪（无内建
+## 时长属性），此处经 folding_changed 信号对内部内容做 min 高度 0→全高过渡，
+## 视觉平滑且不干预容器自身的折叠布局（动画只动 custom_minimum_size，收起侧
+## 同步回落，结束时 min 归 0 不留残高）。
+func _make_fold(title_text: String, _tween_s: float) -> FoldableContainer:
+	var fc := FoldableContainer.new()
+	fc.title = title_text
+	fc.folded = true  # 默认全折（折叠契约：互斥默认全折）
+	fc.foldable_group = _fold_group
+	fc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# 展开动画：记录内容首行高度，折叠切换那帧起 0→目标高（收起反向）
+	fc.folding_changed.connect(func(_is_folded: bool) -> void:
+		_animate_fold(fc))
+	return fc
+
+## 折叠动画（自写 Tween）：对折叠块当前内容区做高度过渡。展开侧 0→内容自然高，
+## 收起侧自然高→0；tween 结束把 min 高度归 0（容器高度交还内容自适应）。
+## 内容自然高在动画起点采样一次（布局稳定后的即时值，多行卡片足够准确）。
+func _animate_fold(fc: FoldableContainer) -> void:
+	if fc == null or not is_instance_valid(fc):
+		return
+	var target := 0.0
+	for c: Control in fc.get_children():
+		if c.visible:
+			target = maxf(target, c.get_combined_minimum_size().y)
+	if fc.folded:
+		target = 0.0  # 收起：内容区高度归 0
+	var tw := create_tween()
+	if target > 0.0:
+		fc.custom_minimum_size.y = 0.0  # 从 0 展开
+	else:
+		fc.custom_minimum_size.y = maxf(fc.custom_minimum_size.y, 0.0)
+	tw.tween_property(fc, "custom_minimum_size:y", target, _FOLD_TWEEN_S) \
+			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func() -> void:
+		fc.custom_minimum_size.y = 0.0)  # 结束归 0：高度交还内容自适应
 
 func _build_ui() -> void:
 	# P9.2 左右布局（用户要求「采取左右布局」）：
@@ -262,6 +358,7 @@ func _build_ui() -> void:
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", GKThemeConstants.MIN_TOUCH_SPACING)
 	page_v.add_child(body)
+	_body = body  # 断点切换重排左右布局（_apply_result_layout）
 
 	# —— 左列：标题/描述/状态/输入区（整列滚动，吃满左份额）——
 	_scroll = GKTouchScroll.attach(false)
@@ -273,6 +370,7 @@ func _build_ui() -> void:
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(v)
+	_left_v = v  # 单列态：结果构件并入本列滚动流尾部
 
 	_title_label = Label.new()
 	_title_label.theme_type_variation = &"Header"
@@ -302,12 +400,13 @@ func _build_ui() -> void:
 	_result_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_result_scroll.size_flags_stretch_ratio = 0.58
 	_result_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# 窄竖屏（<700）收起右列：单列纵排时结果区并入左列滚动流（走 _apply_result_layout）
+	# 窄竖屏（<WIDE 900）收起右列：单列纵排时结果区并入左列滚动流（走 _apply_result_layout）
 	body.add_child(_result_scroll)
 	var rv := VBoxContainer.new()
 	rv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	rv.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_result_scroll.add_child(rv)
+	_right_v = rv  # 双列态：结果构件所在列（重排可整列搬回左列）
 	# 右列标题与左列「输入」对位（宽屏左右布局下两列语义一目了然）
 	var result_head := Label.new()
 	result_head.name = "ResultHead"
@@ -315,96 +414,143 @@ func _build_ui() -> void:
 	result_head.theme_type_variation = &"Header"
 	rv.add_child(result_head)
 
+	# —— 折叠契约：三区块各包 FoldableContainer（折叠头即区块标题，右列「结果」
+	#    Header 撤销职责并入折叠头）——共用 FoldableGroup 互斥、允许全折、默认全折
+	_fold_group = FoldableGroup.new()
+	_fold_group.allow_folding_all = true
+	_result_fold = _make_fold("结果", _FOLD_TWEEN_S)
+	rv.add_child(_result_fold)
+	_steps_fold = _make_fold("计算步骤", _FOLD_TWEEN_S)
+	_steps_fold.visible = false  # 无步骤时整块隐藏（P6：自适应高度，不占空卡位）
+	rv.add_child(_steps_fold)
+	_formula_fold = _make_fold("公式与依据", _FOLD_TWEEN_S)
+	_formula_fold.visible = false
+	rv.add_child(_formula_fold)
+
 	_result_card = preload("res://scenes/widgets/result_card.tscn").instantiate()
 	_result_card.custom_minimum_size = Vector2(0, 148)  # 结果卡兜底高度：占位时视觉重心与输入区平衡
 	_result_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rv.add_child(_result_card)
+	_result_fold.add_child(_result_card)
 	_result_label = _result_card.get("value_label")  # 兼容别名（tests/app/test_shell.gd 断言文本）
 	var result_widget := _result_card as GKResultCard
 	result_widget.copy_confirmed.connect(_on_line_copied)
 
-	# 限差面板紧随结果卡（P6：结论一目了然，明细在步骤区之前）
+	# 限差面板紧随结果卡（P6：结论一目了然，明细在步骤区之前）——同属结果折叠块
 	_limits_widget = preload("res://scenes/widgets/limits_panel.tscn").instantiate()
 	_limits_widget.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rv.add_child(_limits_widget)
+	_result_fold.add_child(_limits_widget)
 	_limits_card = _limits_widget  # 兼容别名（tests/app/test_shell.gd 断言 visible）
 
 	_steps_widget = preload("res://scenes/widgets/step_list.tscn").instantiate()
-	_steps_widget.visible = false  # 无步骤时隐藏（P6：自适应高度，不占空卡位）
 	_steps_widget.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rv.add_child(_steps_widget)
+	_steps_fold.add_child(_steps_widget)
 	_steps_root = _steps_widget  # 兼容别名：P6 起步骤卡直接挂在控件自身，get_child_count() 语义不变
 
 	_formula_widget = preload("res://scenes/widgets/formula_card.tscn").instantiate()
 	_formula_widget.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rv.add_child(_formula_widget)
+	_formula_fold.add_child(_formula_widget)
 	_formula_text = _formula_widget.get("formula_label")  # 兼容别名
 	_build_sketch()
 
 	# —— 操作栏：固定底部（不随滚动），主操作常驻可达 ——
-	# P9.3 空间回收：栏高 96→72，主按钮 ratio 3 独大，次按钮等宽 Expand
-	# 均分剩余，全宽一行但压缩高度把空间还给主体两列。
+	# 本轮回滚 P9.3 压缩：6 按钮 72→96（GKThemeConstants.TOUCH_TARGET，触屏误触
+	# 率优先）；指针设备（宽屏键鼠，DisplayServer 无触屏）降档 TOUCH_TARGET_POINTER
+	# 56，与 main.gd 顶栏同口径——按设备能力而非断点。
+	var action_h := GKThemeConstants.TOUCH_TARGET \
+			if DisplayServer.is_touchscreen_available() \
+			else GKThemeConstants.TOUCH_TARGET_POINTER
 	var actions := HBoxContainer.new()
 	actions.name = "ActionBar"
-	actions.custom_minimum_size = Vector2(0, 72)
+	actions.custom_minimum_size = Vector2(0, action_h)
 	actions.add_theme_constant_override("separation", GKThemeConstants.MIN_TOUCH_SPACING / 2)
 	page_v.add_child(actions)
 	var run_btn := Button.new()
+	_run_btn = run_btn
 	run_btn.text = "计算"
 	run_btn.theme_type_variation = &"PrimaryButton"
-	run_btn.custom_minimum_size = Vector2(0, 72)
+	run_btn.custom_minimum_size = Vector2(0, action_h)
 	run_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	run_btn.size_flags_stretch_ratio = 3.0
 	run_btn.pressed.connect(_on_run)
 	actions.add_child(run_btn)
 	var reset_btn := Button.new()
 	reset_btn.text = "重置"
-	reset_btn.custom_minimum_size = Vector2(0, 72)
+	reset_btn.custom_minimum_size = Vector2(0, action_h)
 	reset_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reset_btn.pressed.connect(_on_reset)
 	actions.add_child(reset_btn)
 	var example_btn := Button.new()
 	example_btn.text = "示例"
-	example_btn.custom_minimum_size = Vector2(0, 72)
+	example_btn.custom_minimum_size = Vector2(0, action_h)
 	example_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	example_btn.pressed.connect(_on_example)
 	actions.add_child(example_btn)
 	var copy_btn := Button.new()
 	copy_btn.text = "复制"
-	copy_btn.custom_minimum_size = Vector2(0, 72)
+	copy_btn.custom_minimum_size = Vector2(0, action_h)
 	copy_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy_btn.pressed.connect(_on_copy)
 	actions.add_child(copy_btn)
 	_fav_button = Button.new()
 	_fav_button.text = "收藏"
-	_fav_button.custom_minimum_size = Vector2(0, 72)
+	_fav_button.custom_minimum_size = Vector2(0, action_h)
 	_fav_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_fav_button.pressed.connect(_on_favorite)
 	actions.add_child(_fav_button)
 	var export_btn := Button.new()
 	export_btn.text = "报告"
-	export_btn.custom_minimum_size = Vector2(0, 72)
+	export_btn.custom_minimum_size = Vector2(0, action_h)
 	export_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	export_btn.pressed.connect(_on_export_report)
 	actions.add_child(export_btn)
 
-	# 竖屏窄视口：右列并入左列（单列纵排），左右布局只在宽视口/横屏生效
-	if get_viewport().get_visible_rect().size.x < 700.0:
-		_result_scroll.visible = false
-		# 结果构件整体搬到左列滚动流尾部（输入之后）
-		var rv_children: Array = rv.get_children().duplicate()
-		for c: Control in rv_children:
-			rv.remove_child(c)
-			v.add_child(c)
+	# 竖屏窄视口（<WIDE 900）：右列并入左列（单列纵排），左右布局只在宽视口/横屏生效。
+	# 行为后果明示：设计基准宽 720 原走 <700 单列，收口到 GKResponsive.WIDE=900 后
+	# 手机竖屏（720）塌回单列、桌面 ≥900 才出右列——产品形态变更（720 宽下顶栏
+	# 约 800px 需求溢出、双列拥挤）；中档预案为 MEDIUM 单列但结果卡置顶（未实施）。
+	_apply_result_layout(GKResponsive.is_wide_now(self))
+
+## 断点重排：wide=true 左右两列（结果区回右列），false 单列纵排（右列隐藏、
+## 结果构件整列并入左列滚动流尾部）。构件在同一树内移动不重建，结果状态保持。
+func _apply_result_layout(is_wide: bool) -> void:
+	if _body == null or _right_v == null or _left_v == null:
+		return  # _build_ui 未完成（watch 回调早于构建）不排
+	var wide := is_wide or GKResponsive.is_wide_now(self)
+	_result_scroll.visible = wide
+	if wide:
+		# 结果构件回挂右列（按右列语义次序重插；已在右列时跳过）
+		if _result_card.get_parent() != _right_v:
+			for c: Control in _left_v.get_children():
+				if c != _title_label and c != _desc_label and c != _status_label \
+						and c != _inputs_root:
+					_left_v.remove_child(c)
+					_right_v.add_child(c)
+	else:
+		# 结果构件整列并入左列滚动流尾部（输入之后）；_result_scroll 隐藏省空间
+		if _result_card.get_parent() != _left_v:
+			for c: Control in _right_v.get_children():
+				_right_v.remove_child(c)
+				_left_v.add_child(c)
 
 # ---------- 按钮行为 ----------
 
+## busy 态（观感缓解，非消除冻结）：run() 是同步的（如 c5_network.gd 的 NW.adjust
+## 直接占用主线程），大网解算期间整帧仍会卡——这里只是把「计算中…」状态与按钮
+## 禁用在让渡的一帧里画出来，用户立刻知道点了有效；真异步需 core 侧改造，不在本轮。
 func _on_run() -> void:
+	if _run_btn != null and is_instance_valid(_run_btn):
+		_run_btn.disabled = true
+	_status_label.theme_type_variation = &"Muted"
+	_status_label.text = "计算中…"
+	_status_label.visible = true
+	await get_tree().process_frame  # 让渡一帧：busy 文案与禁用态先渲染
 	var res := run()
 	_last_result = res
 	_render_result(res)
 	if res.get("ok", false) and GKServices.ready_state():
 		GKServices.history.add(get_entry_id(), get_title(), get_inputs(), res)
+	if _run_btn != null and is_instance_valid(_run_btn):
+		_run_btn.disabled = false
 
 ## G3 报告导出（app/report.gd）：把最近一次计算的 §5 协议（含输入回显、
 ## 步骤四列表、限差检核）渲染为 Markdown 报告写入用户文档目录。
@@ -417,7 +563,14 @@ func _on_export_report() -> void:
 		return
 	var res := _Report.save(get_title(), get_entry_id(), get_inputs(), _last_result)
 	if bool(res.get("ok", false)):
-		_status_label.text = "报告已保存到应用文档目录，可在文件管理器查看。"
+		# toast 回显报告绝对路径（report.gd save 返回的 path 已 globalize）；
+		# 路径超长截断显示（状态行换行会挤压版面），完整路径同时复制到剪贴板可取。
+		var path := String(res.get("path", ""))
+		var shown := path if path.length() <= 64 else "…" + path.substr(path.length() - 63)
+		if GKClipboard.copy_text(path):
+			_status_label.text = "报告已保存：%s（完整路径已复制到剪贴板）" % shown
+		else:
+			_status_label.text = "报告已保存到：%s" % shown
 	else:
 		_status_label.theme_type_variation = &"ErrorLabel"
 		_status_label.text = String(res.get("error", "报告导出失败"))
@@ -439,6 +592,10 @@ func _on_example() -> void:
 
 func _on_copy() -> void:
 	if _last_result_text.is_empty():
+		# 无结果可复制：给中文提示而非静默（此前直接 return，按钮像坏了）
+		_status_label.theme_type_variation = &"WarnLabel"
+		_status_label.text = "还没有可复制的结果，请先点击「计算」。"
+		_status_label.visible = true
 		return
 	if GKClipboard.copy_text(_last_result_text):
 		_status_label.theme_type_variation = &"Muted"
@@ -472,12 +629,15 @@ func _render_result(res: Dictionary) -> void:
 
 	if res.is_empty():
 		_steps_widget.call("clear")
-		_steps_widget.visible = false
+		_steps_fold.visible = false  # 折叠契约：区块显隐上移到折叠块
+		_steps_widget.visible = false  # 子控件标志同步（既有契约：tests/cogo/test_cogo_ui.gd 断言 widget.visible）
 		_result_card.call("set_result", PackedStringArray())
+		_result_card.set("theme_type_variation", &"Card")  # 重置态回落 Card 变体
 		_result_label.visible = true  # 占位专用：重置态重新显示
 		_result_label.text = "（尚未计算）"
 		_formula_text.text = ""
 		_formula_widget.call("set_visible_by_formula", false)
+		_formula_fold.visible = false
 		_limits_card.visible = false
 		_status_label.visible = false
 		return
@@ -485,12 +645,15 @@ func _render_result(res: Dictionary) -> void:
 	if not bool(res.get("ok", false)):
 		# 失败：value 必空、error 必中文可读（§5 规则①）；步骤卡清空、公式折叠隐藏（P6）
 		_result_card.call("set_result", PackedStringArray())
+		(_result_card as GKResultCard).set_failed()  # ErrorCard 变体 + 红色状态条
 		_result_label.visible = true  # 失败态经占位 label 提示（行区为空）
 		_result_label.text = "计算未完成"
 		_steps_widget.call("clear")
-		_steps_widget.visible = false
+		_steps_fold.visible = false
+		_steps_widget.visible = false  # 子控件标志同步（既有契约：tests/cogo/test_cogo_ui.gd 断言 widget.visible）
 		_formula_text.text = ""
 		_formula_widget.call("set_visible_by_formula", false)
+		_formula_fold.visible = false
 		_limits_card.visible = false
 		_status_label.theme_type_variation = &"ErrorLabel"
 		_status_label.text = String(res.get("error", "未知错误"))
@@ -516,14 +679,25 @@ func _render_result(res: Dictionary) -> void:
 		# 键名原文保留在报告导出（app/report.gd）。
 		lines.append("%s = %s" % [_Labels.label_for(k, domain), _format_num(value[k], decimals)])
 	_result_card.call("set_result", lines)
+	(_result_card as GKResultCard).set_succeeded()  # Card 变体 + 绿色状态条
 
-	# 步骤四行卡片：空字段跳过（§5 规则②）——经 step_list 组件渲染（内含同步清空）
+	# 步骤四行卡片：空字段跳过（§5 规则②）——经 step_list 组件渲染（内含同步清空）。
+	# 折叠契约：步骤/公式区块显隐由折叠块承担；步骤块展开就近读结果（折叠组互斥
+	# 自动收起结果块，长步骤不再把结果卡顶出可视区）
 	var steps: Array = res.get("steps", [])
 	_steps_widget.call("set_steps", steps)
-	_steps_widget.visible = not steps.is_empty()
+	_steps_fold.visible = not steps.is_empty()
+	_steps_widget.visible = not steps.is_empty()  # 子控件标志同步（既有契约：tests/cogo/test_cogo_ui.gd 断言 widget.visible）
 
 	_formula_text.text = String(res.get("formula", ""))
 	_formula_widget.call("set_visible_by_formula", _formula_text.text != "")
+	_formula_fold.visible = _formula_text.text != ""
+
+	# 成功即展开结果折叠块（折叠默认全折；此前从未展开过才驱动一次，
+	# 用户手动收起后不再被强行翻开——尊重交互意图）
+	if _result_fold.folded and not _result_fold_ever_expanded:
+		_result_fold.folded = false
+	_result_fold_ever_expanded = not _result_fold.folded
 
 	# 限差检核：ok_limit 键存在即渲染（§5 规则③）——经 limits_panel 组件渲染
 	if value.has("ok_limit"):
@@ -543,9 +717,13 @@ func _render_result(res: Dictionary) -> void:
 	else:
 		_limits_card.visible = false
 
-	# 成功后滚动定位到结果卡（P6：用户点「计算」即见结果，不必手动翻找）
+	# 成功后滚动定位到结果卡（P6：用户点「计算」即见结果，不必手动翻找）。
+	# 宽视口左右布局时结果卡在右列，_result_scroll 也定位；窄竖屏右列已隐藏
+	# （结果构件并入左列滚动流），单滚 _scroll 即覆盖。
 	if _scroll != null and is_instance_valid(_scroll):
 		_scroll.call_deferred("ensure_control_visible", _result_card)
+	if _result_scroll != null and is_instance_valid(_result_scroll) and _result_scroll.visible:
+		_result_scroll.call_deferred("ensure_control_visible", _result_card)
 
 	_last_result_text = _result_card.call("get_text")
 
@@ -586,3 +764,10 @@ func _format_seq(v: Variant, decimals: int) -> String:
 	if parts.is_empty():
 		return "（空）"
 	return "，".join(parts) + ("，…（共 %d 项，完整值见导出报告）" % items.size() if truncated else "")
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		# 断点句柄解绑（防视口销毁后 size_changed 悬挂连接）
+		if _bp_handle != null:
+			_bp_handle.unwatch()
+			_bp_handle = null

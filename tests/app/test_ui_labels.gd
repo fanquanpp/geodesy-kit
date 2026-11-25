@@ -158,13 +158,14 @@ func test_input_row_setup_signature() -> void:
 	assert_true(tree != null, "SceneTree 可取")
 	if tree == null:
 		return
-	# 旧三参调用（既有调用处不传新参）：行为不变，数字键盘
+	# 旧三参调用（既有调用处不传新参）：行为不变，带小数点数字键盘
+	# （P9.4 勘误：缺省改 KEYBOARD_TYPE_NUMBER_DECIMAL——旧默认 NUMBER 无「.」输入不了小数）
 	var w1: Node = load("res://scenes/widgets/input_row.tscn").instantiate()
 	var edit1: LineEdit = w1.call("setup", "纬度 B（度）", "lat_deg", "30 或 30°00′00″")
 	assert_true(edit1 is LineEdit, "setup 返回 edit 供登记")
 	assert_eq(w1.get_node("Label").text, "纬度 B（度）", "旧三参写标签")
 	assert_eq((w1.get_node("Edit") as LineEdit).placeholder_text, "30 或 30°00′00″", "旧三参写占位")
-	assert_int_eq(edit1.virtual_keyboard_type, LineEdit.KEYBOARD_TYPE_NUMBER, "旧三参缺省数字键盘")
+	assert_int_eq(edit1.virtual_keyboard_type, LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL, "旧三参缺省带小数点数字键盘")
 	assert_eq(w1.get("key"), "lat_deg", "key 属性写入")
 	tree.root.add_child(w1)
 	tree.root.remove_child(w1)

@@ -27,12 +27,12 @@ func _build_rows() -> void:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var xa := num_field(_fields["x_a_m"], "A 点 x", bad)
-	var ya := num_field(_fields["y_a_m"], "A 点 y", bad)
-	var az1 := ang_field(_fields["az1_deg"], "A 线方位角", bad)
-	var xb := num_field(_fields["x_b_m"], "B 点 x", bad)
-	var yb := num_field(_fields["y_b_m"], "B 点 y", bad)
-	var db := num_field(_fields["d_b_m"], "B 点距离", bad)
+	var xa := num_field(_fields["x_a_m"], "A 点 x", bad, "x_a_m")
+	var ya := num_field(_fields["y_a_m"], "A 点 y", bad, "y_a_m")
+	var az1 := ang_field(_fields["az1_deg"], "A 线方位角", bad, "az1_deg")
+	var xb := num_field(_fields["x_b_m"], "B 点 x", bad, "x_b_m")
+	var yb := num_field(_fields["y_b_m"], "B 点 y", bad, "y_b_m")
+	var db := num_field(_fields["d_b_m"], "B 点距离", bad, "d_b_m")
 	if not bad.is_empty():
 		return fail_input(bad)
 	return CORE.b2_az_dist({

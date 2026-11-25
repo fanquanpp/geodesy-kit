@@ -30,14 +30,14 @@ func _build_rows() -> void:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var xa := num_field(_fields["x_a_m"], "已知点 A x", bad)
-	var ya := num_field(_fields["y_a_m"], "已知点 A y", bad)
-	var xb := num_field(_fields["x_b_m"], "已知点 B x", bad)
-	var yb := num_field(_fields["y_b_m"], "已知点 B y", bad)
-	var xc := num_field(_fields["x_c_m"], "已知点 C x", bad)
-	var yc := num_field(_fields["y_c_m"], "已知点 C y", bad)
-	var al := ang_field(_fields["alpha_deg"], "观测角 α", bad)
-	var be := ang_field(_fields["beta_deg"], "观测角 β", bad)
+	var xa := num_field(_fields["x_a_m"], "已知点 A x", bad, "x_a_m")
+	var ya := num_field(_fields["y_a_m"], "已知点 A y", bad, "y_a_m")
+	var xb := num_field(_fields["x_b_m"], "已知点 B x", bad, "x_b_m")
+	var yb := num_field(_fields["y_b_m"], "已知点 B y", bad, "y_b_m")
+	var xc := num_field(_fields["x_c_m"], "已知点 C x", bad, "x_c_m")
+	var yc := num_field(_fields["y_c_m"], "已知点 C y", bad, "y_c_m")
+	var al := ang_field(_fields["alpha_deg"], "观测角 α", bad, "alpha_deg")
+	var be := ang_field(_fields["beta_deg"], "观测角 β", bad, "beta_deg")
 	if not bad.is_empty():
 		return fail_input(bad)
 	return CORE.b1_resection({

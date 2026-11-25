@@ -13,7 +13,9 @@ func get_description() -> String:
 func _setup() -> void:
 	# P9.4 坐标输入形式：B|L 坐标对双列（stacked 标签 + ° 后缀）
 	_add_coord_pair("纬度 B", "lat_deg", "经度 L", "lon_deg", true, "°", "°")
-	_add_row("中央子午线 L0", "l0_deg", "3°带 L0=3n，6°带 L0=6n−3", true, LineEdit.KEYBOARD_TYPE_NUMBER, "°")
+	# 角度档 keyboard_angle=true：L0 可输度分秒（如 117 00 00，键盘须含空格 → DEFAULT）
+	_add_row("中央子午线 L0", "l0_deg", "3°带 L0=3n，6°带 L0=6n−3", true,
+			LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL, "°", true)
 	_add_row("基准", "datum", "CGCS2000 / 北京54 / 西安80 / WGS84", false, LineEdit.KEYBOARD_TYPE_DEFAULT)
 
 func run() -> Dictionary:

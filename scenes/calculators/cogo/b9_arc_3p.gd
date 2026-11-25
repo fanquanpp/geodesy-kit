@@ -27,12 +27,12 @@ func _build_rows() -> void:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var x1 := num_field(_fields["x1_m"], "起点 P₁ x", bad)
-	var y1 := num_field(_fields["y1_m"], "起点 P₁ y", bad)
-	var x2 := num_field(_fields["x2_m"], "弧上点 P₂ x", bad)
-	var y2 := num_field(_fields["y2_m"], "弧上点 P₂ y", bad)
-	var x3 := num_field(_fields["x3_m"], "终点 P₃ x", bad)
-	var y3 := num_field(_fields["y3_m"], "终点 P₃ y", bad)
+	var x1 := num_field(_fields["x1_m"], "起点 P₁ x", bad, "x1_m")
+	var y1 := num_field(_fields["y1_m"], "起点 P₁ y", bad, "y1_m")
+	var x2 := num_field(_fields["x2_m"], "弧上点 P₂ x", bad, "x2_m")
+	var y2 := num_field(_fields["y2_m"], "弧上点 P₂ y", bad, "y2_m")
+	var x3 := num_field(_fields["x3_m"], "终点 P₃ x", bad, "x3_m")
+	var y3 := num_field(_fields["y3_m"], "终点 P₃ y", bad, "y3_m")
 	if not bad.is_empty():
 		return fail_input(bad)
 	return CORE.arc_by_points({

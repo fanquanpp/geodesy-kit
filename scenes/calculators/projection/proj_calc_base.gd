@@ -15,10 +15,12 @@ func _build_ui() -> void:
 
 ## 登记一行输入并记录标签；required=true 时为必填；
 ## 文本枚举键（基准名/半球/图幅号/MGRS 串/名称等）由调用方传 keyboard_type=KEYBOARD_TYPE_DEFAULT；
-## suffix：单位（并入标签展示，如 "°"/"m"）
+## 角度/度分秒行（可输 39 54 27.1 空格分隔）由调用方传 keyboard_angle=true（角度档
+## 统一落键盘 DEFAULT——数字键盘无空格，度分秒没法输）；suffix：单位（并入标签展示）。
 func _add_row(label_text: String, key: String, placeholder: String, required := false,
-		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER, suffix := "") -> void:
-	add_input_row(label_text, key, placeholder, keyboard_type, suffix)
+		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL, suffix := "",
+		keyboard_angle := false) -> void:
+	add_input_row(label_text, key, placeholder, keyboard_type, suffix, "row", keyboard_angle)
 	_labels[key] = label_text
 	if required:
 		_required.append(key)

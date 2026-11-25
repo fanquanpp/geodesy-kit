@@ -56,14 +56,14 @@ func _dist_mode() -> String:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var x0 := num_field(_fields["x0_m"], "测站 x", bad)
-	var y0 := num_field(_fields["y0_m"], "测站 y", bad)
-	var h0 := num_field(_fields["h0_m"], "测站高程", bad)
-	var az := ang_field(_fields["az_deg"], "坐标方位角", bad)
-	var dist := num_field(_fields["dist_m"], "距离", bad)
-	var v := ang_field(_fields["v_deg"], "竖直角", bad)
-	var hi := num_field(_fields["hi_m"], "仪器高", bad)
-	var ht := num_field(_fields["ht_m"], "棱镜高", bad)
+	var x0 := num_field(_fields["x0_m"], "测站 x", bad, "x0_m")
+	var y0 := num_field(_fields["y0_m"], "测站 y", bad, "y0_m")
+	var h0 := num_field(_fields["h0_m"], "测站高程", bad, "h0_m")
+	var az := ang_field(_fields["az_deg"], "坐标方位角", bad, "az_deg")
+	var dist := num_field(_fields["dist_m"], "距离", bad, "dist_m")
+	var v := ang_field(_fields["v_deg"], "竖直角", bad, "v_deg")
+	var hi := num_field(_fields["hi_m"], "仪器高", bad, "hi_m")
+	var ht := num_field(_fields["ht_m"], "棱镜高", bad, "ht_m")
 	if not bad.is_empty():
 		return fail_input(bad)
 	return CORE.forward_3d({

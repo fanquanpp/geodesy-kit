@@ -18,7 +18,11 @@ const FOOTNOTE := "本报告由 GeodesyKit 自动生成，供教学演示与步�
 const PREVIEW_ROWS := 10
 
 ## 渲染 Markdown 报告。title=计算器名；inputs=输入快照；result=§5 协议结果。
-static func render_markdown(title: String, entry_id: String, inputs: Dictionary, result: Dictionary) -> String:
+## sections（可选，默认 {} 全量向后兼容）：区块开关字典——键 ∈ {inputs, formula,
+## steps, results, limits}，值 false 的区块整节不输出；未列出的区块照常输出。
+## 用途：调用方按 UI 折叠态/用户勾选裁剪报告分区（本施工项①折叠契约的报告侧）。
+static func render_markdown(title: String, entry_id: String, inputs: Dictionary,
+		result: Dictionary, sections: Dictionary = {}) -> String:
 	var L: Array[String] = []
 	L.append("# %s" % title)
 	L.append("")
@@ -27,28 +31,29 @@ static func render_markdown(title: String, entry_id: String, inputs: Dictionary,
 	L.append("- 引擎：%s" % Engine.get_version_info().get("string", "Godot"))
 	L.append("")
 	# 输入回显表
-	if inputs.is_empty():
-		L.append("## 输入")
+	if _section_on(sections, "inputs") or inputs.is_empty():
+		if inputs.is_empty():
+			L.append("## 输入")
+			L.append("")
+			L.append("（无输入快照）")
+		else:
+			L.append("## 输入")
+			L.append("")
+			L.append("| 参数 | 值 |")
+			L.append("| --- | --- |")
+			for k: String in inputs.keys():
+				L.append("| %s | %s |" % [_md_cell(k), _md_cell(str(inputs[k]))])
 		L.append("")
-		L.append("（无输入快照）")
-	else:
-		L.append("## 输入")
-		L.append("")
-		L.append("| 参数 | 值 |")
-		L.append("| --- | --- |")
-		for k: String in inputs.keys():
-			L.append("| %s | %s |" % [_md_cell(k), _md_cell(str(inputs[k]))])
-	L.append("")
 	# 使用公式
 	var formula := String(result.get("formula", ""))
-	if not formula.is_empty():
+	if not formula.is_empty() and _section_on(sections, "formula"):
 		L.append("## 使用公式")
 		L.append("")
 		L.append(formula)
 		L.append("")
 	# 步骤四列表格（§5 规则②：title/formula/substitution/result）
 	var steps: Array = result.get("steps", [])
-	if not steps.is_empty():
+	if not steps.is_empty() and _section_on(sections, "steps"):
 		L.append("## 计算步骤")
 		L.append("")
 		L.append("| 步骤 | 公式 | 代入 | 结果 |")
@@ -65,7 +70,7 @@ static func render_markdown(title: String, entry_id: String, inputs: Dictionary,
 	var ok := bool(result.get("ok", false))
 	if ok:
 		var value: Dictionary = result.get("value", {})
-		if not value.is_empty():
+		if not value.is_empty() and _section_on(sections, "results"):
 			L.append("## 结果")
 			L.append("")
 			L.append("| 量 | 值 |")
@@ -77,7 +82,7 @@ static func render_markdown(title: String, entry_id: String, inputs: Dictionary,
 			_append_value_summary(L, value)
 			L.append("")
 		var lim := _limits_lines(result)
-		if not lim.is_empty():
+		if not lim.is_empty() and _section_on(sections, "limits"):
 			L.append("## 限差检核")
 			L.append("")
 			for line: String in lim:
@@ -94,9 +99,18 @@ static func render_markdown(title: String, entry_id: String, inputs: Dictionary,
 	L.append("")
 	return "\n".join(L)
 
+## 区块开关谓词：sections 缺键（或空字典）= 输出该区块（默认全量，向后兼容）；
+## 仅显式 false 才裁剪。
+static func _section_on(sections: Dictionary, key: String) -> bool:
+	if not sections.has(key):
+		return true
+	return bool(sections[key])
+
 ## 纯文本版：同构去表格线。
-static func render_text(title: String, entry_id: String, inputs: Dictionary, result: Dictionary) -> String:
-	var md := render_markdown(title, entry_id, inputs, result)
+## 纯文本版：同构去表格线。sections 透传 render_markdown（区块裁剪口径一致）。
+static func render_text(title: String, entry_id: String, inputs: Dictionary,
+		result: Dictionary, sections: Dictionary = {}) -> String:
+	var md := render_markdown(title, entry_id, inputs, result, sections)
 	var out := md
 	# 表格行 → 键值行（去掉分隔行与竖线），保持可读缩进
 	var lines := out.split("\n")
@@ -123,8 +137,12 @@ static func render_text(title: String, entry_id: String, inputs: Dictionary, res
 	return "\n".join(L)
 
 ## 落盘到 user://reports/。返回 {ok, path, text_path, error}；path 为可显示的绝对路径。
-static func save(title: String, entry_id: String, inputs: Dictionary, result: Dictionary) -> Dictionary:
-	var md := render_markdown(title, entry_id, inputs, result)
+## sections（可选，向后兼容）：区块裁剪字典——键 ∈ {inputs, formula, steps,
+## results, limits}（与 render_markdown 的区块注释同名），值为 false 的区块整节
+## 不输出；缺省 {} 全量（与 UI 折叠态无关的既有报告行为不变）。
+static func save(title: String, entry_id: String, inputs: Dictionary, result: Dictionary,
+		sections: Dictionary = {}) -> Dictionary:
+	var md := render_markdown(title, entry_id, inputs, result, sections)
 	var stamp := "%04d%02d%02d_%02d%02d%02d" % _now_tuple()
 	var rel := "%s/%s_%s.md" % [DIR, _safe_id(entry_id), stamp]
 	if not GKFileIO.write_text(rel, md):
@@ -133,9 +151,10 @@ static func save(title: String, entry_id: String, inputs: Dictionary, result: Di
 	return {"ok": true, "path": abs, "rel_path": rel,
 			"text_path": "", "error": ""}
 
-## 另存为纯文本（可选）。返回 {ok, path, error}。
-static func save_text(title: String, entry_id: String, inputs: Dictionary, result: Dictionary) -> Dictionary:
-	var txt := render_text(title, entry_id, inputs, result)
+## 另存为纯文本（可选）。返回 {ok, path, error}。sections 透传（同 save）。
+static func save_text(title: String, entry_id: String, inputs: Dictionary, result: Dictionary,
+		sections: Dictionary = {}) -> Dictionary:
+	var txt := render_text(title, entry_id, inputs, result, sections)
 	var stamp := "%04d%02d%02d_%02d%02d%02d" % _now_tuple()
 	# 文件名安全化与 save() 同一收口：含 / 或 .. 的 id 不得写出 reports 目录
 	var rel := "%s/%s_%s.txt" % [DIR, _safe_id(entry_id), stamp]

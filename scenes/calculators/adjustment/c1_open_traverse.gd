@@ -6,7 +6,8 @@ const TR := preload("res://core/adjustment/traverse.gd")
 func _build_fields() -> void:
 	add_input_row("起点 x（东, m）", "start_x", "5000.000")
 	add_input_row("起点 y（北, m）", "start_y", "5000.000")
-	add_input_row("起始方位角 α（°/′/″ 或十进制度）", "az_start", "95.5 或 95 30 00")
+	add_input_row("起始方位角 α（°/′/″ 或十进制度）", "az_start", "95.5 或 95 30 00",
+			LineEdit.KEYBOARD_TYPE_DEFAULT, "", "row", true)  # 角度档：度分秒含空格
 	_add_text_area("转折角（左角，每行一个，十进制度）", "angles",
 			"178.250556\n236.249583")
 	_add_text_area("边长（每行一个，m，边数=角数+1）", "sides", "950.004\n1100.003\n200.002")

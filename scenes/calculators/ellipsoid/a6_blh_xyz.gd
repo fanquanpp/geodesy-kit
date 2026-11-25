@@ -18,9 +18,9 @@ func _ready() -> void:
 	# stacked 标签在字段上方 + 单位后缀——符合测绘输入习惯而非一长行。
 	add_input_row("椭球（datum 名）", "datum", "CGCS2000 / WGS84，留空按 WGS84", LineEdit.KEYBOARD_TYPE_DEFAULT)
 	add_coord_pair_row("纬度 B", "lat_deg", "经度 L", "lon_deg", "°", "°")
-	add_input_row("大地高 h", "h_m", "73", LineEdit.KEYBOARD_TYPE_NUMBER, "m")
+	add_input_row("大地高 h", "h_m", "73", LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL, "m")
 	add_coord_pair_row("X", "x_m", "Y", "y_m", "m", "m")
-	add_input_row("Z", "z_m", "反算时填写", LineEdit.KEYBOARD_TYPE_NUMBER, "m")
+	add_input_row("Z", "z_m", "反算时填写", LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL, "m")
 	set_inputs(_example_inputs)
 
 func get_inputs() -> Dictionary:

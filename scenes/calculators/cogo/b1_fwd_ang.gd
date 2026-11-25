@@ -28,12 +28,12 @@ func _build_rows() -> void:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var xa := num_field(_fields["x_a_m"], "已知点 A x", bad)
-	var ya := num_field(_fields["y_a_m"], "已知点 A y", bad)
-	var xb := num_field(_fields["x_b_m"], "已知点 B x", bad)
-	var yb := num_field(_fields["y_b_m"], "已知点 B y", bad)
-	var b1 := ang_field(_fields["beta1_deg"], "A 点角 β₁", bad)
-	var b2 := ang_field(_fields["beta2_deg"], "B 点角 β₂", bad)
+	var xa := num_field(_fields["x_a_m"], "已知点 A x", bad, "x_a_m")
+	var ya := num_field(_fields["y_a_m"], "已知点 A y", bad, "y_a_m")
+	var xb := num_field(_fields["x_b_m"], "已知点 B x", bad, "x_b_m")
+	var yb := num_field(_fields["y_b_m"], "已知点 B y", bad, "y_b_m")
+	var b1 := ang_field(_fields["beta1_deg"], "A 点角 β₁", bad, "beta1_deg")
+	var b2 := ang_field(_fields["beta2_deg"], "B 点角 β₂", bad, "beta2_deg")
 	if not bad.is_empty():
 		return fail_input(bad)
 	var side := side_field(_fields["side"], -1)

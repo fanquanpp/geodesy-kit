@@ -52,8 +52,12 @@ func num_field(edit: LineEdit, label: String, bad: Array, key := "") -> float:
 		return NAN
 	return v
 
-## 角度输入：接受十进制度（30.5）或度分秒（30 30 00 / 30°30′00″）；key 为字段键名（可选）
+## 角度输入：接受十进制度（30.5）或度分秒（30 30 00 / 30°30′00″）；key 为字段键名（可选）。
+## 角度档键盘契约（ask a）：经本函数解析的字段，其 LineEdit 键盘须回落 DEFAULT
+## （数字键盘无空格，度分秒输不了）——建行走 add_input_row 的 keyboard_angle=true，
+## 本处兜底把漏改的行在获焦时纠正（幂等，行已 DEFAULT 时无副作用）。
 func ang_field(edit: LineEdit, label: String, bad: Array, key := "") -> float:
+	edit.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_DEFAULT
 	var t := edit.text.strip_edges()
 	if t.is_empty():
 		bad.append(_bad_entry(key, "请输入「%s」" % label))

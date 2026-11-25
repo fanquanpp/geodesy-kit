@@ -14,8 +14,10 @@ func get_entry_id() -> String:
 
 func _ready() -> void:
 	super._ready()
-	add_input_row("纬度 B（度/度分秒）", "lat_deg", "39°54′27.1″ 或 39.9075")
-	add_input_row("经度 L（度/度分秒）", "lon_deg", "116°23′28.6″ 或 116.3913")
+	add_input_row("纬度 B（度/度分秒）", "lat_deg", "39°54′27.1″ 或 39.9075",
+			LineEdit.KEYBOARD_TYPE_DEFAULT, "", "row", true)  # 角度档：度分秒含空格
+	add_input_row("经度 L（度/度分秒）", "lon_deg", "116°23′28.6″ 或 116.3913",
+			LineEdit.KEYBOARD_TYPE_DEFAULT, "", "row", true)
 	set_inputs(_example_inputs)
 
 func get_inputs() -> Dictionary:

@@ -3,12 +3,16 @@
 # 用户要求：分类依旧加上折叠（不要把折叠删了），条目保持方块网格。
 # 结构：每展示组一个 FoldableContainer（Card 样式），标题 = 组名（条目数）；
 # 卡内 = GridContainer 3 列（窄屏 2 列）方块按钮，min 高 128 设计 px，文字换行居中。
+# 列数断点走 GKResponsive（窄 COMPACT 2 列 / MEDIUM+WIDE 3 列），视口 resize 重算。
 # 默认折叠、只展开第一个组（首屏一屏内可见全部分类入口，展开后网格满宽）。
 # 分组数据 = GKDisplayGroups（展示层重分类；manifest 域结构不动）。
 class_name GKHomePage
 extends Control
 
 signal open_entry(entry: Dictionary)
+
+# 全部组网格（断点切换重算列数：size_changed 时逐网格按当前视口宽定列数）
+var _grids: Array = []
 
 func _ready() -> void:
 	# 触屏滚动交引擎原生路径（deadzone 区分拖动/点击）
@@ -22,6 +26,7 @@ func _ready() -> void:
 	var sub := Label.new()
 	sub.theme_type_variation = &"Muted"
 	sub.text = "全离线测绘计算器 · 点分类展开，点方块进入计算"
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 文本不拦点击（同 result_card）
 	v.add_child(sub)
 
 	var catalog := GKServices.ensure_catalog()
@@ -43,9 +48,9 @@ func _ready() -> void:
 		ev.add_child(d)
 		return
 
-	# 触屏设备方块更大（128px 高），键鼠 96px；列数按有效宽自适应
+	# 触屏设备方块更大（128px 高），键鼠 96px；列数走 GKResponsive（窄 2 列 / 中宽 3 列）
 	var cell_h := 128.0 if DisplayServer.is_touchscreen_available() else 96.0
-	var cols := 3 if get_viewport().get_visible_rect().size.x >= 700.0 else 2
+	var cols := 3 if GKResponsive.breakpoint_now(self) != GKResponsive.Breakpoint.COMPACT else 2
 	var first := true
 	for g: Dictionary in groups:
 		var entries: Array = g["entries"]
@@ -54,18 +59,42 @@ func _ready() -> void:
 		card.folded = not first  # 默认只展开第一个分类
 		first = false
 		card.title = "%s（%d 个计算器）" % [String(g["title"]), entries.size()]
+		# 标题栏图标：展示组代表域同源（GKDisplayGroups.GROUPS.icon，赋值规则见该文件注释）
+		var icon_path := String(g["icon"])
+		var group_icon: Texture2D = null
+		if icon_path != "" and ResourceLoader.exists(icon_path):
+			group_icon = load(icon_path)
+			var icon := TextureRect.new()
+			icon.texture = group_icon
+			icon.custom_minimum_size = Vector2(32, 32)
+			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			card.add_title_bar_control(icon)
 		v.add_child(card)
 		var grid := GridContainer.new()
 		grid.columns = cols
+		_grids.append(grid)  # 断点切换时统一重算列数
 		grid.add_theme_constant_override("h_separation", GKThemeConstants.MIN_TOUCH_SPACING / 2)
 		grid.add_theme_constant_override("v_separation", GKThemeConstants.MIN_TOUCH_SPACING / 2)
 		card.add_child(grid)
 		for e: Dictionary in entries:
 			var b := Button.new()
 			b.text = String(e["name"])
+			b.icon = group_icon
 			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			b.custom_minimum_size = Vector2(0, cell_h)
 			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			var entry := e
 			b.pressed.connect(func() -> void: open_entry.emit(entry))
 			grid.add_child(b)
+
+## 视口尺寸变化：所有组网格按当前断点重算列数（窄屏 2 列 / 中档与宽屏 3 列）
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_apply_grid_columns()
+
+func _apply_grid_columns() -> void:
+	var cols := 3 if GKResponsive.breakpoint_now(self) != GKResponsive.Breakpoint.COMPACT else 2
+	for g: Control in _grids:
+		if is_instance_valid(g) and g.columns != cols:
+			g.columns = cols

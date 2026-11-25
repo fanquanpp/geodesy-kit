@@ -8,15 +8,20 @@ class_name GKDisplayGroups
 extends RefCounted
 
 ## 展示组定义（顺序即导航顺序）
+## icon 赋值规则（接线前实测定案，探针 _scripts/group_probe.gd 口径）：
+## 展示组与 manifest 域是多对多映射，每组取条目占比最高的代表域，复用该域
+## manifest 同款图标（coords/intersect→cogo=m5，proj→projection=m3，
+## datum→transform=m4，control→adjustment=m6，route/earthwork→route=m7，
+## util→ellipsoid=m2；跨域组不另设计聚合图标，保持与域级图标同源可辨识）。
 const GROUPS := [
-	{"key": "coords", "title": "坐标计算", "icon": ""},
-	{"key": "proj", "title": "投影换算", "icon": ""},
-	{"key": "datum", "title": "基准转换", "icon": ""},
-	{"key": "intersect", "title": "交会定点", "icon": ""},
-	{"key": "control", "title": "控制平差", "icon": ""},
-	{"key": "route", "title": "路线曲线", "icon": ""},
-	{"key": "earthwork", "title": "土方断面", "icon": ""},
-	{"key": "util", "title": "查询工具", "icon": ""},
+	{"key": "coords", "title": "坐标计算", "icon": "res://assets/icons/gk-m5-geometry-intersection.svg"},
+	{"key": "proj", "title": "投影换算", "icon": "res://assets/icons/gk-m3-projection-zones.svg"},
+	{"key": "datum", "title": "基准转换", "icon": "res://assets/icons/gk-m4-coordinate-transform.svg"},
+	{"key": "intersect", "title": "交会定点", "icon": "res://assets/icons/gk-m5-geometry-intersection.svg"},
+	{"key": "control", "title": "控制平差", "icon": "res://assets/icons/gk-m6-control-adjustment.svg"},
+	{"key": "route", "title": "路线曲线", "icon": "res://assets/icons/gk-m7-route-curve-earthwork.svg"},
+	{"key": "earthwork", "title": "土方断面", "icon": "res://assets/icons/gk-m7-route-curve-earthwork.svg"},
+	{"key": "util", "title": "查询工具", "icon": "res://assets/icons/gk-m2-ellipsoid-geodesic.svg"},
 ]
 
 ## 条目 id → 展示组 key（未列入者回退原 manifest 域映射，见 _fallback_group）
@@ -92,3 +97,17 @@ static func group_entries(catalog_entries: Array) -> Array:
 			(by_key[gkey]["entries"] as Array).append(e)
 	# 过滤空组（保持 GROUPS 顺序）
 	return out.filter(func(item: Dictionary) -> bool: return not (item["entries"] as Array).is_empty())
+
+## 单条目 → 展示组 key（与 group_entries 同一规则：映射表优先，未收录按域兜底）。
+## 供搜索结果行等同源场景使用，不依赖 group_entries 全量遍历。
+static func entry_group(entry_id: String, entry: Dictionary) -> String:
+	if ENTRY_GROUPS.has(entry_id):
+		return String(ENTRY_GROUPS[entry_id])
+	return String(DOMAIN_FALLBACK.get(entry.get("domain", ""), "util"))
+
+## 展示组 key → 图标路径（未登记/空 key 返回 ""）
+static func group_icon(group_key: String) -> String:
+	for g: Dictionary in GROUPS:
+		if String(g["key"]) == group_key:
+			return String(g["icon"])
+	return ""

@@ -26,14 +26,14 @@ func _build_rows() -> void:
 
 func run() -> Dictionary:
 	var bad: Array = []
-	var x0 := num_field(_fields["x0_m"], "线起点 x", bad)
-	var y0 := num_field(_fields["y0_m"], "线起点 y", bad)
-	var az := ang_field(_fields["az_deg"], "线方位角", bad)
-	var x := num_field(_fields["x_m"], "待查点 x", bad)
-	var y := num_field(_fields["y_m"], "待查点 y", bad)
+	var x0 := num_field(_fields["x0_m"], "线起点 x", bad, "x0_m")
+	var y0 := num_field(_fields["y0_m"], "线起点 y", bad, "y0_m")
+	var az := ang_field(_fields["az_deg"], "线方位角", bad, "az_deg")
+	var x := num_field(_fields["x_m"], "待查点 x", bad, "x_m")
+	var y := num_field(_fields["y_m"], "待查点 y", bad, "y_m")
 	if not bad.is_empty():
 		return fail_input(bad)
-	var len_v := opt_num_field(_fields["len_m"], NAN, "线长", bad)
+	var len_v := opt_num_field(_fields["len_m"], NAN, "线长", bad, "len_m")
 	if not bad.is_empty():
 		return fail_input(bad)
 	var p := {

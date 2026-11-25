@@ -131,6 +131,49 @@ func _build(save_path: String, pal: Dictionary, problems: PackedStringArray) -> 
 	th.set_stylebox("pressed", "PrimaryButton", _btn_box(pal.primary.darkened(0.12), pal.primary))
 	th.set_stylebox("disabled", "PrimaryButton", _btn_box(pal.primary.darkened(0.6), pal.primary))
 
+	# type variation：EntryButton（首页/搜索条目行：左对齐 + 左侧竖条强调色，图标行观感）
+	th.set_type_variation("EntryButton", "Button")
+	th.set_color("font_color", "EntryButton", pal.text)
+	th.set_color("font_hover_color", "EntryButton", pal.primary)
+	th.set_color("font_pressed_color", "EntryButton", pal.primary)
+	th.set_color("font_focus_color", "EntryButton", pal.text)
+	var entry_btn := _btn_box(pal.surface, pal.border)
+	entry_btn.content_margin_left = 20
+	entry_btn.set_corner_radius_all(10)
+	th.set_stylebox("normal", "EntryButton", entry_btn)
+	var entry_hover := _btn_box(pal.btn_hover, pal.primary)
+	entry_hover.content_margin_left = 20
+	entry_hover.set_corner_radius_all(10)
+	th.set_stylebox("hover", "EntryButton", entry_hover)
+	var entry_pressed := _btn_box(pal.btn_pressed, pal.primary)
+	entry_pressed.content_margin_left = 20
+	entry_pressed.set_corner_radius_all(10)
+	th.set_stylebox("pressed", "EntryButton", entry_pressed)
+	th.set_stylebox("focus", "EntryButton", _focus_box(pal.primary))
+
+	# type variation：ToolbarIconButton（顶栏窄按钮：横竖边距收紧，图标配大触控目标）
+	th.set_type_variation("ToolbarIconButton", "Button")
+	th.set_color("font_color", "ToolbarIconButton", pal.text)
+	th.set_color("font_hover_color", "ToolbarIconButton", pal.primary)
+	th.set_color("font_pressed_color", "ToolbarIconButton", pal.primary)
+	th.set_color("font_focus_color", "ToolbarIconButton", pal.text)
+	var tool_btn := _btn_box(pal.surface_alt, pal.border)
+	tool_btn.content_margin_left = 18
+	tool_btn.content_margin_right = 18
+	tool_btn.set_corner_radius_all(10)
+	th.set_stylebox("normal", "ToolbarIconButton", tool_btn)
+	var tool_hover := _btn_box(pal.btn_hover, pal.primary)
+	tool_hover.content_margin_left = 18
+	tool_hover.content_margin_right = 18
+	tool_hover.set_corner_radius_all(10)
+	th.set_stylebox("hover", "ToolbarIconButton", tool_hover)
+	var tool_pressed := _btn_box(pal.btn_pressed, pal.primary)
+	tool_pressed.content_margin_left = 18
+	tool_pressed.content_margin_right = 18
+	tool_pressed.set_corner_radius_all(10)
+	th.set_stylebox("pressed", "ToolbarIconButton", tool_pressed)
+	th.set_stylebox("focus", "ToolbarIconButton", _focus_box(pal.primary))
+
 	# ---------- LineEdit ----------
 	th.set_color("font_color", "LineEdit", pal.text)
 	th.set_color("font_placeholder_color", "LineEdit", pal.text_muted)
@@ -147,9 +190,9 @@ func _build(save_path: String, pal: Dictionary, problems: PackedStringArray) -> 
 	th.set_stylebox("panel", "Panel", panel)
 	th.set_stylebox("panel", "PanelContainer", panel)
 
-	# type variation：Card（结果卡/步骤卡，实底+描边+内边距）
+	# type variation：Card（结果卡/步骤卡/首页分类卡，实底+描边+内边距+柔和投影）
 	th.set_type_variation("Card", "PanelContainer")
-	var card := _panel_box(pal.surface, pal.border, 16, 24)
+	var card := _panel_box(pal.surface, pal.border, 16, 24, 12)
 	th.set_stylebox("panel", "Card", card)
 
 	# type variation：ErrorCard（失败态卡片：错误红描边语言，与 limits_panel 超限一致；
@@ -158,9 +201,9 @@ func _build(save_path: String, pal: Dictionary, problems: PackedStringArray) -> 
 	var err_card := _panel_box(pal.surface, pal.error, 16, 24)
 	th.set_stylebox("panel", "ErrorCard", err_card)
 
-	# type variation：DrawerPanel（抽屉/浮层，更强投影感的描边）
+	# type variation：DrawerPanel（抽屉/浮层，更强投影感的描边 + 投影）
 	th.set_type_variation("DrawerPanel", "PanelContainer")
-	var drawer := _panel_box(pal.surface, pal.primary, 16, 20)
+	var drawer := _panel_box(pal.surface, pal.primary, 16, 20, 12)
 	th.set_stylebox("panel", "DrawerPanel", drawer)
 
 	# ---------- TextEdit（多行输入，adj_panel/batch_convert 网形与点文件用）----------
@@ -242,6 +285,17 @@ func _build(save_path: String, pal: Dictionary, problems: PackedStringArray) -> 
 		problems.append(save_path + " ErrorCard variation 基类错误")
 	if back.get_type_variation_base("Caption") != &"Label":
 		problems.append(save_path + " Caption variation 基类错误")
+	if back.get_type_variation_base("EntryButton") != &"Button":
+		problems.append(save_path + " EntryButton variation 基类错误")
+	if back.get_type_variation_base("ToolbarIconButton") != &"Button":
+		problems.append(save_path + " ToolbarIconButton variation 基类错误")
+	# Card/DrawerPanel 投影：shadow_size=12 且半透明（StyleBoxFlat.shadow_color）
+	var back_card := back.get_stylebox("panel", "Card") as StyleBoxFlat
+	if back_card == null or back_card.shadow_size != 12 or back_card.shadow_color.a == 0.0:
+		problems.append(save_path + " Card 投影缺失（shadow_size/shadow_color）")
+	var back_drawer := back.get_stylebox("panel", "DrawerPanel") as StyleBoxFlat
+	if back_drawer == null or back_drawer.shadow_size != 12:
+		problems.append(save_path + " DrawerPanel 投影缺失")
 	if back.get_font_size("font_size", "ResultValue") != FONT_RESULT:
 		problems.append(save_path + " ResultValue 字号缺失/不符")
 	if back.get_font_size("font_size", "Caption") != FONT_CAPTION:
@@ -305,7 +359,7 @@ func _focus_box(primary: Color) -> StyleBoxFlat:
 	sb.set_corner_radius_all(12)
 	return sb
 
-func _panel_box(bg: Color, border: Color, radius: int, margin: int) -> StyleBoxFlat:
+func _panel_box(bg: Color, border: Color, radius: int, margin: int, shadow := 0) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
 	sb.set_border_width_all(2)
@@ -315,4 +369,9 @@ func _panel_box(bg: Color, border: Color, radius: int, margin: int) -> StyleBoxF
 	sb.content_margin_right = margin
 	sb.content_margin_top = margin
 	sb.content_margin_bottom = margin
+	# 柔和投影（Card/DrawerPanel 用 12 / alpha 0.10；默认 0 不投影——
+	# shadow_color 需显式赋值，StyleBoxFlat 默认 shadow_size=0 不绘制）
+	if shadow > 0:
+		sb.shadow_size = shadow
+		sb.shadow_color = Color(0.0, 0.0, 0.0, 0.10)
 	return sb
