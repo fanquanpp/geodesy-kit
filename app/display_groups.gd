@@ -8,19 +8,16 @@ class_name GKDisplayGroups
 extends RefCounted
 
 ## 展示组定义（顺序即导航顺序）
-## icon 赋值规则（接线前实测定案，探针 _scripts/group_probe.gd 口径）：
-## 展示组与 manifest 域是多对多映射，每组取条目占比最高的代表域，复用该域
-## manifest 同款图标（coords/intersect→cogo=m5，proj→projection=m3，
-## datum→transform=m4，control→adjustment=m6，route/earthwork→route=m7，
-## util→ellipsoid=m2；跨域组不另设计聚合图标，保持与域级图标同源可辨识）。
+## icon 字段保留为组级兜底（组标题已不挂图标——4.7.2 add_title_bar_control
+## 实测不生效，见 home_page.gd 同注释；条目图标走 DOMAIN_ICONS/entry_icon）。
 const GROUPS := [
 	{"key": "coords", "title": "坐标计算", "icon": "res://assets/icons/gk-m5-geometry-intersection.svg"},
 	{"key": "proj", "title": "投影换算", "icon": "res://assets/icons/gk-m3-projection-zones.svg"},
 	{"key": "datum", "title": "基准转换", "icon": "res://assets/icons/gk-m4-coordinate-transform.svg"},
 	{"key": "intersect", "title": "交会定点", "icon": "res://assets/icons/gk-m5-geometry-intersection.svg"},
 	{"key": "control", "title": "控制平差", "icon": "res://assets/icons/gk-m6-control-adjustment.svg"},
-	{"key": "route", "title": "路线曲线", "icon": "res://assets/icons/gk-m7-route-curve-earthwork.svg"},
-	{"key": "earthwork", "title": "土方断面", "icon": "res://assets/icons/gk-m7-route-curve-earthwork.svg"},
+	{"key": "route", "title": "路线曲线", "icon": "res://assets/icons/gk-d-route-alignment.svg"},
+	{"key": "earthwork", "title": "土方断面", "icon": "res://assets/icons/gk-e-earthwork-section.svg"},
 	{"key": "util", "title": "查询工具", "icon": "res://assets/icons/gk-m2-ellipsoid-geodesic.svg"},
 ]
 
@@ -111,3 +108,29 @@ static func group_icon(group_key: String) -> String:
 		if String(g["key"]) == group_key:
 			return String(g["icon"])
 	return ""
+
+## 条目 → 图标路径：按 manifest 域取域图标（条目级不再复用展示组图标——
+## route 域的 D 线路与 E 土方条目曾共用工形拱图标，辨识度差，已拆分）。
+## 域 → 图标映射与各域 manifest 顶层 icon 同源。
+const DOMAIN_ICONS := {
+	"cogo": "res://assets/icons/gk-m5-geometry-intersection.svg",
+	"projection": "res://assets/icons/gk-m3-projection-zones.svg",
+	"transform": "res://assets/icons/gk-m4-coordinate-transform.svg",
+	"adjustment": "res://assets/icons/gk-m6-control-adjustment.svg",
+	"route": "res://assets/icons/gk-d-route-alignment.svg",
+	"earthwork": "res://assets/icons/gk-e-earthwork-section.svg",
+	"ellipsoid": "res://assets/icons/gk-m2-ellipsoid-geodesic.svg",
+	"tools": "res://assets/icons/gk-m1-math-core.svg",
+}
+
+## route 域内 D 前缀（线路）→ 线路图标；E 前缀（土方）→ 土方图标
+static func entry_icon(entry_id: String, entry: Dictionary) -> String:
+	var domain := String(entry.get("domain", ""))
+	if domain == "route":
+		if entry_id.begins_with("e"):
+			return String(DOMAIN_ICONS["earthwork"])
+		return String(DOMAIN_ICONS["route"])
+	if DOMAIN_ICONS.has(domain):
+		return String(DOMAIN_ICONS[domain])
+	# 未登记域：回退展示组图标（保持旧口径不丢图标）
+	return group_icon(entry_group(entry_id, entry))

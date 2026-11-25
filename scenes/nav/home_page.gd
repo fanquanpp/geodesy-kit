@@ -59,17 +59,9 @@ func _ready() -> void:
 		card.folded = not first  # 默认只展开第一个分类
 		first = false
 		card.title = "%s（%d 个计算器）" % [String(g["title"]), entries.size()]
-		# 标题栏图标：展示组代表域同源（GKDisplayGroups.GROUPS.icon，赋值规则见该文件注释）
-		var icon_path := String(g["icon"])
-		var group_icon: Texture2D = null
-		if icon_path != "" and ResourceLoader.exists(icon_path):
-			group_icon = load(icon_path)
-			var icon := TextureRect.new()
-			icon.texture = group_icon
-			icon.custom_minimum_size = Vector2(32, 32)
-			icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			card.add_title_bar_control(icon)
+		# 组图标：4.7.2 的 add_title_bar_control 实测不生效（探针确认控件被挂进
+		# 隐藏内部层，真机截图同样不显示）——组标题不挂图标，图标只在条目方块上
+		# 按"条目所属域"区分（display_groups.entry_icon，D/E 线路土方已拆分）。
 		v.add_child(card)
 		var grid := GridContainer.new()
 		grid.columns = cols
@@ -80,7 +72,12 @@ func _ready() -> void:
 		for e: Dictionary in entries:
 			var b := Button.new()
 			b.text = String(e["name"])
-			b.icon = group_icon
+			# 条目图标按所属域取（display_groups.entry_icon）：route 域 D/E 条目
+			# 已拆分为线路/土方两枚图标，不再共用组同源图标。
+			var icon_path := GKDisplayGroups.entry_icon(String(e["id"]), e)
+			if icon_path != "" and ResourceLoader.exists(icon_path):
+				b.icon = load(icon_path)
+				b.add_theme_constant_override("icon_max_width", 40)  # 图标放大到触屏可辨（默认随字高 16px 太小）
 			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			b.custom_minimum_size = Vector2(0, cell_h)
 			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL

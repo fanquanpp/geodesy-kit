@@ -496,9 +496,8 @@ func _do_search() -> void:
 		var b := Button.new()
 		b.text = "%s · %s" % [String(e["name"]),
 			GKModuleIndex.DOMAIN_TITLES.get(e.get("domain", ""), e.get("domain", ""))]
-		# 图标与首页分类同源：条目 → 展示组 → GROUPS.icon（GKDisplayGroups 头注释的赋值规则）
-		var gkey := GKDisplayGroups.entry_group(String(e.get("id", "")), e)
-		var icon_path := GKDisplayGroups.group_icon(gkey)
+		# 图标与首页条目同源：按所属域取（display_groups.entry_icon，D/E 已拆分）
+		var icon_path := GKDisplayGroups.entry_icon(String(e.get("id", "")), e)
 		if icon_path != "" and ResourceLoader.exists(icon_path):
 			b.icon = load(icon_path)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
