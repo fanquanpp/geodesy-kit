@@ -406,16 +406,22 @@ func _build_ui() -> void:
 	_apply_search_fold()
 	get_viewport().size_changed.connect(_apply_search_fold)
 
+## 两侧滑动判定带宽度（设计 px）：触屏设备上根容器左右各让出一条空白竖带，
+## 不放任何控件——手指在这条带上滑动不会被按钮/输入框拦截，专用于滚动/翻页
+## 手势（用户框选需求，v0.4）。桌面键鼠不需要，保持原 12px 边距。
+const SWIPER_BAND_DP := 56.0
+
 ## 安全区 inset 写入根 MarginContainer
 func _apply_safe_margins(margin_container: MarginContainer) -> void:
+	var side := SWIPER_BAND_DP if DisplayServer.is_touchscreen_available() else 12.0
 	margin_container.add_theme_constant_override(
 		"margin_top", 8 + int(_safe_inset_design.x))
 	margin_container.add_theme_constant_override(
-		"margin_right", 12 + int(_safe_inset_design.y))
+		"margin_right", int(side) + int(_safe_inset_design.y))
 	margin_container.add_theme_constant_override(
 		"margin_bottom", 12 + int(_safe_inset_design.z))
 	margin_container.add_theme_constant_override(
-		"margin_left", 12 + int(_safe_inset_design.w))
+		"margin_left", int(side) + int(_safe_inset_design.w))
 
 ## 搜索浮层定位：顶栏正下方（顶栏高度随触控目标档位变化，动态取值）。
 func _update_search_popup_pos() -> void:

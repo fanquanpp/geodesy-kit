@@ -70,7 +70,7 @@ func test_calculator_base_contract() -> void:
 	base.free()
 
 func test_display_groups() -> void:
-	# P9 展示分组：65 条目全量归组、组序稳定、无遗漏（fallback 兜底）
+	# v0.4 展示分组：33 条目全量归组、组序稳定、无遗漏（fallback 兜底）
 	var GKServices_catalog := GKServices.ensure_catalog()
 	var groups: Array = GKDisplayGroups.group_entries(GKServices_catalog.entries())
 	var total := 0
@@ -86,5 +86,5 @@ func test_display_groups() -> void:
 	var keys := {}
 	for g: Dictionary in groups:
 		keys[String(g["key"])] = true
-	for must: String in ["coords", "proj", "datum", "control", "route"]:
+	for must: String in ["coords", "proj", "datum", "intersect", "util"]:
 		assert_true(keys.has(must), "关键组在位：" + must)

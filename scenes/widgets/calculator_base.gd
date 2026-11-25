@@ -364,7 +364,11 @@ func _build_ui() -> void:
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation", GKThemeConstants.MIN_TOUCH_SPACING)
+	# 两列间中缝：触屏设备加宽为滑动判定带（v0.4 用户框选需求——中缝不放控件，
+	# 手指在缝上滑动不误触输入框/结果区）；桌面保持原间距。
+	var col_gap := 56.0 if DisplayServer.is_touchscreen_available() \
+			else float(GKThemeConstants.MIN_TOUCH_SPACING)
+	body.add_theme_constant_override("separation", int(col_gap))
 	page_v.add_child(body)
 	_body = body  # 断点切换重排左右布局（_apply_result_layout）
 
