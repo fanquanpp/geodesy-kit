@@ -61,7 +61,8 @@ func test_calculator_base_contract() -> void:
 	})
 	# 冷审问题①：渲染层键名经 GKUiLabels 映射为中文标签（value_label 为占位专用，
 	# 有结果时隐藏，行文本经 get_text() 语义保持 "\n".join(lines)——tests/app/test_widgets.gd）
-	assert_eq(base._result_card.get_text(), "X 坐标（m） = 100.0", "成功渲染（键名 → 中文标签，4 位小数口径）")
+	# 键名分档精度（P11 调研落地）：_m 键固定 3 位（mm 级）、尾零补齐——测量成果固定位惯例
+	assert_eq(base._result_card.get_text(), "X 坐标（m） = 100.000", "成功渲染（键名 → 中文标签，_m 键 3 位定点口径）")
 	assert_false(base._result_label.visible, "有结果时占位 label 隐藏（行文本只在复制按钮行渲染）")
 	assert_true(base._limits_card.visible, "限差面板出现")
 	assert_eq(base._steps_root.get_child_count(), 1, "步骤卡数量")

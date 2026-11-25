@@ -56,7 +56,9 @@ var _limits_label: Label            # 兼容别名 = _limits_widget 的结论 La
 #    信号接管 min 高度过渡，0.18s）。
 var _fold_group: FoldableGroup      # 三折叠块共用组
 var _result_fold: FoldableContainer # 「结果」折叠块（内装 result_card + 限差面板）
+var _result_body: VBoxContainer     # 结果折叠块内容 VBox（FoldableContainer 多子重叠布局，见 _build_ui 注释）
 var _steps_fold: FoldableContainer  # 「计算步骤」折叠块（内装 step_list）
+var _steps_body: VBoxContainer      # 步骤折叠块内容 VBox（同上）
 var _formula_fold: FoldableContainer  # 「公式与依据」折叠块（内装 formula_card）
 var _result_fold_ever_expanded := false  # 结果块是否被自动展开过（成功一次即置真；用户收起后不再强翻）
 var _scroll: ScrollContainer        # 左列滚动容器（输入区；结果定位/回车流转用）
@@ -430,7 +432,12 @@ func _build_ui() -> void:
 	_result_card = preload("res://scenes/widgets/result_card.tscn").instantiate()
 	_result_card.custom_minimum_size = Vector2(0, 148)  # 结果卡兜底高度：占位时视觉重心与输入区平衡
 	_result_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_result_fold.add_child(_result_card)
+	# P11 布局根修：FoldableContainer 对多个子节点是重叠布局（探针实测两 Panel
+	# 同 rect 叠放，非 VBox 语义）——每个折叠块内包一层 VBox 承载内容。
+	_result_body = VBoxContainer.new()
+	_result_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_result_fold.add_child(_result_body)
+	_result_body.add_child(_result_card)
 	_result_label = _result_card.get("value_label")  # 兼容别名（tests/app/test_shell.gd 断言文本）
 	var result_widget := _result_card as GKResultCard
 	result_widget.copy_confirmed.connect(_on_line_copied)
@@ -438,12 +445,15 @@ func _build_ui() -> void:
 	# 限差面板紧随结果卡（P6：结论一目了然，明细在步骤区之前）——同属结果折叠块
 	_limits_widget = preload("res://scenes/widgets/limits_panel.tscn").instantiate()
 	_limits_widget.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_result_fold.add_child(_limits_widget)
+	_result_body.add_child(_limits_widget)
 	_limits_card = _limits_widget  # 兼容别名（tests/app/test_shell.gd 断言 visible）
 
 	_steps_widget = preload("res://scenes/widgets/step_list.tscn").instantiate()
 	_steps_widget.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_steps_fold.add_child(_steps_widget)
+	_steps_body = VBoxContainer.new()
+	_steps_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_steps_fold.add_child(_steps_body)
+	_steps_body.add_child(_steps_widget)
 	_steps_root = _steps_widget  # 兼容别名：P6 起步骤卡直接挂在控件自身，get_child_count() 语义不变
 
 	_formula_widget = preload("res://scenes/widgets/formula_card.tscn").instantiate()
@@ -677,7 +687,7 @@ func _render_result(res: Dictionary) -> void:
 		# ell_P1_A_mm 走前缀模板；未收录键回退原文 + push_warning 一次，
 		# tests/cogo/test_cogo_ui.gd 断言全量 value 键无「未收录」回退）。
 		# 键名原文保留在报告导出（app/report.gd）。
-		lines.append("%s = %s" % [_Labels.label_for(k, domain), _format_num(value[k], decimals)])
+		lines.append("%s = %s" % [_Labels.label_for(k, domain), _format_num(value[k], _key_decimals(k, decimals))])
 	_result_card.call("set_result", lines)
 	(_result_card as GKResultCard).set_succeeded()  # Card 变体 + 绿色状态条
 
@@ -707,7 +717,7 @@ func _render_result(res: Dictionary) -> void:
 		for k: String in value.keys():
 			# ok_limit 已单独作结论行，明细只收 f_/limit_/rel_/basis（与原字面行为一致）
 			if is_limit_key(k) and k != "ok_limit":
-				detail.append("%s = %s" % [_Labels.label_for(k, domain), _format_num(value[k], decimals)])
+				detail.append("%s = %s" % [_Labels.label_for(k, domain), _format_num(value[k], _key_decimals(k, decimals))])
 		_limits_widget.call("set_limits", ok, detail)
 		# 兼容别名指向结论 Label（Verdict）：P6 起结论唯一归属 Verdict，
 		# Detail 只放明细——旧消费方读 _limits_label.text 取「通过/超限」结论
@@ -730,11 +740,19 @@ func _render_result(res: Dictionary) -> void:
 ## 数值 → 定点小数；容器（数组/矩阵）→ 摘要展示：逐元素逗号分隔，超过 4 个元素
 ## 截断加省略号（完整值在步骤区/导出报告，避免结果卡被 GDScript 原生表示撑爆）；
 ## 嵌套容器（矩阵行/残差表行）递归摘要；其余类型回退 str()。
+## 格式化走 printf 定点（"%.*f"）而非 String.num：后者截尾零（String.num(1.5,4)="1.5"），
+## 同卡小数位参差、违反测量成果固定位惯例；负零清洗 + 极小值科学计数回退
+## （定点全零但 |f|>0 时，String.num_scientific 防止 1.2e-8 m 被误读为真零）。
 func _format_num(v: Variant, decimals: int) -> String:
 	if v is float or v is int:
 		var f := float(v)
 		if is_finite(f):
-			return String.num(f, decimals)
+			if is_zero_approx(f):
+				f = 0.0  # 清洗 "-0"（godot#86421）：闭合差恰为零时显示 -0.0000 困惑
+			var s := "%.*f" % [decimals, f]
+			if f != 0.0 and absf(f) < 5.0 * pow(10.0, -decimals - 1):
+				s = String.num_scientific(f)  # 定点全零回退科学计数
+			return s
 		return "—"
 	if v is PackedFloat64Array or v is PackedInt32Array or v is PackedInt64Array or v is Array:
 		return _format_seq(v, decimals)
@@ -745,6 +763,32 @@ func _format_num(v: Variant, decimals: int) -> String:
 	return str(v)
 
 const _SEQ_PREVIEW := 4  # 容器摘要：最多展示 4 个元素，其余以省略号代替
+
+## 键名 → 精度分档后缀（测量学取位惯例，优先级从上到下首个命中生效）：
+##   角度秒/度分秒键 → 1 位（0.1″，GB 50026 口径）；十进制度 → 4 位；
+##   距离/坐标/高程/面积/体积（m/m2/m3）→ 3 位（mm 级）；
+##   限差/中误差（mm）→ 1 位（0.1 mm，与闭合差检核同档）。
+## 未命中回退 settings.decimals（用户全局档，默认 4）。
+const _KEY_DECIMALS_TIERS := [
+	["_s", 1],          # 角度秒（如 f_beta_s）
+	["_dms", 1],        # 度分秒文本的秒位
+	["_deg", 4],        # 十进制度
+	["_gon", 4],        # 百分度
+	["_mm", 1],         # 中误差/限差（0.1 mm）
+	["_m2", 3],         # 面积
+	["_m3", 3],         # 体积
+	["_m", 3],          # 距离/坐标/高程（放 _mm/_m2 之后：避免 _m 前缀误吞）
+	["_km", 3],
+]
+
+## 结果卡/限差明细的单键精度：键名分档优先，settings 全局档兜底。
+## 角度键（_deg 后缀）不自动转 DMS——core 已有独立 _dms 键时结果卡会双列显示，
+## 这里只管小数位，不做格式转换（保持 §5 协议「core 定格式、UI 只渲染」分工）。
+func _key_decimals(k: String, fallback: int) -> int:
+	for tier: Array in _KEY_DECIMALS_TIERS:
+		if k.ends_with(String(tier[0])):
+			return int(tier[1])
+	return fallback
 
 func _format_seq(v: Variant, decimals: int) -> String:
 	var items: Array = []

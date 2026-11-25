@@ -162,8 +162,9 @@ func test_report_non_g2_keys_unchanged() -> void:
 		"formula": "高斯-克吕格正算（Krüger 6 阶）", "error": "",
 	}
 	var md := _Report.render_markdown("高斯投影正算", "a3_gauss_fwd", {"B_deg": "30", "L_deg": "117"}, result)
-	assert_true(md.contains("| x_m | 3597986.6234 |"), "非 G2 键名原文保留（x_m）")
-	assert_true(md.contains("| f_beta_s | 12.5 |"), "限差明细键保留（f_beta_s）")
+	# P11 报告定点口径：_fmt 改 printf 定点 6 位（尾零补齐），键名原文保留不变
+	assert_true(md.contains("| x_m | 3597986.623400 |"), "非 G2 键名原文保留（x_m，6 位定点）")
+	assert_true(md.contains("| f_beta_s | 12.500000 |"), "限差明细键保留（f_beta_s，6 位定点）")
 	assert_true(md.contains("## 限差检核") and md.contains("超限"), "限差检核节不变")
 
 ## rows → CSV：失败行按 max_v 补齐空值列（与表头字段数一致，Excel 状态列不错位）。

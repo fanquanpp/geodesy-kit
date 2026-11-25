@@ -43,13 +43,15 @@ func test_result_card_widget() -> void:
 	copy_all.pressed.emit()
 	card.set_result(PackedStringArray())
 	assert_int_eq((card.get_node("VBox/Rows") as Node).get_child_count(), 0, "空结果行区清空")
-	# 行数超阈值：行级按钮不渲染，仅卡头「复制全部」
+	# 行数超阈值：行级按钮不渲染，但双列行结构始终渲染（P11 口径：
+	# 行多时不再整体退回 value_label 单列全文，行区保持标签/数值对齐结构）
 	var many := PackedStringArray()
 	for i in 8:
 		many.append("第 %d 行 = %d" % [i, i])
 	card.set_result(many)
-	assert_int_eq((card.get_node("VBox/Rows") as Node).get_child_count(), 0, "行数 > 5 不渲染行级按钮")
-	assert_true((card.get_node("VBox/Rows") as Node).visible, "行文本行区仍可见（无按钮行）")
+	assert_int_eq((card.get_node("VBox/Rows") as Node).get_child_count(), 8, "行数 > 5 行结构仍渲染（无按钮行）")
+	assert_false((card.get_node("VBox/Rows") as Node).get_child(0).get_child_count() == 3, "行多时行级按钮不渲染（行内仅标签/数值）")
+	assert_false((card.get_node("VBox/Value") as Node).visible, "行多时 value_label 隐藏（不与行区双显）")
 	card.set_result(PackedStringArray())
 	assert_eq(card.get_text(), "（尚未计算）", "空数组回落占位")
 	_unmount(w)

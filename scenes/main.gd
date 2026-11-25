@@ -634,6 +634,10 @@ func _replay_entry(entry_id: String, inputs: Dictionary) -> void:
 		_open_entry(e)
 		if _calc_holder is GKCalculatorBase:
 			(_calc_holder as GKCalculatorBase).set_inputs(inputs)
+			# 回放即重算：学生点历史就是为了看结果，不再要求补点一次「计算」；
+			# _on_run 内部会自动展开结果折叠块与写历史（重算条目置顶，符合回看语义）
+			if _calc_holder.has_method("_on_run"):
+				_calc_holder.call("_on_run")
 
 ## 打开计算器失败的用户可见反馈：仅 push_warning 用户看不到（桌面控制台/移动端
 ## adb），点方块无任何反应像坏了——弹 AcceptDialog 给中文原因（局部变量即用即释）

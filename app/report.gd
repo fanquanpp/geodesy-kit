@@ -245,7 +245,12 @@ static func _fmt(v: Variant) -> String:
 	if v is float or v is int:
 		var f := float(v)
 		if is_finite(f):
-			return String.num(f, 6)
+			if is_zero_approx(f):
+				f = 0.0  # 清洗 "-0"：与结果卡口径一致（calculator_base._format_num）
+			if f != 0.0 and absf(f) < 1.0e-9:
+				return String.num_scientific(f)  # 极小值防「0.000000」假零
+			# 报告 6 位定点（比结果卡默认 4 位多 2 位备复核），尾零补齐对齐表格列
+			return "%.*f" % [6, f]
 	return str(v)
 
 static func _now_tuple() -> Array:

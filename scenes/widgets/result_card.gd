@@ -27,51 +27,42 @@ const STATUS_BAR_TWEEN := 0.2
 
 @onready var value_label: Label = get_node("VBox/Value")
 
-var _status_bar: ColorRect = null  # 状态色条（成功绿/注意黄/失败红；主题 OkLabel/WarnLabel/ErrorLabel 字色）
+var _lines: PackedStringArray = PackedStringArray()
+var _status_color := Color()          # 当前状态色（_draw 用；Color() 即不画）
+var _status_width := 0.0              # 状态条当前宽度（Tween 驱动，queue_redraw 重绘）
 
 func _ready() -> void:
 	(get_node("VBox/CopyAll") as Button).pressed.connect(_on_copy_all)
 
-var _lines: PackedStringArray = PackedStringArray()
+## 状态色条：三色取主题语义 Label 字色（缺项回退中性色，主题未构建时不崩）。
+## P11 修复：此前用 PanelContainer 子 ColorRect 承载——PanelContainer 给所有
+## 子节点分配满布局（锚点被容器覆盖），6px 细条变成满宽色块盖住结果内容。
+## 改为 _draw 自绘左缘竖条：不受容器布局，宽度 Tween + queue_redraw 过渡。
+func _draw() -> void:
+	if _status_color != Color() and _status_width > 0.0:
+		var h := size.y - 8.0
+		draw_rect(Rect2(0.0, 4.0, _status_width, h), _status_color)
 
-## 状态色条：三色取主题语义 Label 字色（缺项回退中性色，主题未构建时不崩）；
-## 画在 PanelContainer 内部专属 ColorRect（VBox 之前的兄弟节点），不被 panel StyleBox 覆盖。
 func _bar_color(kind: String) -> Color:
 	var c := get_theme_color("font_color", kind)
 	return c if c != Color() else Color(0.6, 0.6, 0.6)
 
 func _show_status_bar(kind: String) -> void:
-	var target := _bar_color(kind)
-	if _status_bar == null or not is_instance_valid(_status_bar):
-		_status_bar = ColorRect.new()
-		_status_bar.name = "StatusBar"
-		_status_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_status_bar.color = target
-		# 色条锚在卡左侧竖条：宽度从 0 展开到 STATUS_BAR_WIDTH（0.2s Tween）
-		_status_bar.anchor_left = 0.0
-		_status_bar.anchor_top = 0.0
-		_status_bar.anchor_bottom = 1.0
-		_status_bar.offset_left = 0.0
-		_status_bar.offset_top = 4.0
-		_status_bar.offset_bottom = -4.0
-		_status_bar.offset_right = 0.0
-		add_child(_status_bar)
-		move_child(_status_bar, 0)  # 置于内容 VBox 之前
+	_status_color = _bar_color(kind)
 	var tw := create_tween()
-	tw.tween_property(_status_bar, "custom_minimum_size:x", STATUS_BAR_WIDTH, STATUS_BAR_TWEEN) \
+	tw.tween_method(_set_bar_width, _status_width, STATUS_BAR_WIDTH, STATUS_BAR_TWEEN) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.parallel().tween_property(_status_bar, "offset_right", STATUS_BAR_WIDTH, STATUS_BAR_TWEEN) \
-			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	_status_bar.color = target
 
-## 隐藏状态色条：宽度收回到 0（PanelContainer 布局对 0 宽子节点不占位）
+func _set_bar_width(w: float) -> void:
+	_status_width = w
+	queue_redraw()
+
+## 隐藏状态色条：宽度收回到 0
 func _hide_status_bar() -> void:
-	if _status_bar == null or not is_instance_valid(_status_bar):
+	if _status_color == Color() and _status_width == 0.0:
 		return
 	var tw := create_tween()
-	tw.tween_property(_status_bar, "custom_minimum_size:x", 0.0, STATUS_BAR_TWEEN) \
-			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	tw.parallel().tween_property(_status_bar, "offset_right", 0.0, STATUS_BAR_TWEEN) \
+	tw.tween_method(_set_bar_width, _status_width, 0.0, STATUS_BAR_TWEEN) \
 			.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 
 ## 结果行渲染：每行一条（行文本 + 行数 ≤ 阈值时的 96px 复制按钮）；空数组显示占位。
@@ -81,9 +72,9 @@ func _hide_status_bar() -> void:
 func set_result(lines: PackedStringArray) -> void:
 	_lines = lines
 	value_label.text = "\n".join(lines) if not lines.is_empty() else "（尚未计算）"
-	# 占位/多行语义：无结果显示占位；行数 > COPY_ROW_MAX 时 value_label 承担
-	# 全文展示（行区只有按钮不渲染，空白卡 bug 根因）；≤阈值时行文本在行区。
-	value_label.visible = lines.is_empty() or lines.size() > COPY_ROW_MAX
+	# 占位语义：无结果显示占位。行区现在始终渲染双列结构（P11），value_label
+	# 只在空态承担占位文本——行多时不再全文重复（P9.4 双显问题的最终收口）。
+	value_label.visible = lines.is_empty()
 	_rebuild_rows()
 	_hide_status_bar()  # 正常态：色条收回，变体回落 Card
 
@@ -110,6 +101,10 @@ func get_text() -> String:
 	return "\n".join(_lines)
 
 ## 行区：Rows 容器整体同步清空重建（节点名前缀扫描会漏改节点类型，容器清空无此隐患）
+## P11 双列对齐（调研落地）：行文本按最后一个 " = " 拆「标签 | 数值」两 Label——
+## 标签左对齐、数值右对齐，长短标签/数值天然列对齐（正规计算器惯例），
+## 免等宽字体依赖（Noto Sans SC 数字本就等宽，fontTools 实测 advance 一致）。
+## 拆不出 " = " 的行（纯文本行）保持单 Label 全文渲染。
 func _rebuild_rows() -> void:
 	var box: VBoxContainer = get_node("VBox")
 	var rows := box.get_node_or_null("Rows") as VBoxContainer
@@ -123,26 +118,44 @@ func _rebuild_rows() -> void:
 		c.free()
 	rows.visible = not _lines.is_empty()
 	rows.add_theme_constant_override("separation", _TC.MIN_TOUCH_SPACING)
-	if _lines.size() > COPY_ROW_MAX:
-		return  # 行多时不渲染行级按钮（卡头「复制全部」承担复制）
+	# P11：双列行结构始终渲染（标签左/数值右对齐），行级复制按钮仅 ≤COPY_ROW_MAX
+	# 行时渲染——行多时不再整体退回 value_label 单列全文（无双列对齐），
+	# value_label 仍承担 >COPY_ROW_MAX 行的全文展示（滚动流只读一览）。
 	for i in _lines.size():
 		var row := HBoxContainer.new()
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.custom_minimum_size = Vector2(0, _TC.TOUCH_TARGET)
+		row.custom_minimum_size = Vector2(0, _TC.TOUCH_TARGET if _lines.size() <= COPY_ROW_MAX else 0)
 		row.add_theme_constant_override("separation", _TC.MIN_TOUCH_SPACING)
 		var lab := Label.new()
-		lab.text = _lines[i]
-		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		lab.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 文本不拦点击
+		var val := Label.new()
+		var sep := _lines[i].rfind(" = ")
+		if sep > 0:
+			lab.text = _lines[i].substr(0, sep)
+			val.text = _lines[i].substr(sep + 3)
+			lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			lab.size_flags_stretch_ratio = 1.0
+			lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			val.custom_minimum_size = Vector2(0, 0)
+			val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			val.size_flags_horizontal = Control.SIZE_SHRINK_END
+		else:
+			lab.text = _lines[i]
+			lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for l: Label in [lab, val]:
+			l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			l.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 文本不拦点击
 		row.add_child(lab)
-		var btn := Button.new()
-		btn.text = "复制"
-		btn.tooltip_text = "复制本行到剪贴板"
-		btn.custom_minimum_size = Vector2(_TC.TOUCH_TARGET, _TC.TOUCH_TARGET)
-		btn.pressed.connect(_on_copy_line.bind(i))
-		row.add_child(btn)
+		if sep > 0:
+			row.add_child(val)
+		if _lines.size() <= COPY_ROW_MAX:
+			var btn := Button.new()
+			btn.text = "复制"
+			btn.tooltip_text = "复制本行到剪贴板"
+			btn.custom_minimum_size = Vector2(_TC.TOUCH_TARGET, _TC.TOUCH_TARGET)
+			btn.pressed.connect(_on_copy_line.bind(i))
+			row.add_child(btn)
 		rows.add_child(row)
 
 ## 行摘要：前若干字符 + 省略号（反馈行显示用，不含换行）
