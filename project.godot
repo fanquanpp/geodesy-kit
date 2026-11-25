@@ -42,10 +42,11 @@ theme/custom_font="res://assets/fonts/NotoSansSC-Regular.otf"
 
 [input]
 
-; 触屏不仿真鼠标：Android 默认 emulate_mouse_from_touch=true 会把手指事件变成
-; mouse 事件，触屏拖滚保持引擎原生路径生效（桌面端 emulate_touch_from_mouse
-; 保留默认 false，键鼠走原生 mouse 路径）。
-input_devices/pointing/emulate_mouse_from_touch=true
+; 触屏不仿真鼠标（v0.4 官方口径修复）：emulate_mouse_from_touch=true 会把手拖
+; 事件仿真成 mouse 交给 Button/FoldableContainer 消费——卡片上滑动不再触发
+; ScrollContainer 滚动（只有裸背景能滑）。关掉后走原生触摸路径：deadzone 内
+; 是点击（按钮/输入框正常），超出 deadzone 由 ScrollContainer 接管拖滚。
+input_devices/pointing/emulate_mouse_from_touch=false
 ; Android 触屏滚动死区：显式关掉引擎侧死区防漂移，deadzone 由
 ; GKTouchScroll.scroll_deadzone=24 统一口径（裸 ScrollContainer 另行设置）。
 input_devices/pointing/android/disable_scroll_deadzone=false

@@ -1,17 +1,20 @@
-# platform/touch_scroll.gd —— ScrollContainer 触屏滚动配置（P9.4 重写）
+# platform/touch_scroll.gd —— ScrollContainer 触屏滚动配置（v0.4 官方拖滚修复）
 #
-# 历史教训：P9 曾用自定义 _gui_input 拦截 InputEventScreenTouch/Drag 手动滚动，
-# 真机实测滑动常被判定为点击——自定义拦截与子控件的按压反馈/点击判定互相干扰
-# （手指按下即写 _drag_active，但按钮在 press 瞬间已触发 pressed，无法撤回）。
+# 历史教训：
+#   - P9：自定义 _gui_input 拦截触控手动滚动——与子控件点击判定互相干扰，废弃；
+#   - P9.4：改用引擎原生触屏拖滚 + deadzone=24 区分点击/拖动；
+#   - v0.4 深挖：原生拖滚在 MIUI 上「卡片上滑动不滚，只有裸背景能滚」——
+#     根因（godot#16318/#95532，六年老 bug）：ScrollContainer 的触屏拖滚只认
+#     落入它 gui_input 的 ScreenTouch/ScreenDrag，而 PanelContainer/
+#     FoldableContainer/Button 默认 mouse_filter=STOP，把事件吞掉不冒泡。
 #
-# 调研结论（Godot 4 官方文档）：ScrollContainer **原生支持触屏拖滚**
-# （Android/iOS 直接可用；桌面需 emulate_touch_from_mouse），且提供：
-#   - scroll_deadzone：触屏滚动判定死区（默认 0 = 一碰就滚，误判点击根因）；
-#   - NOTIFICATION_SCROLL_BEGIN/END：滚动中通知（可用于抑制误点击）；
-#   - scroll_started/scroll_ended 信号。
-# 本类只做三件事：①设合理 deadzone（24 设计 px，超过才算拖动）；
-# ②隐藏滚动条（触屏拖滚导航，滚动条不占内容宽）；③横滚开关。
-# 拖动/点击判定交还引擎原生路径——按钮在滚动开始后自动不触发点击。
+# 官方解法（两件事缺一不可，godot#16318 → #95532 演化结论）：
+#   1. 子控件 mouse_filter STOP→PASS：不处理时向上冒泡到 ScrollContainer；
+#   2. scroll_deadzone=24：deadzone 内 = 点击（Button RELEASE 模式正常触发），
+#      超出 = NOTIFICATION_SCROLL_BEGIN，base_button 原生取消按钮按压——
+#      「滑动不误触、点击不失效」两全。
+# 本类自动做第 1 件事：attach() 的 child_entered_tree hook 把入树子树统一
+# STOP→PASS；NOTIFICATION_CHILD_ORDER_CHANGED 兜底重扫动态 add 的子树。
 class_name GKTouchScroll
 extends ScrollContainer
 
@@ -28,7 +31,19 @@ static func attach(horizontal_enabled := false, show_bar := false) -> GKTouchScr
 	s.scroll_deadzone = int(TOUCH_DEADZONE)
 	s.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER if not show_bar \
 			else ScrollContainer.SCROLL_MODE_AUTO
+	# 直接子节点入树即展开整棵子树转 PASS
+	s.child_entered_tree.connect(func(node: Node) -> void:
+		if node is Control:
+			_apply_pass_recursive(node as Control))
 	return s
+
+## 递归把控件树里的 STOP mouse_filter 转 PASS（Label 的 IGNORE 不动）。
+static func _apply_pass_recursive(c: Control) -> void:
+	if c.mouse_filter == Control.MOUSE_FILTER_STOP:
+		c.mouse_filter = Control.MOUSE_FILTER_PASS
+	for child in c.get_children():
+		if child is Control:
+			_apply_pass_recursive(child as Control)
 
 ## 是否正处于触屏拖滚中（宿主需要抑制误点击时查询）
 func is_touch_scrolling() -> bool:
@@ -41,3 +56,8 @@ func _notification(what: int) -> void:
 		_scrolling = true
 	elif what == NOTIFICATION_SCROLL_END:
 		_scrolling = false
+	elif what == NOTIFICATION_CHILD_ORDER_CHANGED:
+		# 动态 add 的子树（先挂 v 后挂卡片等）重扫一遍 STOP→PASS
+		for child in get_children():
+			if child is Control:
+				_apply_pass_recursive(child as Control)

@@ -409,7 +409,7 @@ func _build_ui() -> void:
 ## 两侧滑动判定带宽度（设计 px）：触屏设备上根容器左右各让出一条空白竖带，
 ## 不放任何控件——手指在这条带上滑动不会被按钮/输入框拦截，专用于滚动/翻页
 ## 手势（用户框选需求，v0.4）。桌面键鼠不需要，保持原 12px 边距。
-const SWIPER_BAND_DP := 56.0
+const SWIPER_BAND_DP := 130.0
 
 ## 安全区 inset 写入根 MarginContainer
 func _apply_safe_margins(margin_container: MarginContainer) -> void:

@@ -19,6 +19,7 @@ func _ready() -> void:
 	var scroll := GKTouchScroll.attach(false)
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(scroll)
+	# v0.4 官方拖滚修复：子控件 STOP→PASS（godot#16318/#95532 口径）
 	var v := VBoxContainer.new()
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(v)
