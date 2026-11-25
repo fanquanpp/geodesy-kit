@@ -34,19 +34,19 @@ static func attach(horizontal_enabled := false, show_bar := true) -> GKTouchScro
 	# 滚动路径（AUTO 在内容不超屏时隐藏，横屏首页看不到会以为没生效）
 	s.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS if show_bar \
 			else ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	# 滚动条加粗（v0.4 用户反馈"太细"）：grabber 主体 16dp 宽、热区 32dp——
+	# 滚动条再加粗 1.5 倍（v0.4 用户二次反馈"太细"）：视觉宽 24dp、热区 48dp——
 	# StyleBoxFlat content_margin 撑出热区，中央画粗 grabber；
-	# custom_minimum_size 32dp 保证手指能点中/拖住。
+	# custom_minimum_size 48dp 保证手指能点中/拖住。
 	var vbar := s.get_v_scroll_bar()
-	vbar.custom_minimum_size = Vector2(32, 0)
+	vbar.custom_minimum_size = Vector2(48, 0)
 	var grabber := StyleBoxFlat.new()
 	grabber.bg_color = Color(0.42, 0.47, 0.56, 0.9)  # 中性灰蓝，深浅主题都可辨
-	grabber.set_corner_radius_all(8)
+	grabber.set_corner_radius_all(12)
 	grabber.set_content_margin_all(0)
-	grabber.content_margin_left = 8.0   # grabber 视觉宽 16dp：左右 margin 各 8
-	grabber.content_margin_right = 8.0
-	grabber.expand_margin_left = 6.0    # 热区外扩：手指命中更容易
-	grabber.expand_margin_right = 6.0
+	grabber.content_margin_left = 12.0  # grabber 视觉宽 24dp：左右 margin 各 12
+	grabber.content_margin_right = 12.0
+	grabber.expand_margin_left = 9.0    # 热区外扩：手指命中更容易
+	grabber.expand_margin_right = 9.0
 	vbar.add_theme_stylebox_override("grabber", grabber)
 	var grabber_hl := grabber.duplicate()
 	grabber_hl.bg_color = Color(0.52, 0.58, 0.68, 1.0)  # hover/按下更亮
