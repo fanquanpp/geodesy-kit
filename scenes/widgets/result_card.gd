@@ -132,13 +132,20 @@ func _rebuild_rows() -> void:
 		if sep > 0:
 			lab.text = _lines[i].substr(0, sep)
 			val.text = _lines[i].substr(sep + 3)
-			lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			# 数值不可截断（测量成果省略=错误数据），永不省略、按自然宽占位
+			#（SHRINK_END）；标签拿剩余宽，放不下省略 + tooltip 全文。
+			# 竖排一字一行（autowrap 窄列）与数值被截断都避免。
+			lab.autowrap_mode = TextServer.AUTOWRAP_OFF
+			lab.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			lab.tooltip_text = lab.text
+			lab.custom_minimum_size = Vector2(0, 0)
 			lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			lab.size_flags_stretch_ratio = 1.0
 			lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 			val.custom_minimum_size = Vector2(0, 0)
-			val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+			val.autowrap_mode = TextServer.AUTOWRAP_OFF
+			# 不设 text_overrun（默认 0 = 不省略）：测量成果数值截断 = 错误数据
 			val.size_flags_horizontal = Control.SIZE_SHRINK_END
+			val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		else:
 			lab.text = _lines[i]
 			lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

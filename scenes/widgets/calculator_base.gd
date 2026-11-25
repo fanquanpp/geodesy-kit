@@ -24,11 +24,13 @@ signal favorite_changed(entry_id: String, fav: bool)
 
 const _Report := preload("res://app/report.gd")  # G3 报告导出（app/report.gd，GKReport）
 const _Labels := preload("res://scenes/widgets/ui_labels.gd")  # GKUiLabels：键名 → 中文标签
+const _GKAngles := preload("res://core/math/angles.gd")  # 度分秒解析（输入解释卡预览）
 
 var _entry_id := ""
 var _example_inputs := {}
 var _pending_inputs := {}  # 未入树时的 set_inputs 快照（字段未建，register_field 时回填）
 var _fields: Dictionary = {}  # key -> LineEdit
+var _angle_keys: Dictionary = {}  # key -> 中文标签（角度字段登记，输入解释卡 DMS 预览用）
 var _field_order: Array = []  # key 顺序（回车流转用）
 var _last_result_text := ""
 var _last_result: Dictionary = {}  # 供报告导出（G3）与子类读取的最近一次 §5 结果
@@ -233,6 +235,7 @@ func add_input_row(label_text: String, key: String, placeholder := "",
 		suffix := "", mode := "row", keyboard_angle := false, pm_button := false) -> LineEdit:
 	if keyboard_angle:
 		keyboard_type = LineEdit.KEYBOARD_TYPE_DEFAULT
+		_angle_keys[key] = label_text  # 输入解释卡：角度字段登记（DMS→十进制预览）
 	var row: HBoxContainer = preload("res://scenes/widgets/input_row.tscn").instantiate()
 	_inputs_root.add_child(row)
 	# setup 必须在入树后调用：input_row 的 label/edit 是 @onready 变量，
@@ -257,6 +260,7 @@ func add_coord_pair_row(label_l: String, key_l: String, label_r: String, key_r: 
 		var kb := LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL
 		if sfx.contains("°") or sfx.contains("′") or sfx.contains("″"):
 			kb = LineEdit.KEYBOARD_TYPE_DEFAULT
+			_angle_keys[String(spec[1])] = String(spec[0])  # 输入解释卡：经纬度字段登记
 		var row: HBoxContainer = preload("res://scenes/widgets/input_row.tscn").instantiate()
 		pair.add_child(row)
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -592,6 +596,38 @@ func _on_reset() -> void:
 	_last_result = {}
 	_render_result({})
 
+## 输入解释卡（WolframAlpha「输入解释」模式的教学落地）：角度字段写了度分秒
+## 形式（含 °′″、'、": 或空格分隔）时，在状态行下方显示规范化预览
+## 「纬度 B：53°48′33.82″ 已解析为 53.809394°」，防止十进制度/度分秒混淆。
+## 纯十进制或空/非法文本不显示；标签用建行时登记的中文标签。
+var _interp_label: Label = null  # 解释行（懒建；无角度字段解析时隐藏）
+
+func _render_input_interpretation() -> void:
+	var lines := PackedStringArray()
+	for key: String in _angle_keys:
+		var edit: LineEdit = _fields.get(key, null)
+		if edit == null:
+			continue
+		var raw := edit.text.strip_edges()
+		if raw.is_empty() or raw.is_valid_float():
+			continue  # 空/纯十进制：无解释必要
+		var deg := _GKAngles.parse_dms(raw)
+		if is_nan(deg):
+			continue  # 非法文本：错误路径另有提示，这里不打扰
+		lines.append("%s：%s 已解析为 %.6f°" % [String(_angle_keys[key]), raw, deg])
+	if lines.is_empty():
+		if _interp_label != null and is_instance_valid(_interp_label):
+			_interp_label.visible = false
+		return
+	if _interp_label == null or not is_instance_valid(_interp_label):
+		_interp_label = Label.new()
+		_interp_label.theme_type_variation = &"Muted"
+		_interp_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_interp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_status_label.get_parent().add_child.call_deferred(_interp_label)
+	_interp_label.text = "、".join(lines)
+	_interp_label.visible = true
+
 func _on_example() -> void:
 	set_inputs(_example_inputs)
 	# P6：填充后给状态行反馈（避免用户不知道是否生效）
@@ -702,6 +738,12 @@ func _render_result(res: Dictionary) -> void:
 	_formula_text.text = String(res.get("formula", ""))
 	_formula_widget.call("set_visible_by_formula", _formula_text.text != "")
 	_formula_fold.visible = _formula_text.text != ""
+
+	# 输入解释卡（P11 调研②落地，对标 WolframAlpha「输入解释」）：角度字段
+	# 显示 DMS→十进制度规范化预览——「65°30′15″ 已解析为 65.504167°」。
+	# 消灭最高频学生错误（度分秒 vs 十进制度混输）；仅当解析值与原文不同
+	# （即用户确实写了度分秒形式）才显示，纯十进制输入不重复。
+	_render_input_interpretation()
 
 	# 成功即展开结果折叠块（折叠默认全折；此前从未展开过才驱动一次，
 	# 用户手动收起后不再被强行翻开——尊重交互意图）
