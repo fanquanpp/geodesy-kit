@@ -29,7 +29,7 @@ var key := ""
 ## 保证 setup 返回的 edit 始终有效（register_field 登记契约）。
 func setup(label_text: String, p_key: String, placeholder := "",
 		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL,
-		p_suffix := "", p_mode := "row", p_pm := false) -> LineEdit:
+		p_suffix := "", p_mode := "row", p_pm := false, p_dms := false) -> LineEdit:
 	key = p_key
 	var lab: Label = label if label != null else get_node_or_null("Label")
 	var ed: LineEdit = edit if edit != null else get_node_or_null("Edit")
@@ -42,6 +42,8 @@ func setup(label_text: String, p_key: String, placeholder := "",
 		ed.virtual_keyboard_type = keyboard_type
 		if p_pm:
 			_apply_pm_button(ed)
+		if p_dms:
+			_apply_dms_buttons(ed)
 		if p_mode == "stacked":
 			_apply_stacked(ed)
 	return ed
@@ -91,6 +93,30 @@ func _apply_pm_button(ed: LineEdit) -> void:
 		else:
 			ed.text = "-" + ed.text)
 	add_child(btn)
+
+## 度分秒快捷键（P11 真机修复②）：°/′/″/空格 四键贴在 Edit 之后——
+## 角度字段的键盘从全键盘改回 NUMBER_DECIMAL（字母键全是噪音），分隔符
+## 经本组快捷键插入（Android 数字键盘无空格键的调研取舍由此化解）。
+## 插入位置在光标处（caret_column），插入后焦点回 Edit。
+func _apply_dms_buttons(ed: LineEdit) -> void:
+	if get_node_or_null("DmsBtns") != null:
+		return  # 幂等
+	var wrap := HBoxContainer.new()
+	wrap.name = "DmsBtns"
+	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	for sym: String in ["°", "′", "″", "␣"]:
+		var b := Button.new()
+		b.text = sym
+		b.tooltip_text = "插入度分秒符号" if sym != "␣" else "插入空格分隔"
+		b.custom_minimum_size = Vector2(64, 0)
+		b.pressed.connect(func() -> void:
+			var ch := " " if sym == "␣" else sym
+			var pos := ed.caret_column
+			ed.text = ed.text.substr(0, pos) + ch + ed.text.substr(pos)
+			ed.caret_column = pos + 1
+			ed.grab_focus())
+		wrap.add_child(b)
+	add_child(wrap)
 
 func get_value() -> String:
 	return edit.text if edit != null else ""

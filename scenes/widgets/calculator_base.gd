@@ -227,21 +227,21 @@ func focus_field(key: String) -> void:
 ## keyboard_type：虚拟键盘类型，默认带小数点数字键盘 KEYBOARD_TYPE_NUMBER_DECIMAL
 ## （数值行；旧默认 NUMBER 无「.」输不了小数）。多行/含分隔符的文本字段应显式传
 ## LineEdit.KEYBOARD_TYPE_DEFAULT（Android 数字键盘无「;」「,」与换行）。
-## 角度/度分秒行（可输 30 30 00 空格分隔）同样须 DEFAULT——数字键盘无空格。
-## 约定传法：keyboard_angle=true（角度档，一处兜住全部角度行，免逐行散写）。
+## 角度/度分秒行（P11 真机修复②）：keyboard_angle=true 时键盘保持 NUMBER_DECIMAL
+## （MIUI 上 DEFAULT 弹全键盘、字母全是噪音），分隔符经行内 °/′/″/空格 快捷键插入。
 ## pm_button：负值字段 opt-in 的「±」快捷按钮（透传 input_row.setup）。
 func add_input_row(label_text: String, key: String, placeholder := "",
 		keyboard_type: int = LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL,
 		suffix := "", mode := "row", keyboard_angle := false, pm_button := false) -> LineEdit:
 	if keyboard_angle:
-		keyboard_type = LineEdit.KEYBOARD_TYPE_DEFAULT
+		keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL
 		_angle_keys[key] = label_text  # 输入解释卡：角度字段登记（DMS→十进制预览）
 	var row: HBoxContainer = preload("res://scenes/widgets/input_row.tscn").instantiate()
 	_inputs_root.add_child(row)
 	# setup 必须在入树后调用：input_row 的 label/edit 是 @onready 变量，
 	# 入树前为 null，setup 返回的 edit 才是有效的 LineEdit（供 register_field 登记）
 	var edit: LineEdit = row.call("setup", label_text, key, placeholder,
-			keyboard_type, suffix, mode, pm_button)
+			keyboard_type, suffix, mode, pm_button, keyboard_angle)
 	register_field(key, edit)
 	return edit
 
@@ -258,15 +258,17 @@ func add_coord_pair_row(label_l: String, key_l: String, label_r: String, key_r: 
 	for spec: Array in [[label_l, key_l, suffix_l], [label_r, key_r, suffix_r]]:
 		var sfx := String(spec[2])
 		var kb := LineEdit.KEYBOARD_TYPE_NUMBER_DECIMAL
-		if sfx.contains("°") or sfx.contains("′") or sfx.contains("″"):
-			kb = LineEdit.KEYBOARD_TYPE_DEFAULT
+		var is_angle := sfx.contains("°") or sfx.contains("′") or sfx.contains("″")
+		if is_angle:
+			# P11 真机修复②：经纬度字段键盘保持 NUMBER_DECIMAL（MIUI DEFAULT 弹
+			# 全键盘噪音），分隔符经行内 °/′/″/空格 快捷键插入
 			_angle_keys[String(spec[1])] = String(spec[0])  # 输入解释卡：经纬度字段登记
 		var row: HBoxContainer = preload("res://scenes/widgets/input_row.tscn").instantiate()
 		pair.add_child(row)
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.size_flags_stretch_ratio = 1.0
 		var edit: LineEdit = row.call("setup", spec[0], spec[1], "",
-			kb, sfx, "stacked")
+			kb, sfx, "stacked", false, is_angle)
 		register_field(spec[1], edit)
 
 func _on_field_submitted(_text: String, idx: int) -> void:

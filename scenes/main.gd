@@ -65,17 +65,21 @@ func _ready() -> void:
 	get_window().size_changed.connect(_on_window_geometry_changed)
 	# Android 返回键：不退出应用，按栈回退（quit_on_go_back=false，project.godot）
 	get_window().go_back_requested.connect(_on_go_back_requested)
-	# 软键盘高度轮询器（生命周期归属 main：单 Timer，字段获焦时启动）
+	# 软键盘高度轮询器（生命周期归属 main）。P11 真机修复①：轮询常驻（仅 Android
+	# 启动，0.25s 一 tick 成本可忽略）——此前「字段获焦才启动」的链路在 MIUI 上
+	# 失效（gui_focus_changed 触发时机晚于键盘动画，首帧高度读到 0 后不再追上）。
+	# 焦点快启保留：获焦立即 tick 一次，键盘弹出首帧即让位。
 	_kb_timer = Timer.new()
-	_kb_timer.wait_time = 0.1
+	_kb_timer.wait_time = 0.25
 	_kb_timer.one_shot = false
 	_kb_timer.timeout.connect(_poll_keyboard_inset)
 	add_child(_kb_timer)
-	# 焦点变化统一入口：LineEdit 获焦（计算器字段）启动轮询、失焦停止——
+	# 焦点变化统一入口：LineEdit 获焦（计算器字段）立即轮询一次、失焦停止——
 	# 用 Viewport.gui_focus_changed 而非逐字段连线，懒加载页/新实例化的计算器
 	# 无需各自挂接。仅 Android 开启（iOS/桌面键盘高度恒 0，轮询无意义）。
 	if DisplayServer.get_name() == "android":
 		get_window().gui_focus_changed.connect(_on_viewport_focus_changed)
+		_kb_timer.start()  # 常驻轮询：键盘弹出/收起与焦点时序解耦
 	else:
 		# 非 Android：搜索浮层「点击外部/失焦关闭」的兑现路径——LineEdit 失焦
 		# （点浮层外任意处、点导航钮）即收起浮层（Android 走返回键/图标钮收起）
@@ -207,20 +211,20 @@ func _on_viewport_focus_changed(control: Control) -> void:
 	if control is LineEdit:
 		_start_keyboard_poll()
 	else:
-		_stop_keyboard_poll()
+		# 常驻轮询下不再停表（键盘收起由高度归 0 自然撤回 inset）；
+		# 保留立即 tick：失焦瞬间键盘可能正在收起动画中
+		_poll_keyboard_inset()
 
-## 字段获焦 → 启动轮询。轮询而非单次延迟读取：Android 键盘弹出动画期间高度
-## 渐变，逐帧追平；iOS 窗口不 resize，高度读取是唯一线索（真机是否返回非 0
-## 待实测——高度归 0 时 inset 同步撤回，API 无效平台退化为无避让而非错乱）。
+## 字段获焦 → 立即 tick 一次（常驻轮询已在跑，无须 start；MIUI 上键盘弹出
+## 动画期间高度渐变，0.25s 轮询逐帧追平；iOS 窗口不 resize，高度读取是唯一
+## 线索——高度归 0 时 inset 同步撤回，API 无效平台退化为无避让而非错乱）。
 func _start_keyboard_poll() -> void:
 	_kb_prev_inset = -1
-	if not _kb_timer.is_stopped():
-		return
 	_poll_keyboard_inset()  # 先同步读一次（键盘已弹出时首个 tick 即生效）
-	_kb_timer.start()
 
 func _stop_keyboard_poll() -> void:
-	_kb_timer.stop()
+	# 常驻轮询不再停表（P11 修复①）；本函数保留为「强制撤回 inset」语义：
+	# 计算器关闭等场景下键盘必然收起，立即归零不等下一个 tick
 	_kb_prev_inset = -1
 	_write_keyboard_inset(0)
 
@@ -552,12 +556,18 @@ func _apply_touch_targets() -> void:
 		for c: Control in _search_results.get_children():
 			if c is Button:
 				c.custom_minimum_size = Vector2(0, h)
-	# 已实例化页面中的输入行同步（懒加载页在创建时按当前口径建行）
+	# 已实例化页面中的输入行同步（懒加载页在创建时按当前口径建行）。
+	# P11 真机修复③：stacked 形态的 Edit 挂在 StackCol/EditRow 下（node path
+	# 变化），get_node("Edit") 兜不到——find_children 全树找 LineEdit 补齐。
 	for page: Control in _pages.values():
-		for row: Node in page.find_children("*", "GKInputRow", true, false):
-			var edit: LineEdit = row.get_node_or_null("Edit")
-			if edit != null:
+		for edit: LineEdit in page.find_children("*", "LineEdit", true, false):
+			if edit.get_parent_control() != null and edit != _search_box \
+					and not _search_popup.is_ancestor_of(edit):
 				edit.custom_minimum_size = Vector2(0, h)
+	# 当前打开的计算器（不在 _pages 里，_calc_holder 直接持引用）
+	if _calc_holder != null:
+		for edit: LineEdit in _calc_holder.find_children("*", "LineEdit", true, false):
+			edit.custom_minimum_size = Vector2(0, h)
 
 # ---------- 页面切换 ----------
 
