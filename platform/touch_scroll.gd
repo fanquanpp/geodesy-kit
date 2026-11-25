@@ -23,14 +23,35 @@ extends ScrollContainer
 const TOUCH_DEADZONE := 24.0
 
 ## 工厂：创建触屏友好的 ScrollContainer。
-## horizontal_enabled=false 禁横滚；show_bar=false 隐藏纵向滚动条。
-static func attach(horizontal_enabled := false, show_bar := false) -> GKTouchScroll:
+## horizontal_enabled=false 禁横滚；show_bar 默认 true（v0.4：触屏拖滚判定在
+## 部分 ROM 上仍不可靠，加回可见滚动条——拖动滚动条是确定的滚动路径）。
+static func attach(horizontal_enabled := false, show_bar := true) -> GKTouchScroll:
 	var s := GKTouchScroll.new()
 	if not horizontal_enabled:
 		s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	s.scroll_deadzone = int(TOUCH_DEADZONE)
-	s.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER if not show_bar \
-			else ScrollContainer.SCROLL_MODE_AUTO
+	# SHOW_ALWAYS：滚动条常显（含灰色轨道）——用户要求可见滚动条作为可靠的
+	# 滚动路径（AUTO 在内容不超屏时隐藏，横屏首页看不到会以为没生效）
+	s.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS if show_bar \
+			else ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	# 滚动条加粗（v0.4 用户反馈"太细"）：grabber 主体 16dp 宽、热区 32dp——
+	# StyleBoxFlat content_margin 撑出热区，中央画粗 grabber；
+	# custom_minimum_size 32dp 保证手指能点中/拖住。
+	var vbar := s.get_v_scroll_bar()
+	vbar.custom_minimum_size = Vector2(32, 0)
+	var grabber := StyleBoxFlat.new()
+	grabber.bg_color = Color(0.42, 0.47, 0.56, 0.9)  # 中性灰蓝，深浅主题都可辨
+	grabber.set_corner_radius_all(8)
+	grabber.set_content_margin_all(0)
+	grabber.content_margin_left = 8.0   # grabber 视觉宽 16dp：左右 margin 各 8
+	grabber.content_margin_right = 8.0
+	grabber.expand_margin_left = 6.0    # 热区外扩：手指命中更容易
+	grabber.expand_margin_right = 6.0
+	vbar.add_theme_stylebox_override("grabber", grabber)
+	var grabber_hl := grabber.duplicate()
+	grabber_hl.bg_color = Color(0.52, 0.58, 0.68, 1.0)  # hover/按下更亮
+	vbar.add_theme_stylebox_override("grabber_highlight", grabber_hl)
+	vbar.add_theme_stylebox_override("grabber_pressed", grabber_hl)
 	# 直接子节点入树即展开整棵子树转 PASS
 	s.child_entered_tree.connect(func(node: Node) -> void:
 		if node is Control:
