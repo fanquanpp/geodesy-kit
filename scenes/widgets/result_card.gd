@@ -89,6 +89,42 @@ func set_succeeded() -> void:
 	theme_type_variation = &"Card"
 	_show_status_bar("OkLabel")
 
+## 放样导向条（P11 调研②落地，对标工程之星箭头导向）：value 含 offset_m
+## （右正左负）+ offset_side（右/左侧）键时，行区顶部渲染一条图形导向——
+## 大箭头指向偏移方向 + 「左偏 2.35 m」文字，放样时一眼读懂往哪挪。
+## 由组装方（calculator_base）从 value 提取后调本接口；非放样计算器不调用。
+func set_guide(offset_m: float, side_text: String) -> void:
+	var box: VBoxContainer = get_node("VBox")
+	var old := box.get_node_or_null("Guide")
+	if old != null:
+		old.free()
+	if side_text.is_empty():
+		return
+	var guide := PanelContainer.new()
+	guide.name = "Guide"
+	guide.theme_type_variation = &"Card"
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", _TC.MIN_TOUCH_SPACING)
+	var arrow := Label.new()
+	var right := offset_m >= 0.0
+	arrow.text = "►" if right else "◄"
+	arrow.theme_type_variation = &"ResultAccent"
+	arrow.add_theme_font_size_override("font_size", 56)
+	var txt := Label.new()
+	txt.text = "%s %.3f m（%s，往%s挪）" % [
+		"右偏" if right else "左偏", absf(offset_m), side_text,
+		"右" if right else "左"]
+	txt.theme_type_variation = &"Header"
+	txt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	txt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	txt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(arrow)
+	h.add_child(txt)
+	guide.add_child(h)
+	box.add_child(guide)
+	box.move_child(guide, 2)  # Header/Value 之后、Rows 之前（导向最醒目）
+
+
 ## 卡头「复制全部」按钮：行多时唯一复制入口；行少时与行级按钮并存
 func _on_copy_all() -> void:
 	if GKClipboard.copy_text(get_text()):

@@ -727,6 +727,15 @@ func _render_result(res: Dictionary) -> void:
 	_result_card.call("set_result", lines)
 	(_result_card as GKResultCard).set_succeeded()  # Card 变体 + 绿色状态条
 
+	# 放样导向条（P11 调研②，对标工程之星箭头导向）：value 同时含 offset_m
+	# （右正左负）+ offset_side（右/左侧）即渲染；缺任一键自动清空（非放样算路）
+	if value.has("offset_m") and value.has("offset_side"):
+		var off := float(value["offset_m"])
+		if is_finite(off):
+			(_result_card as GKResultCard).set_guide(off, String(value["offset_side"]))
+	else:
+		(_result_card as GKResultCard).set_guide(0.0, "")  # 清残留导向
+
 	# 步骤四行卡片：空字段跳过（§5 规则②）——经 step_list 组件渲染（内含同步清空）。
 	# 折叠契约：步骤/公式区块显隐由折叠块承担；步骤块展开就近读结果（折叠组互斥
 	# 自动收起结果块，长步骤不再把结果卡顶出可视区）

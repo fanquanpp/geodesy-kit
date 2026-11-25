@@ -15,15 +15,35 @@ func _ready() -> void:
 		_root = self
 
 ## 渲染步骤数组（元素 {title, formula, substitution, result}）；
-## 默认折叠，仅最后一步展开（结果行用 ResultAccent 强调）。
+## 手风琴策略（P11 调研②落地，对标 WA 分步可展开）：关键步骤（闭合差/限差/
+## 检核/改正/精度/判据/超限/分配——学生最需要看的过程）默认展开，机械代入
+## 步骤默认折叠；无关键步骤时回退旧行为（只展开最后一步，结果就近可读）。
+const _KEY_STEP_PATTERNS := ["闭合差", "限差", "检核", "改正", "精度", "判据", "超限", "分配"]
+
+## 是否关键步骤：标题命中关键词即视为关键（core 的 title 字段直接决定）。
+static func is_key_step(title_txt: String) -> bool:
+	for p in _KEY_STEP_PATTERNS:
+		if title_txt.contains(String(p)):
+			return true
+	return false
+
 func set_steps(steps: Array) -> void:
 	_ensure_root()
 	clear()
 	var n := steps.size()
+	var any_key := false
+	for st: Dictionary in steps:
+		if is_key_step(String(st.get("title", ""))):
+			any_key = true
+			break
 	for i in n:
 		var st: Dictionary = steps[i]
 		var card := FoldableContainer.new()
-		card.folded = i != n - 1  # 默认只展开最后一步
+		# 关键步骤展开；无关键步骤时回退旧行为（只展开最后一步）
+		if any_key:
+			card.folded = not is_key_step(String(st.get("title", "")))
+		else:
+			card.folded = i != n - 1
 		var title_txt := String(st.get("title", ""))
 		card.title = "步骤 %d/%d　%s" % [i + 1, n, _strip_existing_index(title_txt)]
 		var cv := VBoxContainer.new()
